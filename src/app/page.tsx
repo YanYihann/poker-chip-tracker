@@ -11,7 +11,13 @@ import type { TableSeatPlayer } from "@/components/player/types";
 import { PokerTable } from "@/components/table/poker-table";
 import { Badge } from "@/components/ui/badge";
 import { fetchCurrentUser } from "@/features/auth/api";
-import { getRoom, submitRoomAction, type RoomState } from "@/features/rooms/api";
+import {
+  decideNextHand,
+  getRoom,
+  settleHand,
+  submitRoomAction,
+  type RoomState
+} from "@/features/rooms/api";
 import { getRoomSocket } from "@/features/rooms/realtime";
 
 const STREET_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>["street"], string>> = {
@@ -34,11 +40,13 @@ const STREET_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>[
 const STATUS_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>["status"], string>> = {
   zh: {
     "in-progress": "\u8fdb\u884c\u4e2d",
-    showdown: "\u644a\u724c"
+    showdown: "\u5f85\u7ed3\u7b97",
+    settled: "\u5df2\u7ed3\u7b97"
   },
   en: {
     "in-progress": "In Progress",
-    showdown: "Showdown"
+    showdown: "Awaiting Settlement",
+    settled: "Settled"
   }
 };
 
@@ -101,6 +109,8 @@ function HomePageContent() {
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionAmount, setActionAmount] = useState(0);
+  const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
 
   useEffect(() => {
     if (roomCode) {
@@ -202,6 +212,28 @@ function HomePageContent() {
   const roomStatusLabels = ROOM_STATUS_LABEL_MAP[locale];
   const actionCopy = ACTION_COPY[locale];
 
+  useEffect(() => {
+    if (!game) {
+      return;
+    }
+
+    if (game.status === "in-progress") {
+      setActionAmount(game.minBet);
+    }
+  }, [game?.handId, game?.status, game?.minBet]);
+
+  useEffect(() => {
+    if (!game || game.status !== "showdown") {
+      setSelectedWinners([]);
+      return;
+    }
+
+    const first = game.eligibleWinnerUserIds[0];
+    if (first) {
+      setSelectedWinners([first]);
+    }
+  }, [game?.eligibleWinnerUserIds, game?.status]);
+
   const tablePlayers = useMemo<TableSeatPlayer[]>(() => {
     if (!roomState) {
       return [];
@@ -217,7 +249,7 @@ function HomePageContent() {
       id: player.userId,
       name: player.displayName,
       stackLabel: formatCurrency(player.stack, locale),
-      positionLabel: player.seatIndex !== null ? `S${player.seatIndex + 1}` : undefined,
+      positionLabel: player.positionLabel ?? (player.seatIndex !== null ? `S${player.seatIndex + 1}` : undefined),
       isHero: roomState.me?.userId === player.userId,
       isActive: game?.activePlayerUserId === player.userId,
       status: player.status
@@ -235,10 +267,37 @@ function HomePageContent() {
             return;
           }
 
+          const currentGame = game;
+          if (!currentGame) {
+            return;
+          }
+
+          if (actionType === "bet" && actionAmount < currentGame.minBet) {
+            setError(
+              isZh
+                ? `\u4e0b\u6ce8\u91d1\u989d\u81f3\u5c11\u4e3a ${currentGame.minBet}`
+                : `Bet amount must be at least ${currentGame.minBet}`
+            );
+            return;
+          }
+
+          if (actionType === "raise" && actionAmount < currentGame.currentBet + currentGame.minRaiseDelta) {
+            setError(
+              isZh
+                ? `\u52a0\u6ce8\u5230\u5c11\u81f3 ${currentGame.currentBet + currentGame.minRaiseDelta}`
+                : `Raise-to amount must be at least ${currentGame.currentBet + currentGame.minRaiseDelta}`
+            );
+            return;
+          }
+
           setPendingAction(actionType);
           setError(null);
           try {
-            const next = await submitRoomAction(roomCode, actionType);
+            const next = await submitRoomAction(
+              roomCode,
+              actionType,
+              actionType === "bet" || actionType === "raise" ? Math.floor(actionAmount) : undefined
+            );
             setRoomState(next);
           } catch (actionError) {
             setError(actionError instanceof Error ? actionError.message : isZh ? "\u64cd\u4f5c\u5931\u8d25\u3002" : "Action failed.");
@@ -247,8 +306,17 @@ function HomePageContent() {
           }
         }
       })),
-    [actionCopy, game?.legalActions, isZh, pendingAction, roomCode]
+    [actionAmount, actionCopy, game, isZh, pendingAction, roomCode]
   );
+
+  const settlementCandidates = useMemo(() => {
+    if (!roomState || !game) {
+      return [];
+    }
+
+    const winnerSet = new Set(game.eligibleWinnerUserIds);
+    return roomState.players.filter((player) => winnerSet.has(player.userId));
+  }, [game, roomState]);
 
   if (!roomCode) {
     return (
@@ -278,22 +346,22 @@ function HomePageContent() {
     <main className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-stitch-background pb-44">
       <AppTopBar title={isZh ? `\u724c\u684c ${roomCode}` : `Table ${roomCode}`} backHref={`/rooms/${roomCode}`} />
 
-      <section className="flex-1 px-4 pb-4 pt-4">
+      <section className="flex-1 space-y-3 px-4 pb-4 pt-4">
         {loading ? (
-          <article className="mb-3 rounded-2xl bg-stitch-surfaceContainer p-3 text-xs text-stitch-onSurfaceVariant">
+          <article className="rounded-2xl bg-stitch-surfaceContainer p-3 text-xs text-stitch-onSurfaceVariant">
             {isZh ? "\u6b63\u5728\u52a0\u8f7d\u670d\u52a1\u5668\u724c\u5c40\u72b6\u6001..." : "Loading server game state..."}
           </article>
         ) : null}
 
         {error ? (
-          <article className="mb-3 rounded-2xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 p-3 text-xs text-stitch-tertiary">
+          <article className="rounded-2xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 p-3 text-xs text-stitch-tertiary">
             {error}
           </article>
         ) : null}
 
         {roomState && game ? (
           <>
-            <div className="mb-3 flex items-center justify-between rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh px-3 py-2">
+            <div className="flex items-center justify-between rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh px-3 py-2">
               <div className="flex items-center gap-2">
                 <Badge variant="primary">{streetLabels[game.street]}</Badge>
                 <Badge variant="mint">{statusLabels[game.status]}</Badge>
@@ -302,8 +370,16 @@ function HomePageContent() {
                 </Badge>
               </div>
               <span className="text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5f85\u8ddf\u6ce8" : "To Call"}: <strong className="text-stitch-mint">{formatCurrency(game.toCall, locale)}</strong>
+                {isZh ? "\u5f85\u8ddf\u6ce8" : "To Call"}:{" "}
+                <strong className="text-stitch-mint">{formatCurrency(game.toCall, locale)}</strong>
               </span>
+            </div>
+
+            <div className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-[11px] text-stitch-onSurfaceVariant">
+              {isZh ? "\u5e84/\u5c0f\u76f2/\u5927\u76f2" : "BTN/SB/BB"}:{" "}
+              {game.dealerSeat !== null ? `S${game.dealerSeat + 1}` : "-"} /{" "}
+              {game.sbSeat !== null ? `S${game.sbSeat + 1}` : "-"} /{" "}
+              {game.bbSeat !== null ? `S${game.bbSeat + 1}` : "-"}
             </div>
 
             <PokerTable
@@ -313,11 +389,178 @@ function HomePageContent() {
               statusLabel={statusLabels[game.status]}
             />
 
-            {!game.isMyTurn ? (
-              <article className="mt-3 rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
+            {game.isMyTurn && game.status === "in-progress" && (game.legalActions.includes("bet") || game.legalActions.includes("raise")) ? (
+              <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-3">
+                <p className="text-xs text-stitch-onSurfaceVariant">
+                  {isZh ? "\u8bbe\u7f6e\u4e0b\u6ce8/\u52a0\u6ce8\u91d1\u989d" : "Set bet/raise amount"}
+                </p>
+                <input
+                  type="number"
+                  min={1}
+                  value={actionAmount}
+                  onChange={(event) => setActionAmount(Number(event.target.value))}
+                  className="mt-2 w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                />
+                <p className="mt-1 text-[11px] text-stitch-onSurfaceVariant">
+                  {isZh ? "\u6700\u5c0f\u4e0b\u6ce8" : "Min Bet"}: {game.minBet} | {isZh ? "\u6700\u5c0f\u52a0\u6ce8\u589e\u91cf" : "Min Raise Delta"}: {game.minRaiseDelta}
+                </p>
+              </article>
+            ) : null}
+
+            {game.status === "showdown" ? (
+              <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">
+                <h3 className="text-sm font-semibold text-stitch-primary">
+                  {isZh ? "\u624b\u724c\u7ed3\u675f\uff0c\u8bf7\u9009\u62e9\u5e95\u6c60\u5f52\u5c5e" : "Hand complete. Select pot winner(s)."}
+                </h3>
+                {game.canSettle ? (
+                  <>
+                    <div className="mt-3 space-y-2">
+                      {settlementCandidates.map((player) => {
+                        const selected = selectedWinners.includes(player.userId);
+                        return (
+                          <button
+                            key={player.userId}
+                            type="button"
+                            className={[
+                              "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition",
+                              selected
+                                ? "border-stitch-mint/50 bg-stitch-mint/15 text-stitch-mint"
+                                : "border-stitch-outlineVariant/30 bg-stitch-surfaceContainer text-stitch-onSurface"
+                            ].join(" ")}
+                            onClick={() => {
+                              setSelectedWinners((prev) =>
+                                prev.includes(player.userId)
+                                  ? prev.filter((id) => id !== player.userId)
+                                  : [...prev, player.userId]
+                              );
+                            }}
+                          >
+                            <span>{player.displayName}</span>
+                            <span>{formatCurrency(player.stack, locale)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={pendingAction !== null || selectedWinners.length < 1}
+                        className="rounded-xl bg-stitch-primary px-3 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
+                        onClick={async () => {
+                          setPendingAction("settle-win");
+                          setError(null);
+                          try {
+                            const next = await settleHand(roomCode, [selectedWinners[0]]);
+                            setRoomState(next);
+                          } catch (settleError) {
+                            setError(settleError instanceof Error ? settleError.message : isZh ? "\u7ed3\u7b97\u5931\u8d25\u3002" : "Settlement failed.");
+                          } finally {
+                            setPendingAction(null);
+                          }
+                        }}
+                      >
+                        {isZh ? "\u5355\u4eba\u8d62\u6c60" : "Single Winner"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pendingAction !== null || selectedWinners.length < 2}
+                        className="rounded-xl bg-stitch-mint/20 px-3 py-2 text-sm font-semibold text-stitch-mint disabled:opacity-50"
+                        onClick={async () => {
+                          setPendingAction("settle-split");
+                          setError(null);
+                          try {
+                            const next = await settleHand(roomCode, selectedWinners);
+                            setRoomState(next);
+                          } catch (settleError) {
+                            setError(settleError instanceof Error ? settleError.message : isZh ? "\u7ed3\u7b97\u5931\u8d25\u3002" : "Settlement failed.");
+                          } finally {
+                            setPendingAction(null);
+                          }
+                        }}
+                      >
+                        {isZh ? "\u5e73\u5206\u5e95\u6c60" : "Split Pot"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u7b49\u5f85\u623f\u4e3b\u7ed3\u7b97..." : "Waiting for host settlement..."}
+                  </p>
+                )}
+              </article>
+            ) : null}
+
+            {game.status === "settled" ? (
+              <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
+                <h3 className="text-sm font-semibold text-stitch-onSurface">
+                  {isZh ? "\u672c\u624b\u7ed3\u679c" : "Hand Result"}
+                </h3>
+                <div className="mt-2 space-y-1">
+                  {(game.lastSettlement?.entries ?? []).map((entry) => (
+                    <p key={entry.userId} className="text-xs text-stitch-onSurfaceVariant">
+                      {entry.displayName}:{" "}
+                      <span className={entry.netChange >= 0 ? "text-stitch-mint" : "text-stitch-tertiary"}>
+                        {formatCurrency(entry.netChange, locale)}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+
+                {game.canDecideNextHand ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={pendingAction !== null}
+                      className="rounded-xl bg-stitch-primary px-3 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
+                      onClick={async () => {
+                        setPendingAction("next-hand");
+                        setError(null);
+                        try {
+                          const next = await decideNextHand(roomCode, true);
+                          setRoomState(next);
+                        } catch (nextError) {
+                          setError(nextError instanceof Error ? nextError.message : isZh ? "\u65e0\u6cd5\u5f00\u59cb\u4e0b\u4e00\u624b\u3002" : "Unable to continue.");
+                        } finally {
+                          setPendingAction(null);
+                        }
+                      }}
+                    >
+                      {isZh ? "\u7ee7\u7eed\u4e0b\u4e00\u624b" : "Next Hand"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingAction !== null}
+                      className="rounded-xl bg-stitch-tertiary/20 px-3 py-2 text-sm font-semibold text-stitch-tertiary disabled:opacity-50"
+                      onClick={async () => {
+                        setPendingAction("finish-session");
+                        setError(null);
+                        try {
+                          const next = await decideNextHand(roomCode, false);
+                          setRoomState(next);
+                        } catch (finishError) {
+                          setError(finishError instanceof Error ? finishError.message : isZh ? "\u65e0\u6cd5\u7ed3\u675f\u724c\u5c40\u3002" : "Unable to finish session.");
+                        } finally {
+                          setPendingAction(null);
+                        }
+                      }}
+                    >
+                      {isZh ? "\u7ed3\u675f\u6574\u5c40" : "Finish Session"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u7b49\u5f85\u623f\u4e3b\u9009\u62e9\u662f\u5426\u7ee7\u7eed..." : "Waiting for host decision..."}
+                  </p>
+                )}
+              </article>
+            ) : null}
+
+            {!game.isMyTurn && game.status === "in-progress" ? (
+              <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
                 {isZh
-                  ? "\u672a\u5230\u4f60\u7684\u56de\u5408\u3002\u670d\u52a1\u5668\u5c06\u4f60\u6807\u8bb0\u4e3a\u5f53\u524d\u884c\u52a8\u73a9\u5bb6\u540e\uff0c\u64cd\u4f5c\u680f\u624d\u4f1a\u663e\u793a\u3002"
-                  : "Not your turn. Action bar is hidden until server marks you as active player."}
+                  ? "\u672a\u5230\u4f60\u7684\u56de\u5408\u3002"
+                  : "Not your turn."}
               </article>
             ) : null}
           </>
@@ -328,8 +571,8 @@ function HomePageContent() {
             {isZh ? "\u623f\u95f4\u72b6\u6001\u4e3a" : "Room status is"}{" "}
             <strong className="text-stitch-onSurface">{roomStatusLabels[roomState.room.status]}</strong>
             {isZh
-              ? "\u3002\u82e5\u724c\u5c40\u5df2\u7ed3\u675f\uff0c\u8bb0\u5f55\u4f1a\u5f52\u6863\u5230\u4e2a\u4eba\u5386\u53f2\u4e2d\u3002"
-              : ". If this game has finished, the session is archived and available in profile/history."}
+              ? "\u3002\u82e5\u724c\u5c40\u5df2\u7ed3\u675f\uff0c\u53ef\u5728\u5386\u53f2\u4e2d\u67e5\u770b\u624b\u724c\u660e\u7ec6\u3002"
+              : ". If this game has finished, open history for detailed hand records."}
             <Link
               href="/history"
               className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
@@ -340,7 +583,7 @@ function HomePageContent() {
         ) : null}
       </section>
 
-      {roomState?.game?.isMyTurn ? (
+      {roomState?.game?.isMyTurn && roomState.game.status === "in-progress" ? (
         <BottomActionPanel
           mainActions={mainActions}
           utilityActions={[]}
@@ -351,9 +594,7 @@ function HomePageContent() {
 
       {pendingAction ? (
         <div className="pointer-events-none fixed bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full bg-stitch-surfaceContainerHigh px-3 py-1 text-xs text-stitch-onSurfaceVariant">
-          {isZh
-            ? `\u63d0\u4ea4\u4e2d ${actionCopy[pendingAction as keyof typeof actionCopy].mainLabel}...`
-            : `Submitting ${actionCopy[pendingAction as keyof typeof actionCopy].mainLabel}...`}
+          {isZh ? "\u5904\u7406\u4e2d..." : "Processing..."}
         </div>
       ) : null}
     </main>

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { ZodError } from "zod";
 import { requireAuth } from "../auth/session.middleware.js";
-import { roomActionSchema, createRoomSchema, joinRoomSchema, roomCodeParamSchema, setReadySchema } from "./room.schemas.js";
-import { applyPlayerActionByRoomCode, createRoom, getRoomStateByCode, joinRoomByCode, setPlayerReadyByRoomCode, startRoomByHost } from "./room.service.js";
+import { nextHandDecisionSchema, roomActionSchema, createRoomSchema, joinRoomSchema, roomCodeParamSchema, settleHandSchema, updateBlindsSchema, setReadySchema } from "./room.schemas.js";
+import { applyPlayerActionByRoomCode, decideNextHandByRoomCode, createRoom, getRoomStateByCode, joinRoomByCode, settleHandByRoomCode, setPlayerReadyByRoomCode, startRoomByHost, updateRoomBlindsByCode } from "./room.service.js";
 import { broadcastRoomState } from "../../realtime/room-broadcast.js";
 function sendValidationError(error, res) {
     res.status(400).json({
@@ -46,8 +46,32 @@ function sendRoomError(error, res) {
         case "ROOM_NOT_ACTIVE":
             res.status(409).json({ message: "Room game is not active." });
             return;
+        case "INVALID_BLINDS":
+            res.status(400).json({ message: "Invalid blind settings." });
+            return;
         case "HAND_LOCKED":
             res.status(409).json({ message: "Hand is locked." });
+            return;
+        case "HAND_NOT_FOUND":
+            res.status(404).json({ message: "Hand not found." });
+            return;
+        case "HAND_NOT_SHOWDOWN":
+            res.status(409).json({ message: "Hand is not ready for settlement." });
+            return;
+        case "HAND_ALREADY_SETTLED":
+            res.status(409).json({ message: "Hand already settled." });
+            return;
+        case "HAND_NOT_SETTLED":
+            res.status(409).json({ message: "Current hand is not settled yet." });
+            return;
+        case "NOT_ENOUGH_ACTIVE_PLAYERS":
+            res.status(409).json({ message: "Not enough active players to continue." });
+            return;
+        case "WINNERS_REQUIRED":
+            res.status(400).json({ message: "At least one winner is required." });
+            return;
+        case "INVALID_WINNERS":
+            res.status(409).json({ message: "Winner selection is invalid." });
             return;
         case "NOT_YOUR_TURN":
             res.status(403).json({ message: "Not your turn." });
@@ -160,6 +184,27 @@ export function createRoomRouter() {
             sendRoomError(error, res);
         }
     });
+    router.patch("/:roomCode/blinds", async (req, res) => {
+        try {
+            const { roomCode } = roomCodeParamSchema.parse(req.params);
+            const payload = updateBlindsSchema.parse(req.body);
+            const roomState = await updateRoomBlindsByCode({
+                roomCode,
+                userId: req.authSession.userId,
+                smallBlind: payload.smallBlind,
+                bigBlind: payload.bigBlind
+            });
+            await broadcastRoomState(roomCode);
+            res.status(200).json({ room: roomState });
+        }
+        catch (error) {
+            if (error instanceof ZodError) {
+                sendValidationError(error, res);
+                return;
+            }
+            sendRoomError(error, res);
+        }
+    });
     router.post("/:roomCode/action", async (req, res) => {
         try {
             const { roomCode } = roomCodeParamSchema.parse(req.params);
@@ -167,7 +212,48 @@ export function createRoomRouter() {
             const roomState = await applyPlayerActionByRoomCode({
                 roomCode,
                 userId: req.authSession.userId,
-                actionType: payload.actionType
+                actionType: payload.actionType,
+                amount: payload.amount
+            });
+            await broadcastRoomState(roomCode);
+            res.status(200).json({ room: roomState });
+        }
+        catch (error) {
+            if (error instanceof ZodError) {
+                sendValidationError(error, res);
+                return;
+            }
+            sendRoomError(error, res);
+        }
+    });
+    router.post("/:roomCode/settle", async (req, res) => {
+        try {
+            const { roomCode } = roomCodeParamSchema.parse(req.params);
+            const payload = settleHandSchema.parse(req.body);
+            const roomState = await settleHandByRoomCode({
+                roomCode,
+                userId: req.authSession.userId,
+                winnerUserIds: payload.winnerUserIds
+            });
+            await broadcastRoomState(roomCode);
+            res.status(200).json({ room: roomState });
+        }
+        catch (error) {
+            if (error instanceof ZodError) {
+                sendValidationError(error, res);
+                return;
+            }
+            sendRoomError(error, res);
+        }
+    });
+    router.post("/:roomCode/next-hand", async (req, res) => {
+        try {
+            const { roomCode } = roomCodeParamSchema.parse(req.params);
+            const payload = nextHandDecisionSchema.parse(req.body);
+            const roomState = await decideNextHandByRoomCode({
+                roomCode,
+                userId: req.authSession.userId,
+                continueSession: payload.continueSession
             });
             await broadcastRoomState(roomCode);
             res.status(200).json({ room: roomState });

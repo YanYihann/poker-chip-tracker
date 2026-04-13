@@ -99,6 +99,7 @@ export async function getSessionDetail(input) {
         },
         select: {
             id: true,
+            roomId: true,
             totalHands: true,
             startedAt: true,
             finishedAt: true,
@@ -138,6 +139,33 @@ export async function getSessionDetail(input) {
     if (!me) {
         throw new Error("SESSION_FORBIDDEN");
     }
+    const usernameByUserId = new Map(record.playerStats.map((stat) => [
+        stat.userId,
+        stat.user.profile?.username ?? stat.user.email.split("@")[0]
+    ]));
+    const hands = await prisma.hand.findMany({
+        where: {
+            roomId: record.roomId,
+            status: "SETTLED"
+        },
+        select: {
+            handNumber: true,
+            potTotal: true,
+            results: {
+                select: {
+                    userId: true,
+                    amountWon: true,
+                    netChange: true
+                },
+                orderBy: {
+                    netChange: "desc"
+                }
+            }
+        },
+        orderBy: {
+            handNumber: "asc"
+        }
+    });
     return {
         session: {
             id: record.id,
@@ -160,6 +188,16 @@ export async function getSessionDetail(input) {
             endStack: stat.endStack.toString(),
             profitLoss: stat.profitLoss.toString(),
             handsPlayed: stat.handsPlayed
+        })),
+        hands: hands.map((hand) => ({
+            handNumber: hand.handNumber,
+            potTotal: hand.potTotal.toString(),
+            results: hand.results.map((result) => ({
+                userId: result.userId,
+                username: usernameByUserId.get(result.userId) ?? result.userId,
+                amountWon: result.amountWon.toString(),
+                netChange: result.netChange.toString()
+            }))
         }))
     };
 }

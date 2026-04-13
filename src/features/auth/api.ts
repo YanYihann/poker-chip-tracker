@@ -62,6 +62,16 @@ export type SessionDetail = {
     profitLoss: string;
     handsPlayed: number;
   }>;
+  hands: Array<{
+    handNumber: number;
+    potTotal: string;
+    results: Array<{
+      userId: string;
+      username: string;
+      amountWon: string;
+      netChange: string;
+    }>;
+  }>;
 };
 
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

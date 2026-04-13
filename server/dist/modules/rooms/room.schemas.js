@@ -14,7 +14,23 @@ export const setReadySchema = z.object({
     isReady: z.boolean()
 });
 export const roomActionSchema = z.object({
-    actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"])
+    actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"]),
+    amount: z.number().int().positive().optional()
+});
+export const updateBlindsSchema = z
+    .object({
+    smallBlind: z.number().int().positive(),
+    bigBlind: z.number().int().positive()
+})
+    .refine((value) => value.bigBlind >= value.smallBlind, {
+    message: "Big blind must be greater than or equal to small blind.",
+    path: ["bigBlind"]
+});
+export const settleHandSchema = z.object({
+    winnerUserIds: z.array(z.string().uuid()).min(1)
+});
+export const nextHandDecisionSchema = z.object({
+    continueSession: z.boolean()
 });
 export const roomCodeParamSchema = z.object({
     roomCode: z.string().toUpperCase().regex(roomCodePattern)

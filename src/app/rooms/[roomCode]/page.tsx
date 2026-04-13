@@ -6,15 +6,21 @@ import { useParams } from "next/navigation";
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
-import { getRoom, setReady, startRoom, type RoomState } from "@/features/rooms/api";
+import {
+  getRoom,
+  setReady,
+  startRoom,
+  updateRoomBlinds,
+  type RoomState
+} from "@/features/rooms/api";
 import { getRoomSocket } from "@/features/rooms/realtime";
 
 const ROOM_STATUS_LABELS = {
   zh: {
-    waiting: "等待中",
-    active: "进行中",
-    finished: "已结束",
-    cancelled: "已取消"
+    waiting: "\u7b49\u5f85\u4e2d",
+    active: "\u8fdb\u884c\u4e2d",
+    finished: "\u5df2\u7ed3\u675f",
+    cancelled: "\u5df2\u53d6\u6d88"
   },
   en: {
     waiting: "Waiting",
@@ -31,8 +37,10 @@ export default function WaitingRoomPage() {
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingAction, setPendingAction] = useState<"ready" | "start" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"ready" | "start" | "blinds" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [smallBlind, setSmallBlind] = useState(100);
+  const [bigBlind, setBigBlind] = useState(200);
 
   const isHost = roomState?.me?.isHost ?? false;
   const isReady = roomState?.me?.isReady ?? false;
@@ -53,6 +61,15 @@ export default function WaitingRoomPage() {
   );
 
   useEffect(() => {
+    if (!roomState) {
+      return;
+    }
+
+    setSmallBlind(roomState.room.smallBlind);
+    setBigBlind(roomState.room.bigBlind);
+  }, [roomState?.room.bigBlind, roomState?.room.smallBlind]);
+
+  useEffect(() => {
     let active = true;
     const socket = getRoomSocket();
 
@@ -66,7 +83,13 @@ export default function WaitingRoomPage() {
         }
       } catch (loadError) {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : isZh ? "无法加载房间。" : "Unable to load room.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : isZh
+                ? "\u65e0\u6cd5\u52a0\u8f7d\u623f\u95f4\u3002"
+                : "Unable to load room."
+          );
         }
       } finally {
         if (active) {
@@ -86,7 +109,7 @@ export default function WaitingRoomPage() {
       if (!active) {
         return;
       }
-      setError(payload.message ?? (isZh ? "实时房间错误。" : "Realtime room error."));
+      setError(payload.message ?? (isZh ? "\u5b9e\u65f6\u623f\u95f4\u9519\u8bef\u3002" : "Realtime room error."));
     };
 
     void loadInitial();
@@ -108,12 +131,12 @@ export default function WaitingRoomPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? `房间 ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
+      <AppTopBar title={isZh ? `\u623f\u95f4 ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "正在加载房间..." : "Loading room..."}
+            {isZh ? "\u6b63\u5728\u52a0\u8f7d\u623f\u95f4..." : "Loading room..."}
           </article>
         ) : null}
 
@@ -125,13 +148,13 @@ export default function WaitingRoomPage() {
                 href="/auth?next=/rooms/join"
                 className="rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
               >
-                {isZh ? "登录" : "Login"}
+                {isZh ? "\u767b\u5f55" : "Login"}
               </Link>
               <Link
                 href="/rooms/join"
                 className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
               >
-                {isZh ? "加入其他房间" : "Join Another Room"}
+                {isZh ? "\u52a0\u5165\u5176\u4ed6\u623f\u95f4" : "Join Another Room"}
               </Link>
             </div>
           </article>
@@ -140,11 +163,14 @@ export default function WaitingRoomPage() {
         {roomState ? (
           <>
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">{isZh ? "大厅" : "Lobby"}</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">{isZh ? "\u5927\u5385" : "Lobby"}</p>
               <h2 className="mt-1 font-headline text-3xl text-stitch-onSurface">{roomState.room.code}</h2>
               <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-                {isZh ? "状态" : "Status"}: <strong className="text-stitch-primary">{roomStatusLabel}</strong> - {isZh ? "人数" : "Players"}:{" "}
-                {roomState.players.length}/{roomState.room.maxPlayers}
+                {isZh ? "\u72b6\u6001" : "Status"}: <strong className="text-stitch-primary">{roomStatusLabel}</strong> |{" "}
+                {isZh ? "\u4eba\u6570" : "Players"}: {roomState.players.length}/{roomState.room.maxPlayers}
+              </p>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh ? "\u76f2\u6ce8" : "Blinds"}: {roomState.room.smallBlind}/{roomState.room.bigBlind}
               </p>
 
               <div className="mt-4 space-y-2">
@@ -156,10 +182,10 @@ export default function WaitingRoomPage() {
                     <div>
                       <p className="text-sm font-semibold text-stitch-onSurface">
                         {player.displayName}
-                        {player.isHost ? (isZh ? "（房主）" : " (Host)") : ""}
+                        {player.isHost ? (isZh ? " (\u623f\u4e3b)" : " (Host)") : ""}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {player.isConnected ? (isZh ? "在线" : "Online") : isZh ? "离线" : "Offline"}
+                        {player.isConnected ? (isZh ? "\u5728\u7ebf" : "Online") : isZh ? "\u79bb\u7ebf" : "Offline"}
                       </p>
                     </div>
                     <span
@@ -170,7 +196,7 @@ export default function WaitingRoomPage() {
                           : "bg-stitch-surfaceContainerLowest text-stitch-onSurfaceVariant"
                       ].join(" ")}
                     >
-                      {player.isReady ? (isZh ? "已准备" : "Ready") : isZh ? "未准备" : "Not Ready"}
+                      {player.isReady ? (isZh ? "\u5df2\u51c6\u5907" : "Ready") : isZh ? "\u672a\u51c6\u5907" : "Not Ready"}
                     </span>
                   </div>
                 ))}
@@ -178,12 +204,73 @@ export default function WaitingRoomPage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "操作" : "Actions"}</h3>
-              <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-                {isZh
-                  ? "房间成员与准备状态由服务器权威控制，并通过 WebSocket 实时同步。"
-                  : "Room membership and readiness are server-authoritative and synced via WebSocket."}
-              </p>
+              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u64cd\u4f5c" : "Actions"}</h3>
+
+              {roomStatus === "waiting" && isHost ? (
+                <div className="mt-3 rounded-2xl bg-stitch-surfaceContainerHigh p-3">
+                  <p className="text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u5f00\u59cb\u524d\u8bbe\u7f6e\u76f2\u6ce8" : "Set blinds before game starts"}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u5c0f\u76f2" : "SB"}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={smallBlind}
+                        onChange={(event) => setSmallBlind(Number(event.target.value))}
+                        className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u5927\u76f2" : "BB"}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={bigBlind}
+                        onChange={(event) => setBigBlind(Number(event.target.value))}
+                        className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      pendingAction !== null ||
+                      smallBlind <= 0 ||
+                      bigBlind <= 0 ||
+                      bigBlind < smallBlind
+                    }
+                    className="mt-3 w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
+                    onClick={async () => {
+                      setPendingAction("blinds");
+                      setError(null);
+                      try {
+                        const next = await updateRoomBlinds(roomCode, { smallBlind, bigBlind });
+                        setRoomState(next);
+                      } catch (saveBlindError) {
+                        setError(
+                          saveBlindError instanceof Error
+                            ? saveBlindError.message
+                            : isZh
+                              ? "\u65e0\u6cd5\u4fdd\u5b58\u76f2\u6ce8\u8bbe\u7f6e\u3002"
+                              : "Unable to update blinds."
+                        );
+                      } finally {
+                        setPendingAction(null);
+                      }
+                    }}
+                  >
+                    {pendingAction === "blinds"
+                      ? isZh
+                        ? "\u4fdd\u5b58\u4e2d..."
+                        : "Saving..."
+                      : isZh
+                        ? "\u4fdd\u5b58\u76f2\u6ce8"
+                        : "Save Blinds"}
+                  </button>
+                </div>
+              ) : null}
 
               <div className="mt-3 grid grid-cols-1 gap-2">
                 <button
@@ -196,7 +283,13 @@ export default function WaitingRoomPage() {
                     try {
                       await setReady(roomCode, !isReady);
                     } catch (readyError) {
-                      setError(readyError instanceof Error ? readyError.message : isZh ? "无法更新准备状态。" : "Unable to set readiness.");
+                      setError(
+                        readyError instanceof Error
+                          ? readyError.message
+                          : isZh
+                            ? "\u65e0\u6cd5\u66f4\u65b0\u51c6\u5907\u72b6\u6001\u3002"
+                            : "Unable to set readiness."
+                      );
                     } finally {
                       setPendingAction(null);
                     }
@@ -204,14 +297,14 @@ export default function WaitingRoomPage() {
                 >
                   {pendingAction === "ready"
                     ? isZh
-                      ? "更新中..."
+                      ? "\u66f4\u65b0\u4e2d..."
                       : "Updating..."
                     : isReady
                       ? isZh
-                        ? "取消准备"
+                        ? "\u53d6\u6d88\u51c6\u5907"
                         : "Mark Not Ready"
                       : isZh
-                        ? "标记准备"
+                        ? "\u6807\u8bb0\u51c6\u5907"
                         : "Mark Ready"}
                 </button>
 
@@ -226,7 +319,13 @@ export default function WaitingRoomPage() {
                       try {
                         await startRoom(roomCode);
                       } catch (startError) {
-                        setError(startError instanceof Error ? startError.message : isZh ? "无法开始游戏。" : "Unable to start room.");
+                        setError(
+                          startError instanceof Error
+                            ? startError.message
+                            : isZh
+                              ? "\u65e0\u6cd5\u5f00\u59cb\u6e38\u620f\u3002"
+                              : "Unable to start room."
+                        );
                       } finally {
                         setPendingAction(null);
                       }
@@ -234,10 +333,10 @@ export default function WaitingRoomPage() {
                   >
                     {pendingAction === "start"
                       ? isZh
-                        ? "开始中..."
+                        ? "\u5f00\u59cb\u4e2d..."
                         : "Starting..."
                       : isZh
-                        ? "房主开始游戏"
+                        ? "\u623f\u4e3b\u5f00\u59cb\u6e38\u620f"
                         : "Host Start Game"}
                   </button>
                 ) : null}
@@ -248,14 +347,14 @@ export default function WaitingRoomPage() {
               <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">
                 <p className="text-sm text-stitch-primary">
                   {isZh
-                    ? "游戏已开始。牌桌操作已由服务器权威控制并实时同步。"
-                    : "Game has started. Table actions are now server-authoritative and synced in realtime."}
+                    ? "\u724c\u5c40\u8fdb\u884c\u4e2d\uff0c\u8bf7\u8fdb\u5165\u724c\u684c\u754c\u9762\u3002"
+                    : "Game is active. Enter the table UI."}
                 </p>
                 <Link
                   href={`/?room=${roomState.room.code}`}
                   className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
                 >
-                  {isZh ? "进入牌桌" : "Go To Table UI"}
+                  {isZh ? "\u8fdb\u5165\u724c\u684c" : "Go To Table UI"}
                 </Link>
               </article>
             ) : null}

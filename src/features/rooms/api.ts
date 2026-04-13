@@ -11,6 +11,7 @@ type RoomPlayer = {
   stack: number;
   currentBet: number;
   status: "waiting" | "acting" | "folded" | "all-in";
+  positionLabel: "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO" | null;
   joinedAtIso: string;
 };
 
@@ -23,10 +24,16 @@ export type RoomState = {
     maxPlayers: number;
     createdAtIso: string;
     startedAtIso: string | null;
+    smallBlind: number;
+    bigBlind: number;
+    startingStack: number;
+    currentHandNumber: number;
+    dealerSeat: number | null;
   };
   players: RoomPlayer[];
   me: {
     userId: string;
+    seatIndex: number | null;
     isHost: boolean;
     isReady: boolean;
   } | null;
@@ -35,16 +42,30 @@ export type RoomState = {
     handId: string | null;
     handNumber: number;
     street: "preflop" | "flop" | "turn" | "river" | "showdown";
-    status: "in-progress" | "showdown";
+    status: "in-progress" | "showdown" | "settled";
     potTotal: number;
     currentBet: number;
     activeSeat: number | null;
     activePlayerUserId: string | null;
+    dealerSeat: number | null;
+    sbSeat: number | null;
+    bbSeat: number | null;
     isMyTurn: boolean;
     legalActions: Array<"fold" | "check" | "call" | "bet" | "raise" | "all-in">;
     toCall: number;
     minBet: number;
     minRaiseDelta: number;
+    canSettle: boolean;
+    canDecideNextHand: boolean;
+    eligibleWinnerUserIds: string[];
+    lastSettlement: {
+      entries: Array<{
+        userId: string;
+        displayName: string;
+        amountWon: number;
+        netChange: number;
+      }>;
+    } | null;
   } | null;
 };
 
@@ -128,11 +149,48 @@ export async function startRoom(roomCode: string): Promise<RoomState> {
 
 export async function submitRoomAction(
   roomCode: string,
-  actionType: "fold" | "check" | "call" | "bet" | "raise" | "all-in"
+  actionType: "fold" | "check" | "call" | "bet" | "raise" | "all-in",
+  amount?: number
 ): Promise<RoomState> {
   const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/action`, {
     method: "POST",
-    body: JSON.stringify({ actionType })
+    body: JSON.stringify({ actionType, amount })
+  });
+  return payload.room;
+}
+
+export async function updateRoomBlinds(
+  roomCode: string,
+  input: {
+    smallBlind: number;
+    bigBlind: number;
+  }
+): Promise<RoomState> {
+  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/blinds`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+  return payload.room;
+}
+
+export async function settleHand(
+  roomCode: string,
+  winnerUserIds: string[]
+): Promise<RoomState> {
+  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/settle`, {
+    method: "POST",
+    body: JSON.stringify({ winnerUserIds })
+  });
+  return payload.room;
+}
+
+export async function decideNextHand(
+  roomCode: string,
+  continueSession: boolean
+): Promise<RoomState> {
+  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/next-hand`, {
+    method: "POST",
+    body: JSON.stringify({ continueSession })
   });
   return payload.room;
 }
