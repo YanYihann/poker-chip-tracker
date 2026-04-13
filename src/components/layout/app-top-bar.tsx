@@ -18,7 +18,7 @@ export function AppTopBar({
   onPlayerCountChange,
   backHref
 }: AppTopBarProps) {
-  const { isZh, toggleLocale } = useLanguage();
+  const { isZh } = useLanguage();
   const hasPlayerControl =
     typeof playerCount === "number" && typeof onPlayerCountChange === "function";
 
@@ -30,35 +30,25 @@ export function AppTopBar({
             href={backHref}
             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
           >
-            {isZh ? "返回" : "Back"}
+            {isZh ? "\u8fd4\u56de" : "Back"}
           </Link>
         ) : (
           <Link
             href="/profile"
             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)]"
           >
-            {isZh ? "账户" : "Account"}
+            {isZh ? "\u8d26\u6237" : "Account"}
           </Link>
         )}
 
         <h1 className="truncate px-1 font-display text-lg tracking-[0.08em] text-[color:var(--text)]">{title}</h1>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
-            onClick={toggleLocale}
-            aria-label={isZh ? "切换到英文" : "Switch to Chinese"}
-          >
-            {isZh ? "EN" : "中"}
-          </button>
-          <Link
-            href="/history"
-            className="rounded-full bg-[color:var(--accent)]/20 px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:bg-[color:var(--accent)]/30"
-          >
-            {isZh ? "历史" : "History"}
-          </Link>
-        </div>
+        <Link
+          href="/history"
+          className="rounded-full bg-[color:var(--accent)]/20 px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:bg-[color:var(--accent)]/30"
+        >
+          {isZh ? "\u5386\u53f2" : "History"}
+        </Link>
       </div>
 
       {hasPlayerControl ? (
@@ -67,18 +57,18 @@ export function AppTopBar({
             type="button"
             className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.max(MIN_PLAYERS, playerCount - 1))}
-            aria-label={isZh ? "减少人数" : "Decrease players"}
+            aria-label={isZh ? "\u51cf\u5c11\u4eba\u6570" : "Decrease players"}
           >
             -
           </button>
           <div className="rounded-full bg-[color:var(--surface)] px-4 py-1 text-xs font-semibold tracking-[0.2em] text-[color:var(--muted)]">
-            {isZh ? `${playerCount} 人桌` : `${playerCount} Players`}
+            {isZh ? `${playerCount} \u4eba\u684c` : `${playerCount} Players`}
           </div>
           <button
             type="button"
             className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.min(MAX_PLAYERS, playerCount + 1))}
-            aria-label={isZh ? "增加人数" : "Increase players"}
+            aria-label={isZh ? "\u589e\u52a0\u4eba\u6570" : "Increase players"}
           >
             +
           </button>

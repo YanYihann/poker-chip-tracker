@@ -29,8 +29,7 @@ function formatMoney(value: string, locale: AppLocale): string {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isZh, localeTag } = useLanguage();
-  const locale: AppLocale = isZh ? "zh" : "en";
+  const { isZh, localeTag, locale, setLocale } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +65,13 @@ export default function ProfilePage() {
         setTotals(profile.totals);
         setSessions(recent);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : isZh ? "无法加载个人资料。" : "Unable to load profile.");
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : isZh
+              ? "\u65e0\u6cd5\u52a0\u8f7d\u4e2a\u4eba\u8d44\u6599\u3002"
+              : "Unable to load profile."
+        );
       } finally {
         setLoading(false);
       }
@@ -89,12 +94,12 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "个人资料" : "Profile"} backHref="/" />
+      <AppTopBar title={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"} backHref="/" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "正在加载个人资料..." : "Loading profile..."}
+            {isZh ? "\u6b63\u5728\u52a0\u8f7d\u4e2a\u4eba\u8d44\u6599..." : "Loading profile..."}
           </article>
         ) : null}
 
@@ -106,7 +111,7 @@ export default function ProfilePage() {
                 href="/auth?next=/profile"
                 className="mt-2 inline-block rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary"
               >
-                {isZh ? "前往登录" : "Go to Login"}
+                {isZh ? "\u524d\u5f80\u767b\u5f55" : "Go to Login"}
               </Link>
             ) : null}
           </article>
@@ -140,13 +145,13 @@ export default function ProfilePage() {
                     }
                   }}
                 >
-                  {logoutLoading ? (isZh ? "退出中..." : "Logging out...") : isZh ? "退出登录" : "Logout"}
+                  {logoutLoading ? (isZh ? "\u9000\u51fa\u4e2d..." : "Logging out...") : isZh ? "\u9000\u51fa\u767b\u5f55" : "Logout"}
                 </button>
               </div>
 
               <div className="mt-4 space-y-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "用户名" : "Username"}</span>
+                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "\u7528\u6237\u540d" : "Username"}</span>
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
@@ -156,7 +161,7 @@ export default function ProfilePage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                    {isZh ? "头像 URL（可选）" : "Avatar URL (optional placeholder)"}
+                    {isZh ? "\u5934\u50cf URL\uff08\u53ef\u9009\uff09" : "Avatar URL (optional placeholder)"}
                   </span>
                   <input
                     value={avatarUrl}
@@ -181,37 +186,78 @@ export default function ProfilePage() {
                       setUsername(profile.username);
                       setAvatarUrl(profile.avatarUrl ?? "");
                     } catch (saveError) {
-                      setError(saveError instanceof Error ? saveError.message : isZh ? "保存失败。" : "Save failed.");
+                      setError(
+                        saveError instanceof Error
+                          ? saveError.message
+                          : isZh
+                            ? "\u4fdd\u5b58\u5931\u8d25\u3002"
+                            : "Save failed."
+                      );
                     } finally {
                       setSaving(false);
                     }
                   }}
                 >
-                  {saving ? (isZh ? "保存中..." : "Saving...") : isZh ? "保存资料" : "Save Profile"}
+                  {saving ? (isZh ? "\u4fdd\u5b58\u4e2d..." : "Saving...") : isZh ? "\u4fdd\u5b58\u8d44\u6599" : "Save Profile"}
                 </button>
               </div>
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "牌局总览" : "Session Totals"}</h2>
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u754c\u9762\u8bed\u8a00" : "Language"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "归档牌局已与服务器同步。" : "Archived game sessions are now server-synced."}
+                {isZh
+                  ? "\u4e2d\u82f1\u6587\u5207\u6362\u8bbe\u7f6e\u4fdd\u5b58\u5728\u5f53\u524d\u6d4f\u89c8\u5668\u3002"
+                  : "Language preference is saved in this browser."}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocale("zh")}
+                  className={[
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    locale === "zh"
+                      ? "bg-stitch-primary text-stitch-onPrimary"
+                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+                  ].join(" ")}
+                >
+                  {"\u7b80\u4f53\u4e2d\u6587"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocale("en")}
+                  className={[
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    locale === "en"
+                      ? "bg-stitch-primary text-stitch-onPrimary"
+                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+                  ].join(" ")}
+                >
+                  English
+                </button>
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u724c\u5c40\u603b\u89c8" : "Session Totals"}</h2>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are now server-synced."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "牌局数" : "Sessions"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u724c\u5c40\u6570" : "Sessions"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.sessions}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "总手数" : "Hands"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u603b\u624b\u6570" : "Hands"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.hands}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "盈利" : "Profit"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u76c8\u5229" : "Profit"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-mint">{formatMoney(totals.profit, locale)}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "亏损" : "Loss"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u4e8f\u635f" : "Loss"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-tertiary">{formatMoney(totals.loss, locale)}</p>
                 </div>
               </div>
@@ -219,22 +265,22 @@ export default function ProfilePage() {
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "个人历史" : "Profile History"}</h2>
+                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u4e2a\u4eba\u5386\u53f2" : "Profile History"}</h2>
                 <Link
                   href="/history"
                   className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
                 >
-                  {isZh ? "查看全部" : "View All"}
+                  {isZh ? "\u67e5\u770b\u5168\u90e8" : "View All"}
                 </Link>
               </div>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "已完成牌局会关联到你的账户。" : "Completed sessions are linked to your profile."}
+                {isZh ? "\u5df2\u5b8c\u6210\u724c\u5c40\u4f1a\u5173\u8054\u5230\u4f60\u7684\u8d26\u6237\u3002" : "Completed sessions are linked to your profile."}
               </p>
 
               <div className="mt-3 space-y-2">
                 {sessions.length === 0 ? (
                   <p className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurfaceVariant">
-                    {isZh ? "暂无牌局记录。" : "No sessions yet."}
+                    {isZh ? "\u6682\u65e0\u724c\u5c40\u8bb0\u5f55\u3002" : "No sessions yet."}
                   </p>
                 ) : (
                   sessions.map((session) => (
@@ -244,14 +290,14 @@ export default function ProfilePage() {
                       className="block rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2"
                     >
                       <p className="text-sm text-stitch-onSurface">
-                        {isZh ? "房间" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
+                        {isZh ? "\u623f\u95f4" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "起始" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "结束" : "End"}{" "}
+                        {isZh ? "\u8d77\u59cb" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "\u7ed3\u675f" : "End"}{" "}
                         {formatMoney(session.endStack, locale)}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "手数" : "Hands"}: {session.handsPlayed}/{session.totalHands} · {isZh ? "盈亏" : "P/L"}:{" "}
+                        {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} · {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
                         {formatMoney(session.profitLoss, locale)}
                       </p>
                     </Link>
@@ -261,22 +307,24 @@ export default function ProfilePage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "房间" : "Rooms"}</h2>
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u623f\u95f4" : "Rooms"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "创建或加入等待房间，实时同步牌局状态。" : "Create or join a waiting room with realtime sync."}
+                {isZh
+                  ? "\u521b\u5efa\u6216\u52a0\u5165\u7b49\u5f85\u623f\u95f4\uff0c\u5b9e\u65f6\u540c\u6b65\u724c\u5c40\u72b6\u6001\u3002"
+                  : "Create or join a waiting room with realtime sync."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link
                   href="/rooms/create"
                   className="rounded-xl bg-stitch-primary px-3 py-2 text-center text-sm font-semibold text-stitch-onPrimary"
                 >
-                  {isZh ? "创建房间" : "Create Room"}
+                  {isZh ? "\u521b\u5efa\u623f\u95f4" : "Create Room"}
                 </Link>
                 <Link
                   href="/rooms/join"
                   className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-center text-sm text-stitch-onSurface"
                 >
-                  {isZh ? "加入房间" : "Join Room"}
+                  {isZh ? "\u52a0\u5165\u623f\u95f4" : "Join Room"}
                 </Link>
               </div>
             </article>

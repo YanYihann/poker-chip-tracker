@@ -12,7 +12,7 @@ type AuthMode = "login" | "register";
 function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("next") || "/profile";
+  const redirectTo = searchParams.get("next") || "/rooms/join";
   const { isZh } = useLanguage();
 
   const [mode, setMode] = useState<AuthMode>("login");
@@ -23,8 +23,7 @@ function AuthPageContent() {
   const [error, setError] = useState<string | null>(null);
 
   const title = useMemo(
-    () =>
-      mode === "login" ? (isZh ? "登录" : "Login") : isZh ? "注册" : "Register",
+    () => (mode === "login" ? (isZh ? "\u767b\u5f55" : "Login") : isZh ? "\u6ce8\u518c" : "Register"),
     [isZh, mode]
   );
 
@@ -35,7 +34,7 @@ function AuthPageContent() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "账户" : "Account"} backHref="/" />
+      <AppTopBar title={isZh ? "\u8d26\u6237" : "Account"} backHref="/" />
 
       <section className="px-4 pt-4">
         <div className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
@@ -50,7 +49,7 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("login")}
             >
-              {isZh ? "登录" : "Login"}
+              {isZh ? "\u767b\u5f55" : "Login"}
             </button>
             <button
               type="button"
@@ -62,14 +61,14 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("register")}
             >
-              {isZh ? "注册" : "Register"}
+              {isZh ? "\u6ce8\u518c" : "Register"}
             </button>
           </div>
 
           <h2 className="font-headline text-2xl text-stitch-onSurface">{title}</h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
             {isZh
-              ? "账户和资料能力已接入，不影响本地牌桌玩法。"
+              ? "\u8d26\u6237\u548c\u8d44\u6599\u80fd\u529b\u5df2\u63a5\u5165\uff0c\u4e0d\u5f71\u54cd\u672c\u5730\u724c\u684c\u73a9\u6cd5\u3002"
               : "This adds account and profile features without changing local table gameplay."}
           </p>
 
@@ -98,7 +97,13 @@ function AuthPageContent() {
                 }
                 router.push(redirectTo);
               } catch (submitError) {
-                setError(submitError instanceof Error ? submitError.message : isZh ? "请求失败。" : "Request failed.");
+                setError(
+                  submitError instanceof Error
+                    ? submitError.message
+                    : isZh
+                      ? "\u8bf7\u6c42\u5931\u8d25\u3002"
+                      : "Request failed."
+                );
               } finally {
                 setLoading(false);
               }
@@ -118,7 +123,7 @@ function AuthPageContent() {
 
             <label className="block">
               <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "密码（至少 8 位）" : "Password (min 8 chars)"}
+                {isZh ? "\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09" : "Password (min 8 chars)"}
               </span>
               <input
                 type="password"
@@ -133,7 +138,7 @@ function AuthPageContent() {
             {mode === "register" ? (
               <label className="block">
                 <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                  {isZh ? "用户名" : "Username"}
+                  {isZh ? "\u7528\u6237\u540d" : "Username"}
                 </span>
                 <input
                   type="text"
@@ -159,14 +164,14 @@ function AuthPageContent() {
             >
               {loading
                 ? isZh
-                  ? "提交中..."
+                  ? "\u63d0\u4ea4\u4e2d..."
                   : "Submitting..."
                 : mode === "login"
                   ? isZh
-                    ? "登录"
+                    ? "\u767b\u5f55"
                     : "Login"
                   : isZh
-                    ? "注册并登录"
+                    ? "\u6ce8\u518c\u5e76\u767b\u5f55"
                     : "Register & Login"}
             </button>
           </form>
