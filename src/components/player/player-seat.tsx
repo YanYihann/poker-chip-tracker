@@ -1,4 +1,7 @@
-﻿import { Badge } from "@/components/ui/badge";
+"use client";
+
+import { useLanguage } from "@/components/i18n/language-provider";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 
 import type { TableSeatPlayer } from "./types";
@@ -11,6 +14,7 @@ type PlayerSeatProps = {
 };
 
 export function PlayerSeat({ player, xPercent, yPercent, compact = false }: PlayerSeatProps) {
+  const { isZh } = useLanguage();
   const avatarSize = compact ? "h-9 w-9" : "h-11 w-11";
   const folded = player.status === "folded";
   const heroOrActive = player.isHero || player.isActive;
@@ -19,7 +23,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
     <article
       className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
       style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
-      aria-label={`${player.name} 座位`}
+      aria-label={`${player.name}${isZh ? "��λ" : " seat"}`}
     >
       <div className="flex flex-col items-center gap-1.5">
         <div

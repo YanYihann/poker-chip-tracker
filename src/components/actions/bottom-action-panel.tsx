@@ -1,4 +1,7 @@
-锘縤mport { cn } from "@/lib/cn";
+"use client";
+
+import { useLanguage } from "@/components/i18n/language-provider";
+import { cn } from "@/lib/cn";
 
 type MainActionItem = {
   id: string;
@@ -27,6 +30,8 @@ export function BottomActionPanel({
   canOpenSettlement,
   onOpenSettlement
 }: BottomActionPanelProps) {
+  const { isZh } = useLanguage();
+
   return (
     <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[28px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl">
       <div className="flex items-center justify-center gap-2">
@@ -70,7 +75,7 @@ export function BottomActionPanel({
           ))
         ) : (
           <div className="col-span-4 rounded-2xl border border-stitch-outlineVariant/25 bg-stitch-surfaceContainerHigh p-3 text-center text-xs text-stitch-onSurfaceVariant">
-            褰撳墠闃舵鏃犲彲鎵ц涓嬫敞鍔ㄤ綔
+            {isZh ? "当前阶段无可执行下注动作" : "No available betting actions in this phase."}
           </div>
         )}
       </div>
@@ -81,7 +86,7 @@ export function BottomActionPanel({
           className="mt-3 w-full rounded-2xl bg-stitch-primary px-4 py-3 text-sm font-label font-semibold uppercase tracking-[0.14em] text-stitch-onPrimary transition hover:brightness-105"
           onClick={onOpenSettlement}
         >
-          鎵撳紑缁撶畻闈㈡澘
+          {isZh ? "打开结算面板" : "Open Settlement"}
         </button>
       ) : null}
     </section>

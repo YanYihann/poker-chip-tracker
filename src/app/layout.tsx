@@ -1,6 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Manrope, Newsreader, Space_Grotesk } from "next/font/google";
 
+import { LanguageProvider } from "@/components/i18n/language-provider";
 import "./globals.css";
 
 const bodyFont = Manrope({
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="zh-CN">
       <body className={`${bodyFont.variable} ${headlineFont.variable} ${labelFont.variable}`}>
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

@@ -1,8 +1,9 @@
-ï»¿"use client";
+"use client";
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { loginAccount, registerAccount } from "@/features/auth/api";
 
@@ -12,6 +13,7 @@ function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("next") || "/profile";
+  const { isZh } = useLanguage();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -20,7 +22,11 @@ function AuthPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const title = useMemo(() => (mode === "login" ? "Login" : "Register"), [mode]);
+  const title = useMemo(
+    () =>
+      mode === "login" ? (isZh ? "µÇÂ¼" : "Login") : isZh ? "×¢²á" : "Register",
+    [isZh, mode]
+  );
 
   const canSubmit =
     email.trim().length > 3 &&
@@ -29,7 +35,7 @@ function AuthPageContent() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title="Account" backHref="/" />
+      <AppTopBar title={isZh ? "ÕË»§" : "Account"} backHref="/" />
 
       <section className="px-4 pt-4">
         <div className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
@@ -44,7 +50,7 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("login")}
             >
-              Login
+              {isZh ? "µÇÂ¼" : "Login"}
             </button>
             <button
               type="button"
@@ -56,13 +62,15 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("register")}
             >
-              Register
+              {isZh ? "×¢²á" : "Register"}
             </button>
           </div>
 
           <h2 className="font-headline text-2xl text-stitch-onSurface">{title}</h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-            This adds account and profile features without changing local table gameplay.
+            {isZh
+              ? "ÕË»§ºÍ×ÊÁÏÄÜÁ¦ÒÑ½ÓÈë£¬²»Ó°Ïì±¾µØÅÆ×ÀÍæ·¨¡£"
+              : "This adds account and profile features without changing local table gameplay."}
           </p>
 
           <form
@@ -90,7 +98,7 @@ function AuthPageContent() {
                 }
                 router.push(redirectTo);
               } catch (submitError) {
-                setError(submitError instanceof Error ? submitError.message : "Request failed.");
+                setError(submitError instanceof Error ? submitError.message : isZh ? "ÇëÇóÊ§°Ü¡£" : "Request failed.");
               } finally {
                 setLoading(false);
               }
@@ -110,7 +118,7 @@ function AuthPageContent() {
 
             <label className="block">
               <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                Password (min 8 chars)
+                {isZh ? "ÃÜÂë£¨ÖÁÉÙ 8 Î»£©" : "Password (min 8 chars)"}
               </span>
               <input
                 type="password"
@@ -124,7 +132,9 @@ function AuthPageContent() {
 
             {mode === "register" ? (
               <label className="block">
-                <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">Username</span>
+                <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
+                  {isZh ? "ÓÃ»§Ãû" : "Username"}
+                </span>
                 <input
                   type="text"
                   autoComplete="nickname"
@@ -147,7 +157,17 @@ function AuthPageContent() {
               disabled={!canSubmit || loading}
               className="w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Submitting..." : mode === "login" ? "Login" : "Register & Login"}
+              {loading
+                ? isZh
+                  ? "Ìá½»ÖÐ..."
+                  : "Submitting..."
+                : mode === "login"
+                  ? isZh
+                    ? "µÇÂ¼"
+                    : "Login"
+                  : isZh
+                    ? "×¢²á²¢µÇÂ¼"
+                    : "Register & Login"}
             </button>
           </form>
         </div>

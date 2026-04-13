@@ -1,16 +1,33 @@
-ï»¿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { getRoom, setReady, startRoom, type RoomState } from "@/features/rooms/api";
 import { getRoomSocket } from "@/features/rooms/realtime";
 
+const ROOM_STATUS_LABELS = {
+  zh: {
+    waiting: "µÈ´ýÖÐ",
+    active: "½øÐÐÖÐ",
+    finished: "ÒÑ½áÊø",
+    cancelled: "ÒÑÈ¡Ïû"
+  },
+  en: {
+    waiting: "Waiting",
+    active: "Active",
+    finished: "Finished",
+    cancelled: "Cancelled"
+  }
+} as const;
+
 export default function WaitingRoomPage() {
   const params = useParams<{ roomCode: string }>();
   const roomCode = (params.roomCode ?? "").toUpperCase();
+  const { isZh } = useLanguage();
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +66,7 @@ export default function WaitingRoomPage() {
         }
       } catch (loadError) {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load room.");
+          setError(loadError instanceof Error ? loadError.message : isZh ? "ÎÞ·¨¼ÓÔØ·¿¼ä¡£" : "Unable to load room.");
         }
       } finally {
         if (active) {
@@ -69,7 +86,7 @@ export default function WaitingRoomPage() {
       if (!active) {
         return;
       }
-      setError(payload.message ?? "Realtime room error.");
+      setError(payload.message ?? (isZh ? "ÊµÊ±·¿¼ä´íÎó¡£" : "Realtime room error."));
     };
 
     void loadInitial();
@@ -83,16 +100,20 @@ export default function WaitingRoomPage() {
       socket.off("room:state", onRoomState);
       socket.off("room:error", onRoomError);
     };
-  }, [roomCode]);
+  }, [isZh, roomCode]);
+
+  const roomStatusLabel = isZh
+    ? ROOM_STATUS_LABELS.zh[roomStatus as keyof typeof ROOM_STATUS_LABELS.zh]
+    : ROOM_STATUS_LABELS.en[roomStatus as keyof typeof ROOM_STATUS_LABELS.en];
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={`Room ${roomCode}`} backHref="/profile" />
+      <AppTopBar title={isZh ? `·¿¼ä ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            Loading room...
+            {isZh ? "ÕýÔÚ¼ÓÔØ·¿¼ä..." : "Loading room..."}
           </article>
         ) : null}
 
@@ -104,13 +125,13 @@ export default function WaitingRoomPage() {
                 href="/auth?next=/rooms/join"
                 className="rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
               >
-                Login
+                {isZh ? "µÇÂ¼" : "Login"}
               </Link>
               <Link
                 href="/rooms/join"
                 className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
               >
-                Join Another Room
+                {isZh ? "¼ÓÈëÆäËû·¿¼ä" : "Join Another Room"}
               </Link>
             </div>
           </article>
@@ -119,10 +140,10 @@ export default function WaitingRoomPage() {
         {roomState ? (
           <>
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">Lobby</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">{isZh ? "´óÌü" : "Lobby"}</p>
               <h2 className="mt-1 font-headline text-3xl text-stitch-onSurface">{roomState.room.code}</h2>
               <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-                Status: <strong className="text-stitch-primary">{roomStatus}</strong> - Players:{" "}
+                {isZh ? "×´Ì¬" : "Status"}: <strong className="text-stitch-primary">{roomStatusLabel}</strong> - {isZh ? "ÈËÊý" : "Players"}:{" "}
                 {roomState.players.length}/{roomState.room.maxPlayers}
               </p>
 
@@ -135,10 +156,10 @@ export default function WaitingRoomPage() {
                     <div>
                       <p className="text-sm font-semibold text-stitch-onSurface">
                         {player.displayName}
-                        {player.isHost ? " (Host)" : ""}
+                        {player.isHost ? (isZh ? "£¨·¿Ö÷£©" : " (Host)") : ""}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {player.isConnected ? "Online" : "Offline"}
+                        {player.isConnected ? (isZh ? "ÔÚÏß" : "Online") : isZh ? "ÀëÏß" : "Offline"}
                       </p>
                     </div>
                     <span
@@ -149,7 +170,7 @@ export default function WaitingRoomPage() {
                           : "bg-stitch-surfaceContainerLowest text-stitch-onSurfaceVariant"
                       ].join(" ")}
                     >
-                      {player.isReady ? "Ready" : "Not Ready"}
+                      {player.isReady ? (isZh ? "ÒÑ×¼±¸" : "Ready") : isZh ? "Î´×¼±¸" : "Not Ready"}
                     </span>
                   </div>
                 ))}
@@ -157,9 +178,11 @@ export default function WaitingRoomPage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h3 className="font-headline text-2xl text-stitch-onSurface">Actions</h3>
+              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "²Ù×÷" : "Actions"}</h3>
               <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-                Room membership and readiness are server-authoritative and synced via WebSocket.
+                {isZh
+                  ? "·¿¼ä³ÉÔ±Óë×¼±¸×´Ì¬ÓÉ·þÎñÆ÷È¨Íþ¿ØÖÆ£¬²¢Í¨¹ý WebSocket ÊµÊ±Í¬²½¡£"
+                  : "Room membership and readiness are server-authoritative and synced via WebSocket."}
               </p>
 
               <div className="mt-3 grid grid-cols-1 gap-2">
@@ -173,13 +196,23 @@ export default function WaitingRoomPage() {
                     try {
                       await setReady(roomCode, !isReady);
                     } catch (readyError) {
-                      setError(readyError instanceof Error ? readyError.message : "Unable to set readiness.");
+                      setError(readyError instanceof Error ? readyError.message : isZh ? "ÎÞ·¨¸üÐÂ×¼±¸×´Ì¬¡£" : "Unable to set readiness.");
                     } finally {
                       setPendingAction(null);
                     }
                   }}
                 >
-                  {pendingAction === "ready" ? "Updating..." : isReady ? "Mark Not Ready" : "Mark Ready"}
+                  {pendingAction === "ready"
+                    ? isZh
+                      ? "¸üÐÂÖÐ..."
+                      : "Updating..."
+                    : isReady
+                      ? isZh
+                        ? "È¡Ïû×¼±¸"
+                        : "Mark Not Ready"
+                      : isZh
+                        ? "±ê¼Ç×¼±¸"
+                        : "Mark Ready"}
                 </button>
 
                 {isHost ? (
@@ -193,13 +226,19 @@ export default function WaitingRoomPage() {
                       try {
                         await startRoom(roomCode);
                       } catch (startError) {
-                        setError(startError instanceof Error ? startError.message : "Unable to start room.");
+                        setError(startError instanceof Error ? startError.message : isZh ? "ÎÞ·¨¿ªÊ¼ÓÎÏ·¡£" : "Unable to start room.");
                       } finally {
                         setPendingAction(null);
                       }
                     }}
                   >
-                    {pendingAction === "start" ? "Starting..." : "Host Start Game"}
+                    {pendingAction === "start"
+                      ? isZh
+                        ? "¿ªÊ¼ÖÐ..."
+                        : "Starting..."
+                      : isZh
+                        ? "·¿Ö÷¿ªÊ¼ÓÎÏ·"
+                        : "Host Start Game"}
                   </button>
                 ) : null}
               </div>
@@ -208,13 +247,15 @@ export default function WaitingRoomPage() {
             {roomStatus === "active" ? (
               <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">
                 <p className="text-sm text-stitch-primary">
-                  Game has started. Table actions are now server-authoritative and synced in realtime.
+                  {isZh
+                    ? "ÓÎÏ·ÒÑ¿ªÊ¼¡£ÅÆ×À²Ù×÷ÒÑÓÉ·þÎñÆ÷È¨Íþ¿ØÖÆ²¢ÊµÊ±Í¬²½¡£"
+                    : "Game has started. Table actions are now server-authoritative and synced in realtime."}
                 </p>
                 <Link
                   href={`/?room=${roomState.room.code}`}
                   className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
                 >
-                  Go To Table UI
+                  {isZh ? "½øÈëÅÆ×À" : "Go To Table UI"}
                 </Link>
               </article>
             ) : null}
@@ -224,4 +265,3 @@ export default function WaitingRoomPage() {
     </main>
   );
 }
-
