@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -45,7 +45,7 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const searchParams = useSearchParams();
   const roomCode = (searchParams.get("room") ?? "").toUpperCase();
 
@@ -266,5 +266,13 @@ export default function HomePage() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
+      <HomePageContent />
+    </Suspense>
   );
 }

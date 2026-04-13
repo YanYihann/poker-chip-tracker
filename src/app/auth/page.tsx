@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppTopBar } from "@/components/layout/app-top-bar";
@@ -8,7 +8,7 @@ import { loginAccount, registerAccount } from "@/features/auth/api";
 
 type AuthMode = "login" | "register";
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("next") || "/profile";
@@ -153,5 +153,13 @@ export default function AuthPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
+      <AuthPageContent />
+    </Suspense>
   );
 }
