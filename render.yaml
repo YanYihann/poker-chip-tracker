@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: poker-chip-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run prisma:generate && npm run build
+    startCommand: npm run prisma:migrate:deploy && npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SESSION_COOKIE_NAME
+        value: poker_chip_session
+      - key: SESSION_TTL_DAYS
+        value: 30
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_DIRECT
+        sync: false
+
+  - type: web
+    name: poker-chip-frontend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false

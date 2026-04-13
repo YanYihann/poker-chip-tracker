@@ -1,0 +1,157 @@
+﻿"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { AppTopBar } from "@/components/layout/app-top-bar";
+import { loginAccount, registerAccount } from "@/features/auth/api";
+
+type AuthMode = "login" | "register";
+
+export default function AuthPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("next") || "/profile";
+
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const title = useMemo(() => (mode === "login" ? "Login" : "Register"), [mode]);
+
+  const canSubmit =
+    email.trim().length > 3 &&
+    password.trim().length >= 8 &&
+    (mode === "login" || username.trim().length >= 2);
+
+  return (
+    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+      <AppTopBar title="Account" backHref="/" />
+
+      <section className="px-4 pt-4">
+        <div className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              type="button"
+              className={[
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                mode === "login"
+                  ? "bg-stitch-primary/20 text-stitch-primary"
+                  : "bg-stitch-surfaceContainerHigh text-stitch-onSurfaceVariant"
+              ].join(" ")}
+              onClick={() => setMode("login")}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              className={[
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                mode === "register"
+                  ? "bg-stitch-primary/20 text-stitch-primary"
+                  : "bg-stitch-surfaceContainerHigh text-stitch-onSurfaceVariant"
+              ].join(" ")}
+              onClick={() => setMode("register")}
+            >
+              Register
+            </button>
+          </div>
+
+          <h2 className="font-headline text-2xl text-stitch-onSurface">{title}</h2>
+          <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
+            This adds account and profile features without changing local table gameplay.
+          </p>
+
+          <form
+            className="mt-4 space-y-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!canSubmit || loading) {
+                return;
+              }
+
+              setLoading(true);
+              setError(null);
+              try {
+                if (mode === "login") {
+                  await loginAccount({
+                    email: email.trim(),
+                    password
+                  });
+                } else {
+                  await registerAccount({
+                    email: email.trim(),
+                    password,
+                    username: username.trim()
+                  });
+                }
+                router.push(redirectTo);
+              } catch (submitError) {
+                setError(submitError instanceof Error ? submitError.message : "Request failed.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <label className="block">
+              <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">Email</span>
+              <input
+                type="email"
+                autoComplete="email"
+                className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
+                Password (min 8 chars)
+              </span>
+              <input
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="********"
+              />
+            </label>
+
+            {mode === "register" ? (
+              <label className="block">
+                <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">Username</span>
+                <input
+                  type="text"
+                  autoComplete="nickname"
+                  className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="player_one"
+                />
+              </label>
+            ) : null}
+
+            {error ? (
+              <p className="rounded-xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 px-3 py-2 text-xs text-stitch-tertiary">
+                {error}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={!canSubmit || loading}
+              className="w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Submitting..." : mode === "login" ? "Login" : "Register & Login"}
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  );
+}

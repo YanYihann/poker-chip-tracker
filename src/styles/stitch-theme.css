@@ -1,0 +1,23 @@
+﻿:root {
+  --stitch-background: #00180d;
+  --stitch-surface: #00180d;
+  --stitch-surface-bright: #1d402f;
+  --stitch-surface-container: #012517;
+  --stitch-surface-container-high: #0c3021;
+  --stitch-surface-container-highest: #193b2b;
+  --stitch-surface-container-lowest: #001209;
+  --stitch-surface-variant: #193b2b;
+  --stitch-outline-variant: #4d4635;
+  --stitch-primary: #f2ca50;
+  --stitch-primary-container: #d4af37;
+  --stitch-on-primary: #3c2f00;
+  --stitch-on-primary-container: #554300;
+  --stitch-mint: #24ffcd;
+  --stitch-mint-dim: #00e0b3;
+  --stitch-tertiary: #ffbeb9;
+  --stitch-on-surface: #c5ebd4;
+  --stitch-on-surface-variant: #d0c5af;
+
+  --stitch-shadow-float: 0 20px 40px rgba(0, 0, 0, 0.4);
+  --stitch-shadow-ambient: 0 12px 30px rgba(0, 0, 0, 0.5);
+}

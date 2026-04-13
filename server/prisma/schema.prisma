@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+enum RoomStatus {
+  WAITING   @map("waiting")
+  ACTIVE    @map("active")
+  FINISHED  @map("finished")
+  CANCELLED @map("cancelled")
+}
+
+enum Street {
+  PREFLOP  @map("preflop")
+  FLOP     @map("flop")
+  TURN     @map("turn")
+  RIVER    @map("river")
+  SHOWDOWN @map("showdown")
+}
+
+enum PositionLabel {
+  BTN @map("BTN")
+  SB  @map("SB")
+  BB  @map("BB")
+  UTG @map("UTG")
+  MP  @map("MP")
+  HJ  @map("HJ")
+  CO  @map("CO")
+}
+
+enum HandRecordStatus {
+  ACTIVE    @map("active")
+  SHOWDOWN  @map("showdown")
+  SETTLED   @map("settled")
+  CANCELLED @map("cancelled")
+}
+
+enum HandActionType {
+  FOLD              @map("fold")
+  CHECK             @map("check")
+  CALL              @map("call")
+  BET               @map("bet")
+  RAISE             @map("raise")
+  ALL_IN            @map("all_in")
+  POST_SB           @map("post_sb")
+  POST_BB           @map("post_bb")
+  UNDO              @map("undo")
+  EDIT              @map("edit")
+  REOPEN_SETTLEMENT @map("reopen_settlement")
+}
+
+enum HandResultType {
+  WIN   @map("win")
+  SPLIT @map("split")
+}
+
+model User {
+  id                 String              @id @default(uuid()) @db.Uuid
+  email              String              @unique
+  passwordHash       String              @map("password_hash")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  profile            Profile?
+  refreshTokens      RefreshToken[]
+  hostedRooms        GameRoom[]          @relation("HostedRooms")
+  roomPlayers        RoomPlayer[]
+  handActions        HandAction[]
+  handResults        HandResult[]
+  hostedSessions     GameSession[]       @relation("HostedSessions")
+  playerSessionStats PlayerSessionStat[]
+
+  @@map("users")
+}
+
+model Profile {
+  userId        String   @id @map("user_id") @db.Uuid
+  username      String   @unique
+  avatarUrl     String?  @map("avatar_url")
+  totalSessions Int      @default(0) @map("total_sessions")
+  totalHands    Int      @default(0) @map("total_hands")
+  totalProfit   BigInt   @default(0) @map("total_profit")
+  totalLoss     BigInt   @default(0) @map("total_loss")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model GameRoom {
+  id                  String              @id @default(uuid()) @db.Uuid
+  roomCode            String              @unique @map("room_code")
+  hostUserId          String              @map("host_user_id") @db.Uuid
+  status              RoomStatus
+  maxPlayers          Int                 @map("max_players")
+  startingStack       BigInt              @map("starting_stack")
+  smallBlind          BigInt              @map("small_blind")
+  bigBlind            BigInt              @map("big_blind")
+  allowJoinAfterStart Boolean             @default(false) @map("allow_join_after_start")
+  lockOnStart         Boolean             @default(true) @map("lock_on_start")
+  currentHandNumber   Int                 @default(0) @map("current_hand_number")
+  currentStreet       Street?             @map("current_street")
+  dealerSeat          Int?                @map("dealer_seat")
+  activeSeat          Int?                @map("active_seat")
+  potTotal            BigInt              @default(0) @map("pot_total")
+  sidePotTotal        BigInt              @default(0) @map("side_pot_total")
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  startedAt           DateTime?           @map("started_at") @db.Timestamptz(6)
+  finishedAt          DateTime?           @map("finished_at") @db.Timestamptz(6)
+  hostUser            User                @relation("HostedRooms", fields: [hostUserId], references: [id])
+  roomPlayers         RoomPlayer[]
+  hands               Hand[]
+  handActions         HandAction[]
+  handResults         HandResult[]
+  gameSession         GameSession?
+  playerSessionStats  PlayerSessionStat[]
+
+  @@index([hostUserId, status])
+  @@map("game_rooms")
+}
+
+model RoomPlayer {
+  id            String        @id @default(uuid()) @db.Uuid
+  roomId        String        @map("room_id") @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  displayName   String        @map("display_name")
+  seatIndex     Int?          @map("seat_index")
+  isHost        Boolean       @default(false) @map("is_host")
+  isReady       Boolean       @default(false) @map("is_ready")
+  isConnected   Boolean       @default(true) @map("is_connected")
+  stack         BigInt        @default(0)
+  currentBet    BigInt        @default(0) @map("current_bet")
+  totalBuyIn    BigInt        @default(0) @map("total_buy_in")
+  hasFolded     Boolean       @default(false) @map("has_folded")
+  isAllIn       Boolean       @default(false) @map("is_all_in")
+  isEliminated  Boolean       @default(false) @map("is_eliminated")
+  positionLabel PositionLabel? @map("position_label")
+  joinedAt      DateTime      @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt        DateTime?     @map("left_at") @db.Timestamptz(6)
+  room          GameRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@unique([roomId, seatIndex])
+  @@map("room_players")
+}
+
+model Hand {
+  id           String           @id @default(uuid()) @db.Uuid
+  roomId       String           @map("room_id") @db.Uuid
+  handNumber   Int              @map("hand_number")
+  status       HandRecordStatus
+  street       Street
+  dealerSeat   Int              @map("dealer_seat")
+  sbSeat       Int              @map("sb_seat")
+  bbSeat       Int              @map("bb_seat")
+  activeSeat   Int?             @map("active_seat")
+  potTotal     BigInt           @default(0) @map("pot_total")
+  sidePotTotal BigInt           @default(0) @map("side_pot_total")
+  startedAt    DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
+  settledAt    DateTime?        @map("settled_at") @db.Timestamptz(6)
+  room         GameRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  actions      HandAction[]
+  results      HandResult[]
+
+  @@unique([roomId, handNumber])
+  @@map("hands")
+}
+
+model HandAction {
+  id          String         @id @default(uuid()) @db.Uuid
+  handId      String         @map("hand_id") @db.Uuid
+  roomId      String         @map("room_id") @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  seatIndex   Int            @map("seat_index")
+  street      Street
+  actionType  HandActionType @map("action_type")
+  amount      BigInt         @default(0)
+  actionOrder Int            @map("action_order")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  hand        Hand           @relation(fields: [handId], references: [id], onDelete: Cascade)
+  room        GameRoom       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id])
+
+  @@unique([handId, actionOrder])
+  @@map("hand_actions")
+}
+
+model HandResult {
+  id         String         @id @default(uuid()) @db.Uuid
+  handId     String         @map("hand_id") @db.Uuid
+  roomId     String         @map("room_id") @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  resultType HandResultType @map("result_type")
+  amountWon  BigInt         @default(0) @map("amount_won")
+  netChange  BigInt         @default(0) @map("net_change")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  hand       Hand           @relation(fields: [handId], references: [id], onDelete: Cascade)
+  room       GameRoom       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [userId], references: [id])
+
+  @@map("hand_results")
+}
+
+model GameSession {
+  id               String              @id @default(uuid()) @db.Uuid
+  roomId           String              @unique @map("room_id") @db.Uuid
+  hostUserId       String              @map("host_user_id") @db.Uuid
+  totalHands       Int                 @default(0) @map("total_hands")
+  startedAt        DateTime            @map("started_at") @db.Timestamptz(6)
+  finishedAt       DateTime            @map("finished_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  room             GameRoom            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  hostUser         User                @relation("HostedSessions", fields: [hostUserId], references: [id])
+  playerStats      PlayerSessionStat[]
+
+  @@map("game_sessions")
+}
+
+model PlayerSessionStat {
+  id            String      @id @default(uuid()) @db.Uuid
+  gameSessionId String      @map("game_session_id") @db.Uuid
+  roomId        String      @map("room_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  startStack    BigInt      @map("start_stack")
+  endStack      BigInt      @map("end_stack")
+  profitLoss    BigInt      @map("profit_loss")
+  handsPlayed   Int         @default(0) @map("hands_played")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  room          GameRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameSessionId, userId])
+  @@map("player_session_stats")
+}
