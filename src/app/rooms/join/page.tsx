@@ -20,19 +20,19 @@ export default function JoinRoomPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "¼ÓÈë·¿¼ä" : "Join Room"} backHref="/profile" />
+      <AppTopBar title={isZh ? "åŠ å…¥æˆ¿é—´" : "Join Room"} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">
         <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-          <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ÊäÈë·¿¼äÂë" : "Enter Room Code"}</h2>
+          <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "è¾“å…¥æˆ¿é—´ç " : "Enter Room Code"}</h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
             {isZh
-              ? "¼ÓÈëµÈ´ı·¿¼ä£¬ÓëÆäËûÍæ¼ÒÊµÊ±Í¬²½¡£"
+              ? "åŠ å…¥ç­‰å¾…æˆ¿é—´ï¼Œä¸å…¶ä»–ç©å®¶å®æ—¶åŒæ­¥ã€‚"
               : "Join a waiting room and sync in realtime with other players."}
           </p>
 
           <label className="mt-4 block">
-            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "·¿¼äÂë" : "Room Code"}</span>
+            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "æˆ¿é—´ç " : "Room Code"}</span>
             <input
               type="text"
               maxLength={6}
@@ -45,14 +45,14 @@ export default function JoinRoomPage() {
 
           <label className="mt-3 block">
             <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-              {isZh ? "ÏÔÊ¾Ãû³Æ£¨¿ÉÑ¡£©" : "Display Name (optional)"}
+              {isZh ? "æ˜¾ç¤ºåç§°ï¼ˆå¯é€‰ï¼‰" : "Display Name (optional)"}
             </span>
             <input
               type="text"
               maxLength={24}
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder={isZh ? "ÄãµÄÅÆ×ÀêÇ³Æ" : "Your table name"}
+              placeholder={isZh ? "ä½ çš„ç‰Œæ¡Œæ˜µç§°" : "Your table name"}
               className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
             />
           </label>
@@ -77,13 +77,13 @@ export default function JoinRoomPage() {
                 });
                 router.push(`/rooms/${room.room.code}`);
               } catch (joinError) {
-                setError(joinError instanceof Error ? joinError.message : isZh ? "ÎŞ·¨¼ÓÈë·¿¼ä¡£" : "Unable to join room.");
+                setError(joinError instanceof Error ? joinError.message : isZh ? "æ— æ³•åŠ å…¥æˆ¿é—´ã€‚" : "Unable to join room.");
               } finally {
                 setLoading(false);
               }
             }}
           >
-            {loading ? (isZh ? "¼ÓÈëÖĞ..." : "Joining...") : isZh ? "¼ÓÈë·¿¼ä" : "Join Room"}
+            {loading ? (isZh ? "åŠ å…¥ä¸­..." : "Joining...") : isZh ? "åŠ å…¥æˆ¿é—´" : "Join Room"}
           </button>
         </article>
 
@@ -91,7 +91,7 @@ export default function JoinRoomPage() {
           href="/rooms/create"
           className="block rounded-xl bg-stitch-surfaceContainerHigh px-4 py-3 text-center text-sm text-stitch-onSurfaceVariant"
         >
-          {isZh ? "Ã»ÓĞ·¿¼ä£¿È¥´´½¨" : "Need a room? Create one"}
+          {isZh ? "æ²¡æœ‰æˆ¿é—´ï¼Ÿå»åˆ›å»º" : "Need a room? Create one"}
         </Link>
       </section>
     </main>

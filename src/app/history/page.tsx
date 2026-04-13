@@ -33,7 +33,7 @@ export default function HistoryPage() {
         const items = await fetchRecentSessions();
         setSessions(items);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : isZh ? "ÎŞ·¨¼ÓÔØÀúÊ·¼ÇÂ¼¡£" : "Unable to load history.");
+        setError(loadError instanceof Error ? loadError.message : isZh ? "æ— æ³•åŠ è½½å†å²è®°å½•ã€‚" : "Unable to load history.");
       } finally {
         setLoading(false);
       }
@@ -44,12 +44,12 @@ export default function HistoryPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "ÅÆ¾ÖÀúÊ·" : "Session History"} backHref="/" />
+      <AppTopBar title={isZh ? "ç‰Œå±€å†å²" : "Session History"} backHref="/" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "ÕıÔÚ¼ÓÔØÀúÊ·¼ÇÂ¼..." : "Loading history..."}
+            {isZh ? "æ­£åœ¨åŠ è½½å†å²è®°å½•..." : "Loading history..."}
           </article>
         ) : null}
 
@@ -61,7 +61,7 @@ export default function HistoryPage() {
 
         {!loading && !error && sessions.length === 0 ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "ÔİÎŞÒÑÍê³ÉÅÆ¾Ö¡£" : "No completed sessions yet."}
+            {isZh ? "æš‚æ— å·²å®Œæˆç‰Œå±€ã€‚" : "No completed sessions yet."}
           </article>
         ) : null}
 
@@ -73,17 +73,17 @@ export default function HistoryPage() {
                 className="block rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4"
               >
                 <p className="text-sm font-semibold text-stitch-onSurface">
-                  {isZh ? "·¿¼ä" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
+                  {isZh ? "æˆ¿é—´" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
                 </p>
                 <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                  {isZh ? "ÆğÊ¼" : "Start"} {formatMoney(session.startStack, isZh ? "zh" : "en")} -&gt; {isZh ? "½áÊø" : "End"}{" "}
+                  {isZh ? "èµ·å§‹" : "Start"} {formatMoney(session.startStack, isZh ? "zh" : "en")} -&gt; {isZh ? "ç»“æŸ" : "End"}{" "}
                   {formatMoney(session.endStack, isZh ? "zh" : "en")}
                 </p>
                 <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                  {isZh ? "ÊÖÊı" : "Hands"}: {session.handsPlayed}/{session.totalHands}
+                  {isZh ? "æ‰‹æ•°" : "Hands"}: {session.handsPlayed}/{session.totalHands}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-stitch-mint">
-                  {isZh ? "Ó¯¿÷" : "P/L"}: {formatMoney(session.profitLoss, isZh ? "zh" : "en")}
+                  {isZh ? "ç›ˆäº" : "P/L"}: {formatMoney(session.profitLoss, isZh ? "zh" : "en")}
                 </p>
               </Link>
             ))

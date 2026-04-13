@@ -24,7 +24,7 @@ function AuthPageContent() {
 
   const title = useMemo(
     () =>
-      mode === "login" ? (isZh ? "µÇÂ¼" : "Login") : isZh ? "×¢²á" : "Register",
+      mode === "login" ? (isZh ? "ç™»å½•" : "Login") : isZh ? "æ³¨å†Œ" : "Register",
     [isZh, mode]
   );
 
@@ -35,7 +35,7 @@ function AuthPageContent() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "ÕË»§" : "Account"} backHref="/" />
+      <AppTopBar title={isZh ? "è´¦æˆ·" : "Account"} backHref="/" />
 
       <section className="px-4 pt-4">
         <div className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
@@ -50,7 +50,7 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("login")}
             >
-              {isZh ? "µÇÂ¼" : "Login"}
+              {isZh ? "ç™»å½•" : "Login"}
             </button>
             <button
               type="button"
@@ -62,14 +62,14 @@ function AuthPageContent() {
               ].join(" ")}
               onClick={() => setMode("register")}
             >
-              {isZh ? "×¢²á" : "Register"}
+              {isZh ? "æ³¨å†Œ" : "Register"}
             </button>
           </div>
 
           <h2 className="font-headline text-2xl text-stitch-onSurface">{title}</h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
             {isZh
-              ? "ÕË»§ºÍ×ÊÁÏÄÜÁ¦ÒÑ½ÓÈë£¬²»Ó°Ïì±¾µØÅÆ×ÀÍæ·¨¡£"
+              ? "è´¦æˆ·å’Œèµ„æ–™èƒ½åŠ›å·²æ¥å…¥ï¼Œä¸å½±å“æœ¬åœ°ç‰Œæ¡Œç©æ³•ã€‚"
               : "This adds account and profile features without changing local table gameplay."}
           </p>
 
@@ -98,7 +98,7 @@ function AuthPageContent() {
                 }
                 router.push(redirectTo);
               } catch (submitError) {
-                setError(submitError instanceof Error ? submitError.message : isZh ? "ÇëÇóÊ§°Ü¡£" : "Request failed.");
+                setError(submitError instanceof Error ? submitError.message : isZh ? "è¯·æ±‚å¤±è´¥ã€‚" : "Request failed.");
               } finally {
                 setLoading(false);
               }
@@ -118,7 +118,7 @@ function AuthPageContent() {
 
             <label className="block">
               <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "ÃÜÂë£¨ÖÁÉÙ 8 Î»£©" : "Password (min 8 chars)"}
+                {isZh ? "å¯†ç ï¼ˆè‡³å°‘ 8 ä½ï¼‰" : "Password (min 8 chars)"}
               </span>
               <input
                 type="password"
@@ -133,7 +133,7 @@ function AuthPageContent() {
             {mode === "register" ? (
               <label className="block">
                 <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                  {isZh ? "ÓÃ»§Ãû" : "Username"}
+                  {isZh ? "ç”¨æˆ·å" : "Username"}
                 </span>
                 <input
                   type="text"
@@ -159,14 +159,14 @@ function AuthPageContent() {
             >
               {loading
                 ? isZh
-                  ? "Ìá½»ÖĞ..."
+                  ? "æäº¤ä¸­..."
                   : "Submitting..."
                 : mode === "login"
                   ? isZh
-                    ? "µÇÂ¼"
+                    ? "ç™»å½•"
                     : "Login"
                   : isZh
-                    ? "×¢²á²¢µÇÂ¼"
+                    ? "æ³¨å†Œå¹¶ç™»å½•"
                     : "Register & Login"}
             </button>
           </form>

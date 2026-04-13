@@ -23,7 +23,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
     <article
       className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
       style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
-      aria-label={`${player.name}${isZh ? "×ùÎ»" : " seat"}`}
+      aria-label={`${player.name}${isZh ? "åº§ä½" : " seat"}`}
     >
       <div className="flex flex-col items-center gap-1.5">
         <div

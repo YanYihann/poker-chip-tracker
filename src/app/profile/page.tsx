@@ -66,7 +66,7 @@ export default function ProfilePage() {
         setTotals(profile.totals);
         setSessions(recent);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : isZh ? "ÎŞ·¨¼ÓÔØ¸öÈË×ÊÁÏ¡£" : "Unable to load profile.");
+        setError(loadError instanceof Error ? loadError.message : isZh ? "æ— æ³•åŠ è½½ä¸ªäººèµ„æ–™ã€‚" : "Unable to load profile.");
       } finally {
         setLoading(false);
       }
@@ -89,12 +89,12 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "¸öÈË×ÊÁÏ" : "Profile"} backHref="/" />
+      <AppTopBar title={isZh ? "ä¸ªäººèµ„æ–™" : "Profile"} backHref="/" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "ÕıÔÚ¼ÓÔØ¸öÈË×ÊÁÏ..." : "Loading profile..."}
+            {isZh ? "æ­£åœ¨åŠ è½½ä¸ªäººèµ„æ–™..." : "Loading profile..."}
           </article>
         ) : null}
 
@@ -106,7 +106,7 @@ export default function ProfilePage() {
                 href="/auth?next=/profile"
                 className="mt-2 inline-block rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary"
               >
-                {isZh ? "Ç°ÍùµÇÂ¼" : "Go to Login"}
+                {isZh ? "å‰å¾€ç™»å½•" : "Go to Login"}
               </Link>
             ) : null}
           </article>
@@ -140,13 +140,13 @@ export default function ProfilePage() {
                     }
                   }}
                 >
-                  {logoutLoading ? (isZh ? "ÍË³öÖĞ..." : "Logging out...") : isZh ? "ÍË³öµÇÂ¼" : "Logout"}
+                  {logoutLoading ? (isZh ? "é€€å‡ºä¸­..." : "Logging out...") : isZh ? "é€€å‡ºç™»å½•" : "Logout"}
                 </button>
               </div>
 
               <div className="mt-4 space-y-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "ÓÃ»§Ãû" : "Username"}</span>
+                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "ç”¨æˆ·å" : "Username"}</span>
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
@@ -156,7 +156,7 @@ export default function ProfilePage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                    {isZh ? "Í·Ïñ URL£¨¿ÉÑ¡£©" : "Avatar URL (optional placeholder)"}
+                    {isZh ? "å¤´åƒ URLï¼ˆå¯é€‰ï¼‰" : "Avatar URL (optional placeholder)"}
                   </span>
                   <input
                     value={avatarUrl}
@@ -181,37 +181,37 @@ export default function ProfilePage() {
                       setUsername(profile.username);
                       setAvatarUrl(profile.avatarUrl ?? "");
                     } catch (saveError) {
-                      setError(saveError instanceof Error ? saveError.message : isZh ? "±£´æÊ§°Ü¡£" : "Save failed.");
+                      setError(saveError instanceof Error ? saveError.message : isZh ? "ä¿å­˜å¤±è´¥ã€‚" : "Save failed.");
                     } finally {
                       setSaving(false);
                     }
                   }}
                 >
-                  {saving ? (isZh ? "±£´æÖĞ..." : "Saving...") : isZh ? "±£´æ×ÊÁÏ" : "Save Profile"}
+                  {saving ? (isZh ? "ä¿å­˜ä¸­..." : "Saving...") : isZh ? "ä¿å­˜èµ„æ–™" : "Save Profile"}
                 </button>
               </div>
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ÅÆ¾Ö×ÜÀÀ" : "Session Totals"}</h2>
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ç‰Œå±€æ€»è§ˆ" : "Session Totals"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "¹éµµÅÆ¾ÖÒÑÓë·şÎñÆ÷Í¬²½¡£" : "Archived game sessions are now server-synced."}
+                {isZh ? "å½’æ¡£ç‰Œå±€å·²ä¸æœåŠ¡å™¨åŒæ­¥ã€‚" : "Archived game sessions are now server-synced."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ÅÆ¾ÖÊı" : "Sessions"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ç‰Œå±€æ•°" : "Sessions"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.sessions}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "×ÜÊÖÊı" : "Hands"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "æ€»æ‰‹æ•°" : "Hands"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.hands}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "Ó¯Àû" : "Profit"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ç›ˆåˆ©" : "Profit"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-mint">{formatMoney(totals.profit, locale)}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "¿÷Ëğ" : "Loss"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "äºæŸ" : "Loss"}</p>
                   <p className="mt-1 text-lg font-semibold text-stitch-tertiary">{formatMoney(totals.loss, locale)}</p>
                 </div>
               </div>
@@ -219,22 +219,22 @@ export default function ProfilePage() {
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "¸öÈËÀúÊ·" : "Profile History"}</h2>
+                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ä¸ªäººå†å²" : "Profile History"}</h2>
                 <Link
                   href="/history"
                   className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
                 >
-                  {isZh ? "²é¿´È«²¿" : "View All"}
+                  {isZh ? "æŸ¥çœ‹å…¨éƒ¨" : "View All"}
                 </Link>
               </div>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "ÒÑÍê³ÉÅÆ¾Ö»á¹ØÁªµ½ÄãµÄÕË»§¡£" : "Completed sessions are linked to your profile."}
+                {isZh ? "å·²å®Œæˆç‰Œå±€ä¼šå…³è”åˆ°ä½ çš„è´¦æˆ·ã€‚" : "Completed sessions are linked to your profile."}
               </p>
 
               <div className="mt-3 space-y-2">
                 {sessions.length === 0 ? (
                   <p className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurfaceVariant">
-                    {isZh ? "ÔİÎŞÅÆ¾Ö¼ÇÂ¼¡£" : "No sessions yet."}
+                    {isZh ? "æš‚æ— ç‰Œå±€è®°å½•ã€‚" : "No sessions yet."}
                   </p>
                 ) : (
                   sessions.map((session) => (
@@ -244,14 +244,14 @@ export default function ProfilePage() {
                       className="block rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2"
                     >
                       <p className="text-sm text-stitch-onSurface">
-                        {isZh ? "·¿¼ä" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
+                        {isZh ? "æˆ¿é—´" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "ÆğÊ¼" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "½áÊø" : "End"}{" "}
+                        {isZh ? "èµ·å§‹" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "ç»“æŸ" : "End"}{" "}
                         {formatMoney(session.endStack, locale)}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "ÊÖÊı" : "Hands"}: {session.handsPlayed}/{session.totalHands} ¡¤ {isZh ? "Ó¯¿÷" : "P/L"}:{" "}
+                        {isZh ? "æ‰‹æ•°" : "Hands"}: {session.handsPlayed}/{session.totalHands} Â· {isZh ? "ç›ˆäº" : "P/L"}:{" "}
                         {formatMoney(session.profitLoss, locale)}
                       </p>
                     </Link>
@@ -261,22 +261,22 @@ export default function ProfilePage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "·¿¼ä" : "Rooms"}</h2>
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "æˆ¿é—´" : "Rooms"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "´´½¨»ò¼ÓÈëµÈ´ı·¿¼ä£¬ÊµÊ±Í¬²½ÅÆ¾Ö×´Ì¬¡£" : "Create or join a waiting room with realtime sync."}
+                {isZh ? "åˆ›å»ºæˆ–åŠ å…¥ç­‰å¾…æˆ¿é—´ï¼Œå®æ—¶åŒæ­¥ç‰Œå±€çŠ¶æ€ã€‚" : "Create or join a waiting room with realtime sync."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link
                   href="/rooms/create"
                   className="rounded-xl bg-stitch-primary px-3 py-2 text-center text-sm font-semibold text-stitch-onPrimary"
                 >
-                  {isZh ? "´´½¨·¿¼ä" : "Create Room"}
+                  {isZh ? "åˆ›å»ºæˆ¿é—´" : "Create Room"}
                 </Link>
                 <Link
                   href="/rooms/join"
                   className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-center text-sm text-stitch-onSurface"
                 >
-                  {isZh ? "¼ÓÈë·¿¼ä" : "Join Room"}
+                  {isZh ? "åŠ å…¥æˆ¿é—´" : "Join Room"}
                 </Link>
               </div>
             </article>

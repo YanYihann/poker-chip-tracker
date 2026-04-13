@@ -46,7 +46,7 @@ export default function SessionDetailPage() {
           loadError instanceof Error
             ? loadError.message
             : isZh
-              ? "ÎŞ·¨¼ÓÔØÅÆ¾ÖÏêÇé¡£"
+              ? "æ— æ³•åŠ è½½ç‰Œå±€è¯¦æƒ…ã€‚"
               : "Unable to load session detail."
         );
       } finally {
@@ -59,12 +59,12 @@ export default function SessionDetailPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "ÅÆ¾ÖÏêÇé" : "Session Detail"} backHref="/history" />
+      <AppTopBar title={isZh ? "ç‰Œå±€è¯¦æƒ…" : "Session Detail"} backHref="/history" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "ÕıÔÚ¼ÓÔØÅÆ¾ÖÏêÇé..." : "Loading session detail..."}
+            {isZh ? "æ­£åœ¨åŠ è½½ç‰Œå±€è¯¦æƒ…..." : "Loading session detail..."}
           </article>
         ) : null}
 
@@ -78,41 +78,41 @@ export default function SessionDetailPage() {
           <>
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <h2 className="font-headline text-2xl text-stitch-onSurface">
-                {isZh ? "·¿¼ä" : "Room"} {detail.session.roomCode}
+                {isZh ? "æˆ¿é—´" : "Room"} {detail.session.roomCode}
               </h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
                 {new Date(detail.session.startedAtIso).toLocaleString(localeTag)} -&gt;{" "}
                 {new Date(detail.session.endedAtIso).toLocaleString(localeTag)}
               </p>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "×ÜÊÖÊı" : "Total Hands"}: {detail.session.totalHands}
+                {isZh ? "æ€»æ‰‹æ•°" : "Total Hands"}: {detail.session.totalHands}
               </p>
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ÎÒµÄ½á¹û" : "My Result"}</h3>
+              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "æˆ‘çš„ç»“æœ" : "My Result"}</h3>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ÆğÊ¼³ïÂë" : "Start Stack"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "èµ·å§‹ç­¹ç " : "Start Stack"}</p>
                   <p className="mt-1 text-sm font-semibold text-stitch-onSurface">{formatMoney(detail.me.startStack, locale)}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "½áÊø³ïÂë" : "End Stack"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ç»“æŸç­¹ç " : "End Stack"}</p>
                   <p className="mt-1 text-sm font-semibold text-stitch-onSurface">{formatMoney(detail.me.endStack, locale)}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "Ó¯¿÷" : "Profit/Loss"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "ç›ˆäº" : "Profit/Loss"}</p>
                   <p className="mt-1 text-sm font-semibold text-stitch-mint">{formatMoney(detail.me.profitLoss, locale)}</p>
                 </div>
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "²ÎÓëÊÖÊı" : "Hands Played"}</p>
+                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "å‚ä¸æ‰‹æ•°" : "Hands Played"}</p>
                   <p className="mt-1 text-sm font-semibold text-stitch-onSurface">{detail.me.handsPlayed}</p>
                 </div>
               </div>
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "È«×À½á¹û" : "Table Results"}</h3>
+              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "å…¨æ¡Œç»“æœ" : "Table Results"}</h3>
               <div className="mt-3 space-y-2">
                 {detail.players.map((player) => (
                   <div
@@ -121,8 +121,8 @@ export default function SessionDetailPage() {
                   >
                     <p className="text-sm font-semibold text-stitch-onSurface">{player.username}</p>
                     <p className="mt-1">
-                      {formatMoney(player.startStack, locale)} -&gt; {formatMoney(player.endStack, locale)} | {isZh ? "Ó¯¿÷" : "P/L"}{" "}
-                      {formatMoney(player.profitLoss, locale)} | {isZh ? "ÊÖÊı" : "Hands"} {player.handsPlayed}
+                      {formatMoney(player.startStack, locale)} -&gt; {formatMoney(player.endStack, locale)} | {isZh ? "ç›ˆäº" : "P/L"}{" "}
+                      {formatMoney(player.profitLoss, locale)} | {isZh ? "æ‰‹æ•°" : "Hands"} {player.handsPlayed}
                     </p>
                   </div>
                 ))}

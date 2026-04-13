@@ -75,7 +75,7 @@ export function BottomActionPanel({
           ))
         ) : (
           <div className="col-span-4 rounded-2xl border border-stitch-outlineVariant/25 bg-stitch-surfaceContainerHigh p-3 text-center text-xs text-stitch-onSurfaceVariant">
-            {isZh ? "当前阶段无可执行下注动作" : "No available betting actions in this phase."}
+            {isZh ? "褰撳墠闃舵鏃犲彲鎵ц涓嬫敞鍔ㄤ綔" : "No available betting actions in this phase."}
           </div>
         )}
       </div>
@@ -86,7 +86,7 @@ export function BottomActionPanel({
           className="mt-3 w-full rounded-2xl bg-stitch-primary px-4 py-3 text-sm font-label font-semibold uppercase tracking-[0.14em] text-stitch-onPrimary transition hover:brightness-105"
           onClick={onOpenSettlement}
         >
-          {isZh ? "打开结算面板" : "Open Settlement"}
+          {isZh ? "鎵撳紑缁撶畻闈㈡澘" : "Open Settlement"}
         </button>
       ) : null}
     </section>

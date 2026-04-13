@@ -15,11 +15,11 @@ import { getRoomSocket } from "@/features/rooms/realtime";
 
 const STREET_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>["street"], string>> = {
   zh: {
-    preflop: "·­ÅÆÇ°",
-    flop: "·­ÅÆ",
-    turn: "×ªÅÆ",
-    river: "ºÓÅÆ",
-    showdown: "Ì¯ÅÆ"
+    preflop: "ç¿»ç‰Œå‰",
+    flop: "ç¿»ç‰Œ",
+    turn: "è½¬ç‰Œ",
+    river: "æ²³ç‰Œ",
+    showdown: "æ‘Šç‰Œ"
   },
   en: {
     preflop: "Pre-flop",
@@ -32,8 +32,8 @@ const STREET_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>[
 
 const STATUS_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>["status"], string>> = {
   zh: {
-    "in-progress": "½øĞĞÖĞ",
-    showdown: "Ì¯ÅÆ"
+    "in-progress": "è¿›è¡Œä¸­",
+    showdown: "æ‘Šç‰Œ"
   },
   en: {
     "in-progress": "In Progress",
@@ -43,10 +43,10 @@ const STATUS_LABEL_MAP: Record<AppLocale, Record<NonNullable<RoomState["game"]>[
 
 const ROOM_STATUS_LABEL_MAP: Record<AppLocale, Record<RoomState["room"]["status"], string>> = {
   zh: {
-    waiting: "µÈ´ıÖĞ",
-    active: "½øĞĞÖĞ",
-    finished: "ÒÑ½áÊø",
-    cancelled: "ÒÑÈ¡Ïû"
+    waiting: "ç­‰å¾…ä¸­",
+    active: "è¿›è¡Œä¸­",
+    finished: "å·²ç»“æŸ",
+    cancelled: "å·²å–æ¶ˆ"
   },
   en: {
     waiting: "Waiting",
@@ -64,12 +64,12 @@ const ACTION_COPY: Record<
   >
 > = {
   zh: {
-    fold: { topLabel: "ÆúÅÆ", mainLabel: "ÆúÅÆ" },
-    check: { topLabel: "¹ıÅÆ", mainLabel: "¹ıÅÆ" },
-    call: { topLabel: "¸ú×¢", mainLabel: "¸ú×¢" },
-    bet: { topLabel: "ÏÂ×¢", mainLabel: "ÏÂ×¢" },
-    raise: { topLabel: "¼Ó×¢", mainLabel: "¼Ó×¢" },
-    "all-in": { topLabel: "È«ÏÂ", mainLabel: "È«ÏÂ" }
+    fold: { topLabel: "å¼ƒç‰Œ", mainLabel: "å¼ƒç‰Œ" },
+    check: { topLabel: "è¿‡ç‰Œ", mainLabel: "è¿‡ç‰Œ" },
+    call: { topLabel: "è·Ÿæ³¨", mainLabel: "è·Ÿæ³¨" },
+    bet: { topLabel: "ä¸‹æ³¨", mainLabel: "ä¸‹æ³¨" },
+    raise: { topLabel: "åŠ æ³¨", mainLabel: "åŠ æ³¨" },
+    "all-in": { topLabel: "å…¨ä¸‹", mainLabel: "å…¨ä¸‹" }
   },
   en: {
     fold: { topLabel: "Fold", mainLabel: "Fold" },
@@ -123,7 +123,7 @@ function HomePageContent() {
             loadError instanceof Error
               ? loadError.message
               : isZh
-                ? "ÎŞ·¨¼ÓÔØ·¿¼ä×´Ì¬¡£"
+                ? "æ— æ³•åŠ è½½æˆ¿é—´çŠ¶æ€ã€‚"
                 : "Unable to load room state."
           );
         }
@@ -145,7 +145,7 @@ function HomePageContent() {
       if (!active) {
         return;
       }
-      setError(payload.message ?? (isZh ? "ÊµÊ±Í¬²½´íÎó¡£" : "Realtime error."));
+      setError(payload.message ?? (isZh ? "å®æ—¶åŒæ­¥é”™è¯¯ã€‚" : "Realtime error."));
     };
 
     void loadRoom();
@@ -206,7 +206,7 @@ function HomePageContent() {
             const next = await submitRoomAction(roomCode, actionType);
             setRoomState(next);
           } catch (actionError) {
-            setError(actionError instanceof Error ? actionError.message : isZh ? "²Ù×÷Ê§°Ü¡£" : "Action failed.");
+            setError(actionError instanceof Error ? actionError.message : isZh ? "æ“ä½œå¤±è´¥ã€‚" : "Action failed.");
           } finally {
             setPendingAction(null);
           }
@@ -218,15 +218,15 @@ function HomePageContent() {
   if (!roomCode) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-        <AppTopBar title={isZh ? "ÆË¿Ë³ïÂëÕË±¾" : "PokerChip Ledger"} />
+        <AppTopBar title={isZh ? "æ‰‘å…‹ç­¹ç è´¦æœ¬" : "PokerChip Ledger"} />
         <section className="space-y-4 px-4 pt-4">
           <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
             <h2 className="font-headline text-2xl text-stitch-onSurface">
-              {isZh ? "·şÎñÆ÷ÅÆ×ÀÄ£Ê½" : "Server Table Mode"}
+              {isZh ? "æœåŠ¡å™¨ç‰Œæ¡Œæ¨¡å¼" : "Server Table Mode"}
             </h2>
             <p className="mt-2 text-sm text-stitch-onSurfaceVariant">
               {isZh
-                ? "µ±Ç°ÅÆ×ÀÒÑ¸ÄÎª·şÎñÆ÷È¨Íş·¿¼äÓëÅÆ¾Ö×´Ì¬¡£"
+                ? "å½“å‰ç‰Œæ¡Œå·²æ”¹ä¸ºæœåŠ¡å™¨æƒå¨æˆ¿é—´ä¸ç‰Œå±€çŠ¶æ€ã€‚"
                 : "This table now uses server-authoritative room and game state."}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -234,13 +234,13 @@ function HomePageContent() {
                 href="/rooms/create"
                 className="rounded-xl bg-stitch-primary px-3 py-2 text-center text-sm font-semibold text-stitch-onPrimary"
               >
-                {isZh ? "´´½¨·¿¼ä" : "Create Room"}
+                {isZh ? "åˆ›å»ºæˆ¿é—´" : "Create Room"}
               </Link>
               <Link
                 href="/rooms/join"
                 className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-center text-sm text-stitch-onSurface"
               >
-                {isZh ? "¼ÓÈë·¿¼ä" : "Join Room"}
+                {isZh ? "åŠ å…¥æˆ¿é—´" : "Join Room"}
               </Link>
             </div>
           </article>
@@ -251,12 +251,12 @@ function HomePageContent() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-stitch-background pb-44">
-      <AppTopBar title={isZh ? `ÅÆ×À ${roomCode}` : `Table ${roomCode}`} backHref={`/rooms/${roomCode}`} />
+      <AppTopBar title={isZh ? `ç‰Œæ¡Œ ${roomCode}` : `Table ${roomCode}`} backHref={`/rooms/${roomCode}`} />
 
       <section className="flex-1 px-4 pb-4 pt-4">
         {loading ? (
           <article className="mb-3 rounded-2xl bg-stitch-surfaceContainer p-3 text-xs text-stitch-onSurfaceVariant">
-            {isZh ? "ÕıÔÚ¼ÓÔØ·şÎñÆ÷ÅÆ¾Ö×´Ì¬..." : "Loading server game state..."}
+            {isZh ? "æ­£åœ¨åŠ è½½æœåŠ¡å™¨ç‰Œå±€çŠ¶æ€..." : "Loading server game state..."}
           </article>
         ) : null}
 
@@ -273,11 +273,11 @@ function HomePageContent() {
                 <Badge variant="primary">{streetLabels[game.street]}</Badge>
                 <Badge variant="mint">{statusLabels[game.status]}</Badge>
                 <Badge variant={game.isMyTurn ? "mint" : "neutral"}>
-                  {game.isMyTurn ? (isZh ? "ÄãµÄ»ØºÏ" : "Your Turn") : isZh ? "µÈ´ıÖĞ" : "Waiting"}
+                  {game.isMyTurn ? (isZh ? "ä½ çš„å›åˆ" : "Your Turn") : isZh ? "ç­‰å¾…ä¸­" : "Waiting"}
                 </Badge>
               </div>
               <span className="text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "´ı¸ú×¢" : "To Call"}: <strong className="text-stitch-mint">{formatCurrency(game.toCall, locale)}</strong>
+                {isZh ? "å¾…è·Ÿæ³¨" : "To Call"}: <strong className="text-stitch-mint">{formatCurrency(game.toCall, locale)}</strong>
               </span>
             </div>
 
@@ -291,7 +291,7 @@ function HomePageContent() {
             {!game.isMyTurn ? (
               <article className="mt-3 rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
                 {isZh
-                  ? "Î´µ½ÄãµÄ»ØºÏ¡£·şÎñÆ÷½«Äã±ê¼ÇÎªµ±Ç°ĞĞ¶¯Íæ¼Òºó£¬²Ù×÷À¸²Å»áÏÔÊ¾¡£"
+                  ? "æœªåˆ°ä½ çš„å›åˆã€‚æœåŠ¡å™¨å°†ä½ æ ‡è®°ä¸ºå½“å‰è¡ŒåŠ¨ç©å®¶åï¼Œæ“ä½œæ æ‰ä¼šæ˜¾ç¤ºã€‚"
                   : "Not your turn. Action bar is hidden until server marks you as active player."}
               </article>
             ) : null}
@@ -300,16 +300,16 @@ function HomePageContent() {
 
         {roomState && !game ? (
           <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "·¿¼ä×´Ì¬Îª" : "Room status is"}{" "}
+            {isZh ? "æˆ¿é—´çŠ¶æ€ä¸º" : "Room status is"}{" "}
             <strong className="text-stitch-onSurface">{roomStatusLabels[roomState.room.status]}</strong>
             {isZh
-              ? "¡£ÈôÅÆ¾ÖÒÑ½áÊø£¬¼ÇÂ¼»á¹éµµµ½¸öÈËÀúÊ·ÖĞ¡£"
+              ? "ã€‚è‹¥ç‰Œå±€å·²ç»“æŸï¼Œè®°å½•ä¼šå½’æ¡£åˆ°ä¸ªäººå†å²ä¸­ã€‚"
               : ". If this game has finished, the session is archived and available in profile/history."}
             <Link
               href="/history"
               className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
             >
-              {isZh ? "´ò¿ªÀúÊ·¼ÇÂ¼" : "Open Session History"}
+              {isZh ? "æ‰“å¼€å†å²è®°å½•" : "Open Session History"}
             </Link>
           </article>
         ) : null}
@@ -327,7 +327,7 @@ function HomePageContent() {
       {pendingAction ? (
         <div className="pointer-events-none fixed bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full bg-stitch-surfaceContainerHigh px-3 py-1 text-xs text-stitch-onSurfaceVariant">
           {isZh
-            ? `Ìá½»ÖĞ ${actionCopy[pendingAction as keyof typeof actionCopy].mainLabel}...`
+            ? `æäº¤ä¸­ ${actionCopy[pendingAction as keyof typeof actionCopy].mainLabel}...`
             : `Submitting ${actionCopy[pendingAction as keyof typeof actionCopy].mainLabel}...`}
         </div>
       ) : null}

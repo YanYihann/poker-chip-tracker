@@ -11,10 +11,10 @@ import { getRoomSocket } from "@/features/rooms/realtime";
 
 const ROOM_STATUS_LABELS = {
   zh: {
-    waiting: "µÈ´ıÖĞ",
-    active: "½øĞĞÖĞ",
-    finished: "ÒÑ½áÊø",
-    cancelled: "ÒÑÈ¡Ïû"
+    waiting: "ç­‰å¾…ä¸­",
+    active: "è¿›è¡Œä¸­",
+    finished: "å·²ç»“æŸ",
+    cancelled: "å·²å–æ¶ˆ"
   },
   en: {
     waiting: "Waiting",
@@ -66,7 +66,7 @@ export default function WaitingRoomPage() {
         }
       } catch (loadError) {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : isZh ? "ÎŞ·¨¼ÓÔØ·¿¼ä¡£" : "Unable to load room.");
+          setError(loadError instanceof Error ? loadError.message : isZh ? "æ— æ³•åŠ è½½æˆ¿é—´ã€‚" : "Unable to load room.");
         }
       } finally {
         if (active) {
@@ -86,7 +86,7 @@ export default function WaitingRoomPage() {
       if (!active) {
         return;
       }
-      setError(payload.message ?? (isZh ? "ÊµÊ±·¿¼ä´íÎó¡£" : "Realtime room error."));
+      setError(payload.message ?? (isZh ? "å®æ—¶æˆ¿é—´é”™è¯¯ã€‚" : "Realtime room error."));
     };
 
     void loadInitial();
@@ -108,12 +108,12 @@ export default function WaitingRoomPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? `·¿¼ä ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
+      <AppTopBar title={isZh ? `æˆ¿é—´ ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
-            {isZh ? "ÕıÔÚ¼ÓÔØ·¿¼ä..." : "Loading room..."}
+            {isZh ? "æ­£åœ¨åŠ è½½æˆ¿é—´..." : "Loading room..."}
           </article>
         ) : null}
 
@@ -125,13 +125,13 @@ export default function WaitingRoomPage() {
                 href="/auth?next=/rooms/join"
                 className="rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
               >
-                {isZh ? "µÇÂ¼" : "Login"}
+                {isZh ? "ç™»å½•" : "Login"}
               </Link>
               <Link
                 href="/rooms/join"
                 className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
               >
-                {isZh ? "¼ÓÈëÆäËû·¿¼ä" : "Join Another Room"}
+                {isZh ? "åŠ å…¥å…¶ä»–æˆ¿é—´" : "Join Another Room"}
               </Link>
             </div>
           </article>
@@ -140,10 +140,10 @@ export default function WaitingRoomPage() {
         {roomState ? (
           <>
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">{isZh ? "´óÌü" : "Lobby"}</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">{isZh ? "å¤§å…" : "Lobby"}</p>
               <h2 className="mt-1 font-headline text-3xl text-stitch-onSurface">{roomState.room.code}</h2>
               <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-                {isZh ? "×´Ì¬" : "Status"}: <strong className="text-stitch-primary">{roomStatusLabel}</strong> - {isZh ? "ÈËÊı" : "Players"}:{" "}
+                {isZh ? "çŠ¶æ€" : "Status"}: <strong className="text-stitch-primary">{roomStatusLabel}</strong> - {isZh ? "äººæ•°" : "Players"}:{" "}
                 {roomState.players.length}/{roomState.room.maxPlayers}
               </p>
 
@@ -156,10 +156,10 @@ export default function WaitingRoomPage() {
                     <div>
                       <p className="text-sm font-semibold text-stitch-onSurface">
                         {player.displayName}
-                        {player.isHost ? (isZh ? "£¨·¿Ö÷£©" : " (Host)") : ""}
+                        {player.isHost ? (isZh ? "ï¼ˆæˆ¿ä¸»ï¼‰" : " (Host)") : ""}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {player.isConnected ? (isZh ? "ÔÚÏß" : "Online") : isZh ? "ÀëÏß" : "Offline"}
+                        {player.isConnected ? (isZh ? "åœ¨çº¿" : "Online") : isZh ? "ç¦»çº¿" : "Offline"}
                       </p>
                     </div>
                     <span
@@ -170,7 +170,7 @@ export default function WaitingRoomPage() {
                           : "bg-stitch-surfaceContainerLowest text-stitch-onSurfaceVariant"
                       ].join(" ")}
                     >
-                      {player.isReady ? (isZh ? "ÒÑ×¼±¸" : "Ready") : isZh ? "Î´×¼±¸" : "Not Ready"}
+                      {player.isReady ? (isZh ? "å·²å‡†å¤‡" : "Ready") : isZh ? "æœªå‡†å¤‡" : "Not Ready"}
                     </span>
                   </div>
                 ))}
@@ -178,10 +178,10 @@ export default function WaitingRoomPage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "²Ù×÷" : "Actions"}</h3>
+              <h3 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "æ“ä½œ" : "Actions"}</h3>
               <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
                 {isZh
-                  ? "·¿¼ä³ÉÔ±Óë×¼±¸×´Ì¬ÓÉ·şÎñÆ÷È¨Íş¿ØÖÆ£¬²¢Í¨¹ı WebSocket ÊµÊ±Í¬²½¡£"
+                  ? "æˆ¿é—´æˆå‘˜ä¸å‡†å¤‡çŠ¶æ€ç”±æœåŠ¡å™¨æƒå¨æ§åˆ¶ï¼Œå¹¶é€šè¿‡ WebSocket å®æ—¶åŒæ­¥ã€‚"
                   : "Room membership and readiness are server-authoritative and synced via WebSocket."}
               </p>
 
@@ -196,7 +196,7 @@ export default function WaitingRoomPage() {
                     try {
                       await setReady(roomCode, !isReady);
                     } catch (readyError) {
-                      setError(readyError instanceof Error ? readyError.message : isZh ? "ÎŞ·¨¸üĞÂ×¼±¸×´Ì¬¡£" : "Unable to set readiness.");
+                      setError(readyError instanceof Error ? readyError.message : isZh ? "æ— æ³•æ›´æ–°å‡†å¤‡çŠ¶æ€ã€‚" : "Unable to set readiness.");
                     } finally {
                       setPendingAction(null);
                     }
@@ -204,14 +204,14 @@ export default function WaitingRoomPage() {
                 >
                   {pendingAction === "ready"
                     ? isZh
-                      ? "¸üĞÂÖĞ..."
+                      ? "æ›´æ–°ä¸­..."
                       : "Updating..."
                     : isReady
                       ? isZh
-                        ? "È¡Ïû×¼±¸"
+                        ? "å–æ¶ˆå‡†å¤‡"
                         : "Mark Not Ready"
                       : isZh
-                        ? "±ê¼Ç×¼±¸"
+                        ? "æ ‡è®°å‡†å¤‡"
                         : "Mark Ready"}
                 </button>
 
@@ -226,7 +226,7 @@ export default function WaitingRoomPage() {
                       try {
                         await startRoom(roomCode);
                       } catch (startError) {
-                        setError(startError instanceof Error ? startError.message : isZh ? "ÎŞ·¨¿ªÊ¼ÓÎÏ·¡£" : "Unable to start room.");
+                        setError(startError instanceof Error ? startError.message : isZh ? "æ— æ³•å¼€å§‹æ¸¸æˆã€‚" : "Unable to start room.");
                       } finally {
                         setPendingAction(null);
                       }
@@ -234,10 +234,10 @@ export default function WaitingRoomPage() {
                   >
                     {pendingAction === "start"
                       ? isZh
-                        ? "¿ªÊ¼ÖĞ..."
+                        ? "å¼€å§‹ä¸­..."
                         : "Starting..."
                       : isZh
-                        ? "·¿Ö÷¿ªÊ¼ÓÎÏ·"
+                        ? "æˆ¿ä¸»å¼€å§‹æ¸¸æˆ"
                         : "Host Start Game"}
                   </button>
                 ) : null}
@@ -248,14 +248,14 @@ export default function WaitingRoomPage() {
               <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">
                 <p className="text-sm text-stitch-primary">
                   {isZh
-                    ? "ÓÎÏ·ÒÑ¿ªÊ¼¡£ÅÆ×À²Ù×÷ÒÑÓÉ·şÎñÆ÷È¨Íş¿ØÖÆ²¢ÊµÊ±Í¬²½¡£"
+                    ? "æ¸¸æˆå·²å¼€å§‹ã€‚ç‰Œæ¡Œæ“ä½œå·²ç”±æœåŠ¡å™¨æƒå¨æ§åˆ¶å¹¶å®æ—¶åŒæ­¥ã€‚"
                     : "Game has started. Table actions are now server-authoritative and synced in realtime."}
                 </p>
                 <Link
                   href={`/?room=${roomState.room.code}`}
                   className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
                 >
-                  {isZh ? "½øÈëÅÆ×À" : "Go To Table UI"}
+                  {isZh ? "è¿›å…¥ç‰Œæ¡Œ" : "Go To Table UI"}
                 </Link>
               </article>
             ) : null}

@@ -17,19 +17,19 @@ export default function CreateRoomPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "´´½¨·¿¼ä" : "Create Room"} backHref="/profile" />
+      <AppTopBar title={isZh ? "åˆ›å»ºæˆ¿é—´" : "Create Room"} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">
         <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-          <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "ĞÂ´óÌü" : "New Lobby"}</h2>
+          <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "æ–°å¤§å…" : "New Lobby"}</h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
             {isZh
-              ? "´´½¨·¿¼äºó·ÖÏí·¿¼äÂë£¬µÈ´ıÍæ¼Ò¼ÓÈë¡£"
+              ? "åˆ›å»ºæˆ¿é—´ååˆ†äº«æˆ¿é—´ç ï¼Œç­‰å¾…ç©å®¶åŠ å…¥ã€‚"
               : "Create a room, share code, and wait for players to join."}
           </p>
 
           <label className="mt-4 block">
-            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "×î´óÈËÊı" : "Max Players"}</span>
+            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "æœ€å¤§äººæ•°" : "Max Players"}</span>
             <input
               type="number"
               min={2}
@@ -59,13 +59,13 @@ export default function CreateRoomPage() {
                 });
                 router.push(`/rooms/${room.room.code}`);
               } catch (createError) {
-                setError(createError instanceof Error ? createError.message : isZh ? "ÎŞ·¨´´½¨·¿¼ä¡£" : "Unable to create room.");
+                setError(createError instanceof Error ? createError.message : isZh ? "æ— æ³•åˆ›å»ºæˆ¿é—´ã€‚" : "Unable to create room.");
               } finally {
                 setLoading(false);
               }
             }}
           >
-            {loading ? (isZh ? "´´½¨ÖĞ..." : "Creating...") : isZh ? "´´½¨·¿¼ä" : "Create Room"}
+            {loading ? (isZh ? "åˆ›å»ºä¸­..." : "Creating...") : isZh ? "åˆ›å»ºæˆ¿é—´" : "Create Room"}
           </button>
         </article>
 
@@ -73,7 +73,7 @@ export default function CreateRoomPage() {
           href="/rooms/join"
           className="block rounded-xl bg-stitch-surfaceContainerHigh px-4 py-3 text-center text-sm text-stitch-onSurfaceVariant"
         >
-          {isZh ? "ÒÑÓĞ·¿¼äÂë£¿È¥¼ÓÈë" : "Have a code? Join a room"}
+          {isZh ? "å·²æœ‰æˆ¿é—´ç ï¼Ÿå»åŠ å…¥" : "Have a code? Join a room"}
         </Link>
       </section>
     </main>

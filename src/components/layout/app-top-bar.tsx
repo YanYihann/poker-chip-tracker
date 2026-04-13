@@ -30,14 +30,14 @@ export function AppTopBar({
             href={backHref}
             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
           >
-            {isZh ? "·µ»Ø" : "Back"}
+            {isZh ? "è¿”å›" : "Back"}
           </Link>
         ) : (
           <Link
             href="/profile"
             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)]"
           >
-            {isZh ? "ÕË»§" : "Account"}
+            {isZh ? "è´¦æˆ·" : "Account"}
           </Link>
         )}
 
@@ -48,15 +48,15 @@ export function AppTopBar({
             type="button"
             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
             onClick={toggleLocale}
-            aria-label={isZh ? "ÇĞ»»µ½Ó¢ÎÄ" : "Switch to Chinese"}
+            aria-label={isZh ? "åˆ‡æ¢åˆ°è‹±æ–‡" : "Switch to Chinese"}
           >
-            {isZh ? "EN" : "ÖĞ"}
+            {isZh ? "EN" : "ä¸­"}
           </button>
           <Link
             href="/history"
             className="rounded-full bg-[color:var(--accent)]/20 px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:bg-[color:var(--accent)]/30"
           >
-            {isZh ? "ÀúÊ·" : "History"}
+            {isZh ? "å†å²" : "History"}
           </Link>
         </div>
       </div>
@@ -67,18 +67,18 @@ export function AppTopBar({
             type="button"
             className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.max(MIN_PLAYERS, playerCount - 1))}
-            aria-label={isZh ? "¼õÉÙÈËÊı" : "Decrease players"}
+            aria-label={isZh ? "å‡å°‘äººæ•°" : "Decrease players"}
           >
             -
           </button>
           <div className="rounded-full bg-[color:var(--surface)] px-4 py-1 text-xs font-semibold tracking-[0.2em] text-[color:var(--muted)]">
-            {isZh ? `${playerCount} ÈË×À` : `${playerCount} Players`}
+            {isZh ? `${playerCount} äººæ¡Œ` : `${playerCount} Players`}
           </div>
           <button
             type="button"
             className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.min(MAX_PLAYERS, playerCount + 1))}
-            aria-label={isZh ? "Ôö¼ÓÈËÊı" : "Increase players"}
+            aria-label={isZh ? "å¢åŠ äººæ•°" : "Increase players"}
           >
             +
           </button>
