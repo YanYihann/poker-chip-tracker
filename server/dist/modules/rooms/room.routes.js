@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { ZodError } from "zod";
 import { requireAuth } from "../auth/session.middleware.js";
-import { nextHandDecisionSchema, roomActionSchema, createRoomSchema, joinRoomSchema, roomCodeParamSchema, settleHandSchema, updateBlindsSchema, setReadySchema } from "./room.schemas.js";
-import { applyPlayerActionByRoomCode, decideNextHandByRoomCode, createRoom, getRoomStateByCode, joinRoomByCode, settleHandByRoomCode, setPlayerReadyByRoomCode, startRoomByHost, updateRoomBlindsByCode } from "./room.service.js";
+import { nextHandDecisionSchema, roomActionSchema, createRoomSchema, joinRoomSchema, roomCodeParamSchema, setBuyInSchema, settleHandSchema, updateBlindsSchema, setReadySchema } from "./room.schemas.js";
+import { applyPlayerActionByRoomCode, decideNextHandByRoomCode, createRoom, getRoomStateByCode, joinRoomByCode, settleHandByRoomCode, setPlayerBuyInByRoomCode, setPlayerReadyByRoomCode, startRoomByHost, updateRoomBlindsByCode } from "./room.service.js";
 import { broadcastRoomState } from "../../realtime/room-broadcast.js";
 function sendValidationError(error, res) {
     res.status(400).json({
@@ -154,6 +154,26 @@ export function createRoomRouter() {
                 roomCode,
                 userId: req.authSession.userId,
                 isReady: payload.isReady
+            });
+            await broadcastRoomState(roomCode);
+            res.status(200).json({ room: roomState });
+        }
+        catch (error) {
+            if (error instanceof ZodError) {
+                sendValidationError(error, res);
+                return;
+            }
+            sendRoomError(error, res);
+        }
+    });
+    router.patch("/:roomCode/buy-in", async (req, res) => {
+        try {
+            const { roomCode } = roomCodeParamSchema.parse(req.params);
+            const payload = setBuyInSchema.parse(req.body);
+            const roomState = await setPlayerBuyInByRoomCode({
+                roomCode,
+                userId: req.authSession.userId,
+                buyIn: payload.buyIn
             });
             await broadcastRoomState(roomCode);
             res.status(200).json({ room: roomState });

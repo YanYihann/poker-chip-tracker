@@ -9,6 +9,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   roomCodeParamSchema,
+  setBuyInSchema,
   settleHandSchema,
   updateBlindsSchema,
   setReadySchema
@@ -20,6 +21,7 @@ import {
   getRoomStateByCode,
   joinRoomByCode,
   settleHandByRoomCode,
+  setPlayerBuyInByRoomCode,
   setPlayerReadyByRoomCode,
   startRoomByHost,
   updateRoomBlindsByCode
@@ -186,6 +188,27 @@ export function createRoomRouter() {
         roomCode,
         userId: req.authSession!.userId,
         isReady: payload.isReady
+      });
+
+      await broadcastRoomState(roomCode);
+      res.status(200).json({ room: roomState });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        sendValidationError(error, res);
+        return;
+      }
+      sendRoomError(error, res);
+    }
+  });
+
+  router.patch("/:roomCode/buy-in", async (req: Request, res: Response) => {
+    try {
+      const { roomCode } = roomCodeParamSchema.parse(req.params);
+      const payload = setBuyInSchema.parse(req.body);
+      const roomState = await setPlayerBuyInByRoomCode({
+        roomCode,
+        userId: req.authSession!.userId,
+        buyIn: payload.buyIn
       });
 
       await broadcastRoomState(roomCode);

@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useLanguage } from "@/components/i18n/language-provider";
+import { fetchProfile } from "@/features/auth/api";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/table-layout";
 
 type AppTopBarProps = {
@@ -19,8 +21,41 @@ export function AppTopBar({
   backHref
 }: AppTopBarProps) {
   const { isZh } = useLanguage();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>("P");
   const hasPlayerControl =
     typeof playerCount === "number" && typeof onPlayerCountChange === "function";
+
+  useEffect(() => {
+    let active = true;
+
+    const run = async () => {
+      try {
+        const profile = await fetchProfile();
+        if (!active) {
+          return;
+        }
+        setAvatarUrl(profile.avatarUrl);
+        setUsername(profile.username);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setAvatarUrl(null);
+      }
+    };
+
+    void run();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const avatarLabel = useMemo(() => {
+    const first = username.trim().slice(0, 1).toUpperCase();
+    return first || "P";
+  }, [username]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/5 bg-[color:var(--panel)]/95 px-4 pb-3 pt-4 backdrop-blur">
@@ -44,10 +79,16 @@ export function AppTopBar({
         <h1 className="truncate px-1 font-display text-lg tracking-[0.08em] text-[color:var(--text)]">{title}</h1>
 
         <Link
-          href="/history"
-          className="rounded-full bg-[color:var(--accent)]/20 px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:bg-[color:var(--accent)]/30"
+          href="/profile"
+          aria-label={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"}
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/20 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:brightness-110"
         >
-          {isZh ? "\u5386\u53f2" : "History"}
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt={isZh ? "\u5934\u50cf" : "Avatar"} className="h-full w-full object-cover" />
+          ) : (
+            <span>{avatarLabel}</span>
+          )}
         </Link>
       </div>
 

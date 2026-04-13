@@ -140,6 +140,14 @@ export async function setReady(roomCode: string, isReady: boolean): Promise<Room
   return payload.room;
 }
 
+export async function setPlayerBuyIn(roomCode: string, buyIn: number): Promise<RoomState> {
+  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/buy-in`, {
+    method: "PATCH",
+    body: JSON.stringify({ buyIn })
+  });
+  return payload.room;
+}
+
 export async function startRoom(roomCode: string): Promise<RoomState> {
   const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/start`, {
     method: "POST"

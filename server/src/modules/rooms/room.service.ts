@@ -1008,9 +1008,8 @@ async function finalizeRoomAndArchive(input: {
     }
   })) as RoomPlayerRecord[];
 
-  const startStack = toNumber(room.startingStack);
-
   for (const participant of participants) {
+    const startStack = Math.max(0, toNumber(participant.totalBuyIn) || toNumber(room.startingStack));
     const endStack = toNumber(participant.stack);
     const profitLoss = endStack - startStack;
     const distinctHands = await tx.handAction.findMany({
@@ -1102,6 +1101,7 @@ export async function createRoom(input: {
           displayName,
           seatIndex: 0,
           stack: startingStack,
+          totalBuyIn: startingStack,
           isHost: true,
           isReady: true,
           isConnected: true
@@ -1164,6 +1164,7 @@ export async function joinRoomByCode(input: {
         displayName,
         seatIndex: nextSeat,
         stack: room.startingStack,
+        totalBuyIn: room.startingStack,
         isHost: false,
         isReady: false,
         isConnected: true
@@ -1224,6 +1225,47 @@ export async function setPlayerReadyByRoomCode(input: {
   await prisma.roomPlayer.update({
     where: { id: member.id },
     data: { isReady: input.isReady }
+  });
+
+  const next = await fetchRoomByCode(input.roomCode);
+  if (!next) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+  return buildRoomState(next, input.userId);
+}
+
+export async function setPlayerBuyInByRoomCode(input: {
+  roomCode: string;
+  userId: string;
+  buyIn: number;
+}): Promise<RoomState> {
+  const room = await fetchRoomByCode(input.roomCode);
+
+  if (!room) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+
+  const member = room.roomPlayers.find((player) => player.userId === input.userId && !player.leftAt);
+
+  if (!member) {
+    throw new Error("NOT_A_MEMBER");
+  }
+
+  if (room.status !== "WAITING") {
+    throw new Error("ROOM_NOT_WAITING");
+  }
+
+  if (!Number.isInteger(input.buyIn) || input.buyIn <= 0) {
+    throw new Error("ILLEGAL_ACTION");
+  }
+
+  await prisma.roomPlayer.update({
+    where: { id: member.id },
+    data: {
+      stack: BigInt(input.buyIn),
+      totalBuyIn: BigInt(input.buyIn),
+      isReady: false
+    }
   });
 
   const next = await fetchRoomByCode(input.roomCode);

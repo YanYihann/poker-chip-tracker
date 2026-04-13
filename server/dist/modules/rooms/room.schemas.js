@@ -13,6 +13,9 @@ export const joinRoomSchema = z.object({
 export const setReadySchema = z.object({
     isReady: z.boolean()
 });
+export const setBuyInSchema = z.object({
+    buyIn: z.number().int().positive()
+});
 export const roomActionSchema = z.object({
     actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"]),
     amount: z.number().int().positive().optional()

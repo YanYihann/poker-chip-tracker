@@ -8,6 +8,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import {
   getRoom,
+  setPlayerBuyIn,
   setReady,
   startRoom,
   updateRoomBlinds,
@@ -30,6 +31,14 @@ const ROOM_STATUS_LABELS = {
   }
 } as const;
 
+function formatDollar(amount: number): string {
+  const abs = Math.abs(Math.trunc(amount));
+  const formatted = new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0
+  }).format(abs);
+  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
+}
+
 export default function WaitingRoomPage() {
   const params = useParams<{ roomCode: string }>();
   const roomCode = (params.roomCode ?? "").toUpperCase();
@@ -37,10 +46,11 @@ export default function WaitingRoomPage() {
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingAction, setPendingAction] = useState<"ready" | "start" | "blinds" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"ready" | "start" | "blinds" | "buyin" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [smallBlind, setSmallBlind] = useState(100);
   const [bigBlind, setBigBlind] = useState(200);
+  const [buyInInput, setBuyInInput] = useState("10000");
 
   const isHost = roomState?.me?.isHost ?? false;
   const isReady = roomState?.me?.isReady ?? false;
@@ -68,6 +78,14 @@ export default function WaitingRoomPage() {
     setSmallBlind(roomState.room.smallBlind);
     setBigBlind(roomState.room.bigBlind);
   }, [roomState?.room.bigBlind, roomState?.room.smallBlind]);
+
+  useEffect(() => {
+    const me = roomState?.players.find((player) => player.userId === roomState?.me?.userId);
+    if (!me) {
+      return;
+    }
+    setBuyInInput(String(Math.max(1, Math.trunc(me.stack))));
+  }, [roomState?.me?.userId, roomState?.players]);
 
   useEffect(() => {
     let active = true;
@@ -170,7 +188,7 @@ export default function WaitingRoomPage() {
                 {isZh ? "\u4eba\u6570" : "Players"}: {roomState.players.length}/{roomState.room.maxPlayers}
               </p>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u76f2\u6ce8" : "Blinds"}: {roomState.room.smallBlind}/{roomState.room.bigBlind}
+                {isZh ? "\u76f2\u6ce8" : "Blinds"}: {formatDollar(roomState.room.smallBlind)}/{formatDollar(roomState.room.bigBlind)}
               </p>
 
               <div className="mt-4 space-y-2">
@@ -185,7 +203,7 @@ export default function WaitingRoomPage() {
                         {player.isHost ? (isZh ? " (\u623f\u4e3b)" : " (Host)") : ""}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {player.isConnected ? (isZh ? "\u5728\u7ebf" : "Online") : isZh ? "\u79bb\u7ebf" : "Offline"}
+                        {player.isConnected ? (isZh ? "\u5728\u7ebf" : "Online") : isZh ? "\u79bb\u7ebf" : "Offline"} | {formatDollar(player.stack)}
                       </p>
                     </div>
                     <span
@@ -273,6 +291,50 @@ export default function WaitingRoomPage() {
               ) : null}
 
               <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="rounded-2xl bg-stitch-surfaceContainerHigh p-3">
+                  <p className="text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u5148\u8bbe\u7f6e\u4f60\u7684\u5e26\u5165\u7b79\u7801\u518d\u51c6\u5907" : "Set your buy-in chips before ready"}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={buyInInput}
+                      onChange={(event) => {
+                        const digits = event.target.value.replace(/[^\d]/g, "");
+                        const normalized = digits.replace(/^0+(?=\d)/, "");
+                        setBuyInInput(normalized);
+                      }}
+                      className="flex-1 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                    />
+                    <button
+                      type="button"
+                      disabled={pendingAction !== null || !buyInInput || Number(buyInInput) <= 0}
+                      className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
+                      onClick={async () => {
+                        setPendingAction("buyin");
+                        setError(null);
+                        try {
+                          const next = await setPlayerBuyIn(roomCode, Math.floor(Number(buyInInput)));
+                          setRoomState(next);
+                        } catch (buyInError) {
+                          setError(
+                            buyInError instanceof Error
+                              ? buyInError.message
+                              : isZh
+                                ? "\u65e0\u6cd5\u4fdd\u5b58\u7b79\u7801\u3002"
+                                : "Unable to save buy-in."
+                          );
+                        } finally {
+                          setPendingAction(null);
+                        }
+                      }}
+                    >
+                      {pendingAction === "buyin" ? (isZh ? "\u4fdd\u5b58\u4e2d..." : "Saving...") : isZh ? "\u4fdd\u5b58" : "Save"}
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   disabled={pendingAction !== null || roomStatus !== "waiting"}

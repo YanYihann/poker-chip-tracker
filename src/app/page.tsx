@@ -91,11 +91,10 @@ const ACTION_COPY: Record<
 };
 
 function formatCurrency(amount: number, locale: AppLocale): string {
-  return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    style: "currency",
-    currency: "USD",
+  const formatted = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(Math.abs(amount));
+  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 function HomePageContent() {
@@ -109,7 +108,7 @@ function HomePageContent() {
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [actionAmount, setActionAmount] = useState(0);
+  const [actionAmountInput, setActionAmountInput] = useState("");
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
 
   useEffect(() => {
@@ -218,9 +217,13 @@ function HomePageContent() {
     }
 
     if (game.status === "in-progress") {
-      setActionAmount(game.minBet);
+      const defaultAmount =
+        game.legalActions.includes("raise") && game.currentBet > 0
+          ? game.currentBet + game.minRaiseDelta
+          : game.minBet;
+      setActionAmountInput(String(defaultAmount));
     }
-  }, [game?.handId, game?.status, game?.minBet]);
+  }, [game?.currentBet, game?.handId, game?.legalActions, game?.minBet, game?.minRaiseDelta, game?.status]);
 
   useEffect(() => {
     if (!game || game.status !== "showdown") {
@@ -272,7 +275,11 @@ function HomePageContent() {
             return;
           }
 
-          if (actionType === "bet" && actionAmount < currentGame.minBet) {
+          const parsedAmount = Number(actionAmountInput);
+          const normalizedAmount =
+            Number.isFinite(parsedAmount) && parsedAmount > 0 ? Math.floor(parsedAmount) : 0;
+
+          if (actionType === "bet" && normalizedAmount < currentGame.minBet) {
             setError(
               isZh
                 ? `\u4e0b\u6ce8\u91d1\u989d\u81f3\u5c11\u4e3a ${currentGame.minBet}`
@@ -281,7 +288,7 @@ function HomePageContent() {
             return;
           }
 
-          if (actionType === "raise" && actionAmount < currentGame.currentBet + currentGame.minRaiseDelta) {
+          if (actionType === "raise" && normalizedAmount < currentGame.currentBet + currentGame.minRaiseDelta) {
             setError(
               isZh
                 ? `\u52a0\u6ce8\u5230\u5c11\u81f3 ${currentGame.currentBet + currentGame.minRaiseDelta}`
@@ -296,7 +303,7 @@ function HomePageContent() {
             const next = await submitRoomAction(
               roomCode,
               actionType,
-              actionType === "bet" || actionType === "raise" ? Math.floor(actionAmount) : undefined
+              actionType === "bet" || actionType === "raise" ? normalizedAmount : undefined
             );
             setRoomState(next);
           } catch (actionError) {
@@ -306,7 +313,7 @@ function HomePageContent() {
           }
         }
       })),
-    [actionAmount, actionCopy, game, isZh, pendingAction, roomCode]
+    [actionAmountInput, actionCopy, game, isZh, pendingAction, roomCode]
   );
 
   const settlementCandidates = useMemo(() => {
@@ -395,12 +402,62 @@ function HomePageContent() {
                   {isZh ? "\u8bbe\u7f6e\u4e0b\u6ce8/\u52a0\u6ce8\u91d1\u989d" : "Set bet/raise amount"}
                 </p>
                 <input
-                  type="number"
-                  min={1}
-                  value={actionAmount}
-                  onChange={(event) => setActionAmount(Number(event.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  value={actionAmountInput}
+                  onChange={(event) => {
+                    const digitsOnly = event.target.value.replace(/[^\d]/g, "");
+                    const normalized = digitsOnly.replace(/^0+(?=\d)/, "");
+                    setActionAmountInput(normalized);
+                  }}
                   className="mt-2 w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
                 />
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl bg-stitch-tertiary/20 px-2 py-2 text-xs font-semibold text-stitch-tertiary"
+                    onClick={() => {
+                      const current = Number(actionAmountInput || "0");
+                      const next = Math.max(0, (Number.isFinite(current) ? current : 0) - 100);
+                      setActionAmountInput(next === 0 ? "" : String(next));
+                    }}
+                  >
+                    \u2b05 -100
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-stitch-tertiary/20 px-2 py-2 text-xs font-semibold text-stitch-tertiary"
+                    onClick={() => {
+                      const current = Number(actionAmountInput || "0");
+                      const next = Math.max(0, (Number.isFinite(current) ? current : 0) - 50);
+                      setActionAmountInput(next === 0 ? "" : String(next));
+                    }}
+                  >
+                    \u2b05 -50
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-stitch-mint/20 px-2 py-2 text-xs font-semibold text-stitch-mint"
+                    onClick={() => {
+                      const current = Number(actionAmountInput || "0");
+                      const next = Math.max(0, (Number.isFinite(current) ? current : 0) + 50);
+                      setActionAmountInput(String(next));
+                    }}
+                  >
+                    +50 \u27a1
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-stitch-mint/20 px-2 py-2 text-xs font-semibold text-stitch-mint"
+                    onClick={() => {
+                      const current = Number(actionAmountInput || "0");
+                      const next = Math.max(0, (Number.isFinite(current) ? current : 0) + 100);
+                      setActionAmountInput(String(next));
+                    }}
+                  >
+                    +100 \u27a1
+                  </button>
+                </div>
                 <p className="mt-1 text-[11px] text-stitch-onSurfaceVariant">
                   {isZh ? "\u6700\u5c0f\u4e0b\u6ce8" : "Min Bet"}: {game.minBet} | {isZh ? "\u6700\u5c0f\u52a0\u6ce8\u589e\u91cf" : "Min Raise Delta"}: {game.minRaiseDelta}
                 </p>

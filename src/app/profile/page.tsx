@@ -20,11 +20,10 @@ function formatMoney(value: string, locale: AppLocale): string {
   if (Number.isNaN(amount)) {
     return "$0";
   }
-  return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    style: "currency",
-    currency: "USD",
+  const formatted = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(Math.abs(amount));
+  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 export default function ProfilePage() {
@@ -122,8 +121,13 @@ export default function ProfilePage() {
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center rounded-full border border-stitch-mint/40 bg-stitch-surfaceContainerHigh text-lg font-semibold text-stitch-mint">
-                    {avatarLabel}
+                  <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border border-stitch-mint/40 bg-stitch-surfaceContainerHigh text-lg font-semibold text-stitch-mint">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt={isZh ? "\u5934\u50cf" : "Avatar"} className="h-full w-full object-cover" />
+                    ) : (
+                      avatarLabel
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-stitch-onSurface">{username}</p>
@@ -161,7 +165,32 @@ export default function ProfilePage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                    {isZh ? "\u5934\u50cf URL\uff08\u53ef\u9009\uff09" : "Avatar URL (optional placeholder)"}
+                    {isZh ? "\u5934\u50cf\u6587\u4ef6" : "Avatar File"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface file:mr-3 file:rounded-lg file:border-0 file:bg-stitch-primary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-stitch-onPrimary"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) {
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === "string") {
+                          setAvatarUrl(reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u6216\u4f7f\u7528\u5934\u50cf URL" : "Or Avatar URL"}
                   </span>
                   <input
                     value={avatarUrl}

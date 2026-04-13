@@ -12,11 +12,10 @@ function formatMoney(value: string, locale: AppLocale): string {
   if (Number.isNaN(amount)) {
     return "$0";
   }
-  return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    style: "currency",
-    currency: "USD",
+  const formatted = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(Math.abs(amount));
+  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 export default function HistoryPage() {
