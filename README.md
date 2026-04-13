@@ -58,7 +58,7 @@ Examples:
 
 ## Deployment
 
-- Render + Neon guide: [docs/deployment-render-neon.md](docs/deployment-render-neon.md)
+- Railway + Neon guide: [docs/deployment-railway-neon.md](docs/deployment-railway-neon.md)
 - Deployment checklist: [docs/deployment-checklist.md](docs/deployment-checklist.md)
 
 ## Health Check

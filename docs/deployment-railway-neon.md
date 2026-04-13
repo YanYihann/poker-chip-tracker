@@ -1,8 +1,8 @@
-# Deployment Guide (Render + Neon)
+# Deployment Guide (Railway + Neon)
 
 ## Architecture
 
-- Frontend: Next.js app (this repository root)
+- Frontend: Next.js app (repository root)
 - Backend: Node.js + TypeScript service in `server/`
 - Database: Neon Postgres
 
@@ -12,39 +12,47 @@
 2. Copy two connection strings:
 - pooled URL for app runtime (`DATABASE_URL`)
 - direct URL for migrations (`DATABASE_URL_DIRECT`)
-3. Confirm SSL mode is enabled in Neon URLs.
+3. Keep SSL enabled in Neon URLs.
 
-## Render Backend Service (`/server`)
+## Railway Backend Service (`/server`)
 
-Create a new Render **Web Service**:
+Create a Railway service from GitHub:
 
 - Root Directory: `server`
 - Build Command: `npm install && npm run prisma:generate && npm run build`
 - Start Command: `npm run prisma:migrate:deploy && npm run start`
-- Runtime: Node 20+
+- Healthcheck Path: `/health`
 
-Set environment variables:
+Set backend environment variables:
 
 - `NODE_ENV=production`
-- `PORT=10000` (or Render provided port)
+- `PORT=3001` (or keep Railway default and map internally if needed)
 - `CLIENT_ORIGIN=<your-frontend-origin>`
 - `SESSION_COOKIE_NAME=poker_chip_session`
 - `SESSION_TTL_DAYS=30`
 - `DATABASE_URL=<neon pooled url>`
 - `DATABASE_URL_DIRECT=<neon direct url>`
 
-## Frontend Deployment
+## Railway Frontend Service (`/`)
 
-Deploy frontend separately (for example Render Static Site or Vercel) and set:
+Create another Railway service from the same GitHub repository:
+
+- Root Directory: `.`
+- Build Command: `npm install && npm run build`
+- Start Command: `npm run start`
+
+Set frontend environment variables:
 
 - `NEXT_PUBLIC_API_BASE_URL=<backend-public-url>`
+
+Optional local fallback:
+
+- `NEXT_PUBLIC_API_PORT=3001`
 
 ## Health Checks
 
 - Backend health endpoint: `/health`
-- Render health check path: `/health`
-
-Expected healthy payload:
+- Expected healthy payload:
 
 ```json
 {
@@ -56,5 +64,5 @@ Expected healthy payload:
 ## Secrets Hygiene
 
 - Never commit `.env` or `.env.local`.
-- Keep secrets only in Render/Neon environment variable managers.
-- Rotate credentials if a secret is exposed.
+- Store secrets only in Railway/Neon environment variable settings.
+- Rotate credentials immediately if any secret is exposed.

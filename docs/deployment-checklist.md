@@ -20,12 +20,13 @@
 - [ ] Backend `NODE_ENV`
 - [ ] Backend `PORT`
 
-## Render / Neon
+## Railway / Neon
 
-- [ ] Neon database reachable from Render
-- [ ] Render build command configured
-- [ ] Render start command runs `prisma migrate deploy`
-- [ ] Render health check path set to `/health`
+- [ ] Neon database reachable from Railway
+- [ ] Railway service root set correctly (`/` for frontend, `/server` for backend)
+- [ ] Railway build/start commands configured
+- [ ] Backend start command runs `prisma migrate deploy`
+- [ ] Railway health check path set to `/health`
 
 ## Post-deploy Smoke Tests
 

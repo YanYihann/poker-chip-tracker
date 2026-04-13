@@ -1,6 +1,6 @@
 # poker-chip-tracker server
 
-Backend foundation for Render + Neon.
+Backend foundation for Railway + Neon.
 
 ## Setup
 
@@ -47,7 +47,7 @@ Server expects authenticated cookie session.
 - server -> `room:state` (shared room snapshot)
 - server -> `room:error` `{ message }`
 
-## Render
+## Railway
 
 - Build command: `npm install && npm run build`
 - Start command: `npm run start`
