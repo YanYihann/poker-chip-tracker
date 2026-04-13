@@ -15,6 +15,7 @@
   --accent-soft: var(--stitch-primary-container);
   --accent-strong: var(--stitch-mint);
   --accent-foreground: var(--stitch-on-primary);
+  --font-apple-zh: "PingFang SC", "Hiragino Sans GB", "SF Pro SC", "Microsoft YaHei", sans-serif;
 }
 
 * {
@@ -27,7 +28,7 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body), var(--font-apple-zh);
   letter-spacing: 0.01em;
 }
 
@@ -35,11 +36,11 @@ h1,
 h2,
 h3,
 .font-display {
-  font-family: var(--font-headline), serif;
+  font-family: var(--font-headline), var(--font-apple-zh);
 }
 
 .font-label {
-  font-family: var(--font-label), sans-serif;
+  font-family: var(--font-label), var(--font-apple-zh);
 }
 
 a {
