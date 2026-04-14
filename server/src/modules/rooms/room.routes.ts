@@ -18,6 +18,7 @@ import {
   applyPlayerActionByRoomCode,
   decideNextHandByRoomCode,
   createRoom,
+  getRoomActionPatchByCode,
   getRoomStateByCode,
   joinRoomByCode,
   settleHandByRoomCode,
@@ -285,15 +286,62 @@ export function createRoomRouter() {
     try {
       const { roomCode } = roomCodeParamSchema.parse(req.params);
       const payload = roomActionSchema.parse(req.body);
-      const roomState = await applyPlayerActionByRoomCode({
+      const requestReceivedAtMs = Date.now();
+      const traceIdHeader = req.header("x-action-trace-id");
+      const clientActionAtHeader = req.header("x-client-action-at");
+      const traceId =
+        typeof traceIdHeader === "string" && traceIdHeader.trim().length > 0
+          ? traceIdHeader.trim()
+          : `srv-${requestReceivedAtMs}-${Math.random().toString(36).slice(2, 8)}`;
+      const parsedClientActionAt = Number(clientActionAtHeader ?? "");
+      const clientActionAtMs =
+        Number.isFinite(parsedClientActionAt) && parsedClientActionAt > 0
+          ? Math.floor(parsedClientActionAt)
+          : null;
+      const responseMode =
+        req.query.response === "ack" || req.header("x-room-response-mode") === "ack"
+          ? "ack"
+          : "room";
+
+      console.info("[online-trace] server_request_received", {
+        traceId,
+        roomCode,
+        actionType: payload.actionType,
+        requestReceivedAtMs,
+        clientActionAtMs
+      });
+
+      const result = await applyPlayerActionByRoomCode({
         roomCode,
         userId: req.authSession!.userId,
         actionType: payload.actionType,
-        amount: payload.amount
+        amount: payload.amount,
+        includeRoomState: responseMode === "room",
+        trace: {
+          traceId,
+          clientActionAtMs,
+          requestReceivedAtMs
+        }
       });
 
-      res.status(200).json({ room: roomState });
-      emitRoomActionPatch(roomCode, buildRoomActionPatch(roomState));
+      const actionPatch =
+        result.roomState
+          ? buildRoomActionPatch(result.roomState)
+          : await getRoomActionPatchByCode(roomCode);
+      if (actionPatch) {
+        emitRoomActionPatch(roomCode, actionPatch, result.traceMeta);
+      }
+
+      if (responseMode === "ack") {
+        res.status(202).json({ ok: true, trace: result.traceMeta });
+        return;
+      }
+
+      if (!result.roomState) {
+        throw new Error("ROOM_NOT_FOUND");
+      }
+
+      res.status(200).json({ room: result.roomState });
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);

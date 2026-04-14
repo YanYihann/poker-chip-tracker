@@ -27,6 +27,15 @@ type RoomPlayer = {
   joinedAtIso: string;
 };
 
+export type RoomActionTraceMeta = {
+  traceId: string;
+  clientActionAtMs: number | null;
+  requestReceivedAtMs: number;
+  dbTransactionStartedAtMs: number;
+  dbTransactionCommittedAtMs: number;
+  websocketBroadcastSentAtMs?: number;
+};
+
 export type RoomState = {
   room: {
     id: string;
@@ -113,6 +122,7 @@ export type RoomActionPatch = {
     isReady: boolean;
     isConnected: boolean;
   }>;
+  meta?: RoomActionTraceMeta;
 };
 
 type ApiError = {
@@ -205,13 +215,40 @@ export async function startRoom(roomCode: string): Promise<RoomState> {
 export async function submitRoomAction(
   roomCode: string,
   actionType: "fold" | "check" | "call" | "bet" | "raise" | "all-in",
-  amount?: number
-): Promise<RoomState> {
-  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/action`, {
-    method: "POST",
-    body: JSON.stringify({ actionType, amount })
-  });
-  return payload.room;
+  amount?: number,
+  options?: {
+    responseMode?: "room" | "ack";
+    trace?: {
+      traceId: string;
+      clientActionAtMs: number;
+    };
+  }
+): Promise<RoomState | null> {
+  const responseMode = options?.responseMode ?? "room";
+  const payload = await request<{ room: RoomState } | { ok: true; trace?: RoomActionTraceMeta }>(
+    `/api/rooms/${roomCode.toUpperCase()}/action${responseMode === "ack" ? "?response=ack" : ""}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ actionType, amount }),
+      headers: {
+        ...(options?.trace
+          ? {
+              "x-action-trace-id": options.trace.traceId,
+              "x-client-action-at": String(options.trace.clientActionAtMs),
+              "x-room-response-mode": responseMode
+            }
+          : {
+              "x-room-response-mode": responseMode
+            })
+      }
+    }
+  );
+
+  if ("room" in payload) {
+    return payload.room;
+  }
+
+  return null;
 }
 
 export async function updateRoomBlinds(

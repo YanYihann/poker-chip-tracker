@@ -5,6 +5,7 @@ import { performance } from "node:perf_hooks";
 import { Prisma } from "@prisma/client";
 
 import { recordPerfSample } from "../../lib/perf-metrics.js";
+import type { RoomActionPatch, RoomActionTraceMeta } from "../../realtime/room-patch.js";
 import {
   createStandardDeck,
   dealCards,
@@ -97,6 +98,54 @@ type RoomRecord = {
 };
 
 export type PlayerActionType = "fold" | "check" | "call" | "bet" | "raise" | "all-in";
+
+type ActionTraceInput = {
+  traceId: string;
+  clientActionAtMs: number | null;
+  requestReceivedAtMs: number;
+} | null;
+
+type RoomPatchSnapshotPlayerRecord = {
+  userId: string;
+  seatIndex: number | null;
+  stack: bigint | number;
+  currentBet: bigint | number;
+  isReady: boolean;
+  isConnected: boolean;
+  hasFolded: boolean;
+  isAllIn: boolean;
+  leftAt: Date | null;
+};
+
+type RoomPatchSnapshotHandRecord = {
+  id: string;
+  handNumber: number;
+  street: StreetCode;
+  status: HandStatusCode;
+  dealerSeat: number;
+  sbSeat: number;
+  bbSeat: number;
+  activeSeat: number | null;
+  potTotal: bigint | number;
+  boardCards: string[];
+};
+
+type RoomPatchSnapshot = {
+  roomCode: string;
+  status: string;
+  gameMode: string;
+  currentHandNumber: number;
+  currentStreet: string | null;
+  activeSeat: number | null;
+  bigBlind: bigint | number;
+  roomPlayers: RoomPatchSnapshotPlayerRecord[];
+  hands: RoomPatchSnapshotHandRecord[];
+};
+
+export type ApplyPlayerActionResult = {
+  roomState: RoomState | null;
+  traceMeta: RoomActionTraceMeta | null;
+};
 
 export type RoomState = {
   room: {
@@ -511,6 +560,129 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
       roomCode: normalizedRoomCode
     });
   }
+}
+
+async function fetchRoomPatchSnapshotByCode(roomCode: string): Promise<RoomPatchSnapshot | null> {
+  const normalizedRoomCode = normalizeRoomCode(roomCode);
+
+  return (await prisma.gameRoom.findUnique({
+    where: { roomCode: normalizedRoomCode },
+    select: {
+      roomCode: true,
+      status: true,
+      gameMode: true,
+      currentHandNumber: true,
+      currentStreet: true,
+      activeSeat: true,
+      bigBlind: true,
+      roomPlayers: {
+        select: {
+          userId: true,
+          seatIndex: true,
+          stack: true,
+          currentBet: true,
+          isReady: true,
+          isConnected: true,
+          hasFolded: true,
+          isAllIn: true,
+          leftAt: true
+        }
+      },
+      hands: {
+        orderBy: {
+          handNumber: "desc"
+        },
+        take: 1,
+        select: {
+          id: true,
+          handNumber: true,
+          street: true,
+          status: true,
+          dealerSeat: true,
+          sbSeat: true,
+          bbSeat: true,
+          activeSeat: true,
+          potTotal: true,
+          boardCards: true
+        }
+      }
+    }
+  })) as RoomPatchSnapshot | null;
+}
+
+function buildRoomActionPatchFromSnapshot(snapshot: RoomPatchSnapshot): RoomActionPatch {
+  const roomStatus = toPublicRoomStatus(snapshot.status);
+  const roomMode = toPublicRoomMode(snapshot.gameMode);
+  const latestHand = snapshot.hands[0] ?? null;
+  const handStatus = normalizeHandStatus(latestHand?.status);
+  const streetCode = normalizeStreet(snapshot.currentStreet ?? latestHand?.street);
+  const gameStatus: NonNullable<RoomActionPatch["game"]>["status"] =
+    handStatus === "SETTLED" ? "settled" : streetCode === "SHOWDOWN" ? "showdown" : "in-progress";
+
+  const players = snapshot.roomPlayers
+    .filter((player) => !player.leftAt)
+    .sort((a, b) => (a.seatIndex ?? Number.MAX_SAFE_INTEGER) - (b.seatIndex ?? Number.MAX_SAFE_INTEGER));
+
+  const activeSeat = latestHand?.activeSeat ?? snapshot.activeSeat;
+  const activePlayer =
+    activeSeat === null ? null : players.find((player) => player.seatIndex === activeSeat) ?? null;
+
+  const currentBet = players
+    .filter((player) => !player.hasFolded)
+    .reduce((maxBet, player) => Math.max(maxBet, toNumber(player.currentBet)), 0);
+
+  const reservedBoardCards =
+    roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];
+  const boardCards = roomMode === "online" ? revealedBoardCardsByStreet(reservedBoardCards, streetCode) : [];
+  const minBet = Math.max(1, toNumber(snapshot.bigBlind));
+
+  return {
+    type: "action-applied",
+    roomCode: snapshot.roomCode,
+    roomStatus,
+    game:
+      roomStatus !== "active" || !latestHand
+        ? null
+        : {
+            handId: latestHand.id,
+            handNumber: latestHand.handNumber ?? snapshot.currentHandNumber,
+            street: toPublicStreet(streetCode),
+            status: gameStatus,
+            potTotal: gameStatus === "settled" ? 0 : toNumber(latestHand.potTotal),
+            currentBet,
+            activeSeat,
+            activePlayerUserId: activePlayer?.userId ?? null,
+            dealerSeat: latestHand.dealerSeat ?? null,
+            sbSeat: latestHand.sbSeat ?? null,
+            bbSeat: latestHand.bbSeat ?? null,
+            minBet,
+            minRaiseDelta: minBet,
+            boardCards
+          },
+    players: players.map((player) => {
+      const stack = toNumber(player.stack);
+      const status: RoomActionPatch["players"][number]["status"] = player.hasFolded
+        ? "folded"
+        : player.isAllIn || stack <= 0
+          ? "all-in"
+          : gameStatus === "in-progress" &&
+              activeSeat !== null &&
+              player.seatIndex !== null &&
+              player.seatIndex === activeSeat
+            ? "acting"
+            : "waiting";
+
+      return {
+        userId: player.userId,
+        seatIndex: player.seatIndex,
+        stack,
+        currentBet: toNumber(player.currentBet),
+        status,
+        isReady: player.isReady,
+        isConnected: player.isConnected
+      };
+    })
+  };
 }
 
 function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomState {
@@ -1503,6 +1675,15 @@ export async function getRoomStatesByCodeForUsers(
   return statesByUserId;
 }
 
+export async function getRoomActionPatchByCode(roomCode: string): Promise<RoomActionPatch | null> {
+  const snapshot = await fetchRoomPatchSnapshotByCode(roomCode);
+  if (!snapshot) {
+    return null;
+  }
+
+  return buildRoomActionPatchFromSnapshot(snapshot);
+}
+
 export async function setPlayerReadyByRoomCode(input: {
   roomCode: string;
   userId: string;
@@ -1680,11 +1861,26 @@ export async function applyPlayerActionByRoomCode(input: {
   userId: string;
   actionType: PlayerActionType;
   amount?: number;
-}): Promise<RoomState> {
+  includeRoomState?: boolean;
+  trace?: ActionTraceInput;
+}): Promise<ApplyPlayerActionResult> {
   const startedAt = performance.now();
   const roomCode = normalizeRoomCode(input.roomCode);
+  const includeRoomState = input.includeRoomState !== false;
+  let dbTransactionStartedAtMs = 0;
+  let dbTransactionCommittedAtMs = 0;
 
   try {
+    dbTransactionStartedAtMs = Date.now();
+    if (input.trace?.traceId) {
+      console.info("[online-trace] db_transaction_start", {
+        traceId: input.trace.traceId,
+        roomCode,
+        actionType: input.actionType,
+        dbTransactionStartedAtMs
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
     const room = (await tx.gameRoom.findUnique({
       where: { roomCode },
@@ -2023,13 +2219,44 @@ export async function applyPlayerActionByRoomCode(input: {
     });
     });
 
+    dbTransactionCommittedAtMs = Date.now();
+    if (input.trace?.traceId) {
+      console.info("[online-trace] db_transaction_commit", {
+        traceId: input.trace.traceId,
+        roomCode,
+        actionType: input.actionType,
+        dbTransactionCommittedAtMs,
+        dbTransactionDurationMs: Math.max(0, dbTransactionCommittedAtMs - dbTransactionStartedAtMs)
+      });
+    }
+
+    const traceMeta: RoomActionTraceMeta | null = input.trace?.traceId
+      ? {
+          traceId: input.trace.traceId,
+          clientActionAtMs: input.trace.clientActionAtMs,
+          requestReceivedAtMs: input.trace.requestReceivedAtMs,
+          dbTransactionStartedAtMs,
+          dbTransactionCommittedAtMs
+        }
+      : null;
+
+    if (!includeRoomState) {
+      return {
+        roomState: null,
+        traceMeta
+      };
+    }
+
     const next = await fetchRoomByCode(roomCode);
 
     if (!next) {
       throw new Error("ROOM_NOT_FOUND");
     }
 
-    return buildRoomState(next, input.userId);
+    return {
+      roomState: buildRoomState(next, input.userId),
+      traceMeta
+    };
   } finally {
     recordPerfSample("rooms.applyPlayerActionByRoomCode", performance.now() - startedAt, {
       roomCode,

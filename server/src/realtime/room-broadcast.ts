@@ -3,7 +3,7 @@ import type { Server as SocketServer } from "socket.io";
 
 import { recordPerfSample } from "../lib/perf-metrics.js";
 import { getRoomStatesByCodeForUsers } from "../modules/rooms/room.service.js";
-import type { RoomActionPatch } from "./room-patch.js";
+import type { RoomActionPatch, RoomActionTraceMeta } from "./room-patch.js";
 
 let ioRef: SocketServer | null = null;
 const BROADCAST_COALESCE_MS = 20;
@@ -94,10 +94,34 @@ export function scheduleBroadcastRoomState(roomCode: string): void {
   pendingBroadcastTimers.set(normalizedRoomCode, timer);
 }
 
-export function emitRoomActionPatch(roomCode: string, patch: RoomActionPatch): void {
+export function emitRoomActionPatch(
+  roomCode: string,
+  patch: RoomActionPatch,
+  traceMeta?: RoomActionTraceMeta | null
+): void {
   if (!ioRef) {
     return;
   }
 
-  ioRef.to(roomChannel(roomCode)).emit("room:patch", patch);
+  const broadcastSentAtMs = Date.now();
+  const nextPatch =
+    traceMeta && traceMeta.traceId
+      ? {
+          ...patch,
+          meta: {
+            ...traceMeta,
+            websocketBroadcastSentAtMs: broadcastSentAtMs
+          }
+        }
+      : patch;
+
+  ioRef.to(roomChannel(roomCode)).emit("room:patch", nextPatch);
+
+  if (traceMeta && traceMeta.traceId) {
+    console.info("[online-trace] websocket_broadcast_sent", {
+      traceId: traceMeta.traceId,
+      roomCode: roomCode.toUpperCase(),
+      websocketBroadcastSentAtMs: broadcastSentAtMs
+    });
+  }
 }

@@ -8,6 +8,7 @@ import { resolveCorsOrigin } from "../config/cors.js";
 import { env } from "../config/env.js";
 import {
   applyPlayerActionByRoomCode,
+  getRoomActionPatchByCode,
   getRoomStateByCode,
   setPlayerConnectionByRoomCode,
   setPlayerReadyByRoomCode,
@@ -156,13 +157,20 @@ export function setupSocketServer(httpServer: HttpServer): Server {
     socket.on("room:action", async (rawPayload: unknown) => {
       try {
         const payload = actionPayloadSchema.parse(rawPayload);
-        const roomState = await applyPlayerActionByRoomCode({
+        const result = await applyPlayerActionByRoomCode({
           roomCode: payload.roomCode,
           userId: auth.userId,
           actionType: payload.actionType,
           amount: payload.amount
         });
-        emitRoomActionPatch(payload.roomCode, buildRoomActionPatch(roomState));
+
+        const actionPatch =
+          result.roomState
+            ? buildRoomActionPatch(result.roomState)
+            : await getRoomActionPatchByCode(payload.roomCode);
+        if (actionPatch) {
+          emitRoomActionPatch(payload.roomCode, actionPatch, result.traceMeta);
+        }
       } catch {
         socket.emit("room:error", { message: "Unable to apply action." });
       }
