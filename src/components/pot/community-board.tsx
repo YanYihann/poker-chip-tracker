@@ -95,7 +95,7 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
   return (
     <div
       className={[
-        "mt-3 flex items-center gap-1.5 rounded-2xl border px-2 py-2 backdrop-blur-sm",
+        "mt-2 flex items-center gap-1 rounded-xl border px-1.5 py-1.5 backdrop-blur-sm sm:gap-1.5 sm:px-2 sm:py-2",
         street === "showdown"
           ? "border-stitch-primary/40 bg-stitch-surfaceContainerHighest/70 shadow-[0_0_20px_rgba(242,202,80,0.24)]"
           : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh/70"
@@ -108,13 +108,13 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
         return (
           <div
             key={`${handKey}-${index}`}
-            className="relative h-14 w-10 shrink-0 rounded-md border border-black/40 shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
+            className="relative h-10 w-7 shrink-0 rounded-md border border-black/40 shadow-[0_4px_10px_rgba(0,0,0,0.42)] sm:h-12 sm:w-8"
           >
             {isRevealed ? (
               <motion.div
                 className={[
                   "absolute inset-0 rounded-md border bg-gradient-to-b from-[#f6f0de] to-[#e6dcc4]",
-                  "border-[#5d4e33] text-[11px] font-semibold",
+                  "border-[#5d4e33] text-[9px] font-semibold sm:text-[10px]",
                   isNewlyRevealed ? "shadow-[0_0_12px_rgba(242,202,80,0.55)]" : ""
                 ].join(" ")}
                 initial={
@@ -141,7 +141,7 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
               >
                 <span
                   className={[
-                    "absolute left-1 top-1 leading-none",
+                    "absolute left-0.5 top-0.5 leading-none sm:left-1 sm:top-1",
                     isRedSuit(card.suit) ? "text-[#b63b2f]" : "text-[#1f1f1f]"
                   ].join(" ")}
                 >
@@ -149,7 +149,7 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
                 </span>
                 <span
                   className={[
-                    "absolute bottom-1 right-1 text-[12px] leading-none",
+                    "absolute bottom-0.5 right-0.5 text-[10px] leading-none sm:bottom-1 sm:right-1 sm:text-[11px]",
                     isRedSuit(card.suit) ? "text-[#b63b2f]" : "text-[#1f1f1f]"
                   ].join(" ")}
                 >
@@ -159,7 +159,7 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
             ) : (
               <div className="absolute inset-0 rounded-md border border-[#8f6d2a] bg-[radial-gradient(circle_at_28%_22%,rgba(246,208,102,0.22)_0%,rgba(66,22,10,0.85)_58%,rgba(33,12,8,0.95)_100%)]">
                 <div className="absolute inset-1 rounded-[4px] border border-[#d9b14d]/50 bg-[repeating-linear-gradient(45deg,rgba(217,177,77,0.22)_0px,rgba(217,177,77,0.22)_2px,rgba(66,22,10,0.12)_2px,rgba(66,22,10,0.12)_4px)]" />
-                <div className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9b14d]/60 bg-black/20" />
+                <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9b14d]/60 bg-black/20 sm:h-4 sm:w-4" />
               </div>
             )}
           </div>
