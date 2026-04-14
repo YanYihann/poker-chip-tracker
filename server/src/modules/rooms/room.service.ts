@@ -1009,11 +1009,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
         }
       : null,
     canStart:
-      !!mePlayer?.isHost &&
-      roomStatus === "waiting" &&
-      players.length >= 2 &&
-      players.every((player) => player.seatIndex !== null) &&
-      allReady,
+      !!mePlayer?.isHost && roomStatus === "waiting" && players.length >= 2 && allReady,
     game:
       roomStatus !== "active"
         ? null
@@ -1996,7 +1992,7 @@ export async function joinRoomByCode(input: {
       throw new Error("ROOM_FULL");
     }
 
-    const shouldAssignSeatImmediately = room.status !== "WAITING";
+    const shouldAssignSeatImmediately = true;
     let nextSeat: number | null = null;
     if (shouldAssignSeatImmediately) {
       const usedSeats = new Set(activePlayers.map((player) => player.seatIndex).filter((seat) => seat !== null));
@@ -2105,10 +2101,6 @@ export async function setPlayerReadyByRoomCode(input: {
 
   if (room.status !== "WAITING") {
     throw new Error("ROOM_NOT_WAITING");
-  }
-
-  if (input.isReady && member.seatIndex === null) {
-    throw new Error("SEAT_NOT_SELECTED");
   }
 
   await prisma.roomPlayer.update({
@@ -2281,21 +2273,12 @@ async function startFirstHand(roomCode: string, hostUserId: string): Promise<voi
       throw new Error("ROOM_ALREADY_STARTED");
     }
 
-    const activeMembers = room.roomPlayers.filter((player) => !player.leftAt);
-    if (activeMembers.length < 2) {
+    const activePlayers = getSeatedActivePlayers(room.roomPlayers);
+    const readyPlayers = activePlayers.filter((player) => player.isReady);
+
+    if (readyPlayers.length < 2 || readyPlayers.length !== activePlayers.length) {
       throw new Error("ROOM_NOT_READY");
     }
-
-    if (activeMembers.some((player) => player.seatIndex === null)) {
-      throw new Error("SEAT_SELECTION_INCOMPLETE");
-    }
-
-    const readyPlayers = activeMembers.filter((player) => player.isReady);
-    if (readyPlayers.length !== activeMembers.length) {
-      throw new Error("ROOM_NOT_READY");
-    }
-
-    const activePlayers = getSeatedActivePlayers(activeMembers);
     const hostPlayer = activePlayers.find((player) => player.userId === hostUserId);
     if (!hostPlayer || hostPlayer.seatIndex === null) {
       throw new Error("NOT_A_MEMBER");

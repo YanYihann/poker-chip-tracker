@@ -41,6 +41,34 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
   const folded = player.status === "folded";
   const heroOrActive = player.isHero || player.isActive;
 
+  if (player.isPlaceholder) {
+    return (
+      <article
+        className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+        style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
+        aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
+      >
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={player.onPress}
+            disabled={!player.onPress}
+            className={cn(
+              avatarSize,
+              "grid place-items-center overflow-hidden rounded-full border text-base font-bold transition",
+              player.placeholderSelected
+                ? "border-stitch-primary bg-stitch-primary/20 text-stitch-primary"
+                : "border-stitch-outlineVariant/60 bg-stitch-surfaceContainer text-stitch-onSurface hover:border-stitch-primary/50 hover:text-stitch-primary"
+            )}
+          >
+            {player.placeholderLabel ?? "+"}
+          </button>
+          <p className="text-[10px] text-stitch-onSurfaceVariant">{player.name}</p>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article
       className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
