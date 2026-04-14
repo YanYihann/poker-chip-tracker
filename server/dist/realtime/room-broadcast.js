@@ -1,5 +1,7 @@
 import { getRoomStatesByCodeForUsers } from "../modules/rooms/room.service.js";
 let ioRef = null;
+const BROADCAST_COALESCE_MS = 20;
+const pendingBroadcastTimers = new Map();
 export function roomChannel(roomCode) {
     return `room:${roomCode.toUpperCase()}`;
 }
@@ -35,7 +37,15 @@ export async function broadcastRoomState(roomCode) {
     }));
 }
 export function scheduleBroadcastRoomState(roomCode) {
-    void broadcastRoomState(roomCode).catch((error) => {
-        console.error("[realtime] room broadcast failed", { roomCode, error });
-    });
+    const normalizedRoomCode = roomCode.toUpperCase();
+    if (pendingBroadcastTimers.has(normalizedRoomCode)) {
+        return;
+    }
+    const timer = setTimeout(() => {
+        pendingBroadcastTimers.delete(normalizedRoomCode);
+        void broadcastRoomState(normalizedRoomCode).catch((error) => {
+            console.error("[realtime] room broadcast failed", { roomCode: normalizedRoomCode, error });
+        });
+    }, BROADCAST_COALESCE_MS);
+    pendingBroadcastTimers.set(normalizedRoomCode, timer);
 }

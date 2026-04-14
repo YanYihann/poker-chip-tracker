@@ -159,6 +159,7 @@ model RoomPlayer {
 
   @@unique([roomId, userId])
   @@unique([roomId, seatIndex])
+  @@index([roomId, leftAt, seatIndex])
   @@map("room_players")
 }
 
@@ -200,6 +201,8 @@ model HandAction {
   user        User           @relation(fields: [userId], references: [id])
 
   @@unique([handId, actionOrder])
+  @@index([handId, street, seatIndex])
+  @@index([roomId, userId, handId])
   @@map("hand_actions")
 }
 

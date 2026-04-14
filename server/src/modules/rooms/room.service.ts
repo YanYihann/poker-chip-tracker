@@ -1623,11 +1623,20 @@ export async function applyPlayerActionByRoomCode(input: {
       });
     }
 
-    const actionCount = await tx.handAction.count({
+    const existingHandActions = await tx.handAction.findMany({
       where: {
         handId: hand.id
+      },
+      select: {
+        actionOrder: true,
+        seatIndex: true,
+        street: true
       }
     });
+    const nextActionOrder = existingHandActions.reduce(
+      (maxOrder, action) => Math.max(maxOrder, action.actionOrder),
+      0
+    ) + 1;
 
     await tx.handAction.create({
       data: {
@@ -1638,7 +1647,7 @@ export async function applyPlayerActionByRoomCode(input: {
         street,
         actionType: mapActionTypeToDb(input.actionType),
         amount: BigInt(contribution),
-        actionOrder: actionCount + 1
+        actionOrder: nextActionOrder
       }
     });
 
@@ -1675,17 +1684,12 @@ export async function applyPlayerActionByRoomCode(input: {
     let nextActiveSeat: number | null = null;
 
     if (nextCurrentBetMax === 0) {
-      const streetActions = await tx.handAction.findMany({
-        where: {
-          handId: hand.id,
-          street
-        },
-        select: {
-          seatIndex: true
-        }
-      });
-
-      const actedSeats = new Set(streetActions.map((action) => action.seatIndex));
+      const actedSeats = new Set(
+        existingHandActions
+          .filter((action) => action.street === street)
+          .map((action) => action.seatIndex)
+      );
+      actedSeats.add(actor.seatIndex);
       roundComplete = actionable.every((player) =>
         player.seatIndex !== null ? actedSeats.has(player.seatIndex) : false
       );

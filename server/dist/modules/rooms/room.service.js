@@ -135,31 +135,48 @@ function computeNextStreet(street) {
     }
     return "SHOWDOWN";
 }
+const POSITION_SEQUENCE_BY_PLAYER_COUNT = {
+    2: ["BTN/SB", "BB"],
+    3: ["BTN", "SB", "BB"],
+    4: ["BTN", "SB", "BB", "UTG"],
+    5: ["BTN", "SB", "BB", "UTG", "CO"],
+    6: ["BTN", "SB", "BB", "UTG", "HJ", "CO"],
+    7: ["BTN", "SB", "BB", "UTG", "MP", "HJ", "CO"],
+    8: ["BTN", "SB", "BB", "UTG", "UTG+1", "MP", "HJ", "CO"],
+    9: ["BTN", "SB", "BB", "UTG", "UTG+1", "MP", "LJ", "HJ", "CO"]
+};
+function toStoredPositionCode(label) {
+    if (label === "BTN/SB") {
+        return "BTN";
+    }
+    if (label === "UTG+1") {
+        return "MP";
+    }
+    if (label === "LJ") {
+        return "HJ";
+    }
+    return label;
+}
 function computePositionLabelBySeat(orderedPlayers, dealerSeat, sbSeat, bbSeat) {
     const labels = new Map();
     if (orderedPlayers.length === 0) {
         return labels;
     }
-    labels.set(dealerSeat, "BTN");
-    if (sbSeat !== null && sbSeat !== dealerSeat) {
-        labels.set(sbSeat, "SB");
-    }
-    if (bbSeat !== null && bbSeat !== dealerSeat && bbSeat !== sbSeat) {
-        labels.set(bbSeat, "BB");
-    }
     const dealerIndex = orderedPlayers.findIndex((player) => player.seatIndex === dealerSeat);
     const safeDealerIndex = dealerIndex >= 0 ? dealerIndex : 0;
-    const postBlindLabels = ["UTG", "MP", "HJ", "CO"];
-    let postBlindIndex = 0;
-    for (let step = 1; step <= orderedPlayers.length; step += 1) {
+    const expectedSequence = POSITION_SEQUENCE_BY_PLAYER_COUNT[orderedPlayers.length] ?? POSITION_SEQUENCE_BY_PLAYER_COUNT[9];
+    for (let step = 0; step < orderedPlayers.length; step += 1) {
         const cursor = (safeDealerIndex + step) % orderedPlayers.length;
         const seat = orderedPlayers[cursor].seatIndex;
-        if (seat === null || labels.has(seat)) {
+        if (seat === null) {
             continue;
         }
-        const label = postBlindLabels[Math.min(postBlindIndex, postBlindLabels.length - 1)];
+        const label = expectedSequence[Math.min(step, expectedSequence.length - 1)];
         labels.set(seat, label);
-        postBlindIndex += 1;
+    }
+    if (orderedPlayers.length === 2 && sbSeat !== null && bbSeat !== null) {
+        labels.set(sbSeat, "BTN/SB");
+        labels.set(bbSeat, "BB");
     }
     return labels;
 }
@@ -227,6 +244,15 @@ function buildRoomState(room, currentUserId) {
         }
         return a.joinedAt.getTime() - b.joinedAt.getTime();
     });
+    const eligibleForPosition = getSeatedActivePlayers(sortedPlayers).filter((player) => toNumber(player.stack) > 0 || toNumber(player.currentBet) > 0);
+    const dealerSeatForLabels = latestHand?.dealerSeat ??
+        room.dealerSeat ??
+        eligibleForPosition[0]?.seatIndex ??
+        sortedPlayers[0]?.seatIndex ??
+        null;
+    const labelBySeat = dealerSeatForLabels === null
+        ? new Map()
+        : computePositionLabelBySeat(eligibleForPosition, dealerSeatForLabels, latestHand?.sbSeat ?? null, latestHand?.bbSeat ?? null);
     const players = sortedPlayers.map((player) => {
         const stack = toNumber(player.stack);
         const currentBet = toNumber(player.currentBet);
@@ -252,7 +278,9 @@ function buildRoomState(room, currentUserId) {
             stack,
             currentBet,
             status,
-            positionLabel: player.positionLabel,
+            positionLabel: player.seatIndex !== null
+                ? (labelBySeat.get(player.seatIndex) ?? null)
+                : null,
             joinedAtIso: player.joinedAt.toISOString()
         };
     });
@@ -553,19 +581,27 @@ async function startNextHand(input) {
     const dealerSeat = eligiblePlayers.some((player) => player.seatIndex === dealerSeatCandidate)
         ? dealerSeatCandidate
         : (eligiblePlayers[0].seatIndex ?? 0);
-    const sbSeat = getNextSeat(eligiblePlayers, dealerSeat, () => true);
-    const bbSeat = getNextSeat(eligiblePlayers, sbSeat ?? dealerSeat, () => true);
+    const isHeadsUp = eligiblePlayers.length === 2;
+    const sbSeat = isHeadsUp
+        ? dealerSeat
+        : getNextSeat(eligiblePlayers, dealerSeat, () => true);
+    const bbSeat = isHeadsUp
+        ? getNextSeat(eligiblePlayers, dealerSeat, () => true)
+        : getNextSeat(eligiblePlayers, sbSeat ?? dealerSeat, () => true);
     const labelBySeat = computePositionLabelBySeat(eligiblePlayers, dealerSeat, sbSeat, bbSeat);
-    await Promise.all(seatedPlayers.map((player) => tx.roomPlayer.update({
-        where: { id: player.id },
-        data: {
-            currentBet: BigInt(0),
-            hasFolded: false,
-            isAllIn: toNumber(player.stack) <= 0,
-            isEliminated: toNumber(player.stack) <= 0,
-            positionLabel: player.seatIndex !== null ? (labelBySeat.get(player.seatIndex) ?? null) : null
-        }
-    })));
+    await Promise.all(seatedPlayers.map((player) => {
+        const computedLabel = player.seatIndex !== null ? labelBySeat.get(player.seatIndex) : null;
+        return tx.roomPlayer.update({
+            where: { id: player.id },
+            data: {
+                currentBet: BigInt(0),
+                hasFolded: false,
+                isAllIn: toNumber(player.stack) <= 0,
+                isEliminated: toNumber(player.stack) <= 0,
+                positionLabel: computedLabel ? toStoredPositionCode(computedLabel) : null
+            }
+        });
+    }));
     const afterReset = (await tx.roomPlayer.findMany({
         where: {
             roomId: room.id,
@@ -1150,11 +1186,17 @@ export async function applyPlayerActionByRoomCode(input) {
                 }
             });
         }
-        const actionCount = await tx.handAction.count({
+        const existingHandActions = await tx.handAction.findMany({
             where: {
                 handId: hand.id
+            },
+            select: {
+                actionOrder: true,
+                seatIndex: true,
+                street: true
             }
         });
+        const nextActionOrder = existingHandActions.reduce((maxOrder, action) => Math.max(maxOrder, action.actionOrder), 0) + 1;
         await tx.handAction.create({
             data: {
                 handId: hand.id,
@@ -1164,7 +1206,7 @@ export async function applyPlayerActionByRoomCode(input) {
                 street,
                 actionType: mapActionTypeToDb(input.actionType),
                 amount: BigInt(contribution),
-                actionOrder: actionCount + 1
+                actionOrder: nextActionOrder
             }
         });
         const seatedNextPlayers = players.map((player) => {
@@ -1195,16 +1237,10 @@ export async function applyPlayerActionByRoomCode(input) {
         let roundComplete = false;
         let nextActiveSeat = null;
         if (nextCurrentBetMax === 0) {
-            const streetActions = await tx.handAction.findMany({
-                where: {
-                    handId: hand.id,
-                    street
-                },
-                select: {
-                    seatIndex: true
-                }
-            });
-            const actedSeats = new Set(streetActions.map((action) => action.seatIndex));
+            const actedSeats = new Set(existingHandActions
+                .filter((action) => action.street === street)
+                .map((action) => action.seatIndex));
+            actedSeats.add(actor.seatIndex);
             roundComplete = actionable.every((player) => player.seatIndex !== null ? actedSeats.has(player.seatIndex) : false);
             if (!roundComplete) {
                 nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) => actionable.some((candidate) => candidate.id === player.id));
