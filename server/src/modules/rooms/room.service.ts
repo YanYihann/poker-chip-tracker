@@ -1161,7 +1161,12 @@ async function settleCurrentHand(input: {
           const holeCardsByUser = normalizeHoleCardsByUser(hand.holeCardsByUser);
 
           if (boardCards.length < 5) {
-            throw new Error("HAND_NOT_SHOWDOWN");
+            console.warn("[settle] showdown cards incomplete, fallback to side-pot split.", {
+              roomCode: room.roomCode,
+              handId: hand.id,
+              boardCardCount: boardCards.length
+            });
+            return null;
           }
 
           const strengthByUserId = new Map<
@@ -1172,7 +1177,13 @@ async function settleCurrentHand(input: {
           for (const contender of contenders) {
             const holeCards = holeCardsByUser[contender.userId] ?? [];
             if (holeCards.length < 2) {
-              throw new Error("INVALID_WINNERS");
+              console.warn("[settle] hole cards incomplete, fallback to side-pot split.", {
+                roomCode: room.roomCode,
+                handId: hand.id,
+                userId: contender.userId,
+                holeCardCount: holeCards.length
+              });
+              return null;
             }
 
             strengthByUserId.set(
@@ -1216,39 +1227,42 @@ async function settleCurrentHand(input: {
 
     let eligibleWinners: RoomPlayerRecord[] = [];
     if (roomMode === "online") {
-      if (!contenderStrengthByUserId) {
-        throw new Error("INVALID_WINNERS");
+      if (!contenderStrengthByUserId || contenderStrengthByUserId.size === 0) {
+        eligibleWinners = eligibleParticipants;
+      } else {
+        const topWinners: RoomPlayerRecord[] = [];
+        let topStrength: ReturnType<typeof evaluateBestHoldemHand> | null = null;
+
+        for (const participant of eligibleParticipants) {
+          const strength = contenderStrengthByUserId.get(participant.userId);
+          if (!strength) {
+            eligibleWinners = eligibleParticipants;
+            break;
+          }
+
+          if (!topStrength) {
+            topStrength = strength;
+            topWinners.push(participant);
+            continue;
+          }
+
+          const comparison = compareHoldemHandStrength(strength, topStrength);
+          if (comparison > 0) {
+            topStrength = strength;
+            topWinners.length = 0;
+            topWinners.push(participant);
+            continue;
+          }
+
+          if (comparison === 0) {
+            topWinners.push(participant);
+          }
+        }
+
+        if (eligibleWinners.length === 0) {
+          eligibleWinners = topWinners.sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
+        }
       }
-
-      const topWinners: RoomPlayerRecord[] = [];
-      let topStrength: ReturnType<typeof evaluateBestHoldemHand> | null = null;
-
-      for (const participant of eligibleParticipants) {
-        const strength = contenderStrengthByUserId.get(participant.userId);
-        if (!strength) {
-          throw new Error("INVALID_WINNERS");
-        }
-
-        if (!topStrength) {
-          topStrength = strength;
-          topWinners.push(participant);
-          continue;
-        }
-
-        const comparison = compareHoldemHandStrength(strength, topStrength);
-        if (comparison > 0) {
-          topStrength = strength;
-          topWinners.length = 0;
-          topWinners.push(participant);
-          continue;
-        }
-
-        if (comparison === 0) {
-          topWinners.push(participant);
-        }
-      }
-
-      eligibleWinners = topWinners.sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
     } else {
       eligibleWinners = eligibleParticipants.filter((player) => manualWinnerSet.has(player.userId));
     }
