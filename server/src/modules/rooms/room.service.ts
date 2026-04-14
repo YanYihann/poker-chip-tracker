@@ -1076,28 +1076,40 @@ async function settleCurrentHand(input: {
 
   const handStatus = normalizeHandStatus(hand.status);
   const roomStreet = normalizeStreet(room.currentStreet ?? hand.street);
+  const fallbackPotTotal = Math.max(
+    Math.max(0, toNumber(hand.potTotal)),
+    Math.max(0, toNumber(room.potTotal))
+  );
 
   if (handStatus === "SETTLED") {
     throw new Error("HAND_ALREADY_SETTLED");
   }
 
-  if (handStatus !== "SHOWDOWN" && roomStreet !== "SHOWDOWN") {
-    throw new Error("HAND_NOT_SHOWDOWN");
-  }
+  const seatedPlayersBeforeSettle = getSeatedActivePlayers(room.roomPlayers);
+  const contendersBeforeSettle = seatedPlayersBeforeSettle.filter((player) => !player.hasFolded);
+  const actionableBeforeSettle = getActionablePlayers(seatedPlayersBeforeSettle);
 
-  if (handStatus !== "SHOWDOWN" && roomStreet === "SHOWDOWN") {
-    await tx.hand.update({
-      where: { id: hand.id },
-      data: {
-        status: "SHOWDOWN",
-        street: "SHOWDOWN",
-        activeSeat: null
-      }
+  if (handStatus !== "SHOWDOWN") {
+    const canPromoteToShowdown =
+      roomStreet === "SHOWDOWN" ||
+      room.activeSeat === null ||
+      contendersBeforeSettle.length <= 1 ||
+      actionableBeforeSettle.length === 0;
+
+    if (!canPromoteToShowdown) {
+      throw new Error("HAND_NOT_SHOWDOWN");
+    }
+
+    await moveHandToShowdown({
+      tx,
+      roomId: room.id,
+      handId: hand.id,
+      finalPotTotal: fallbackPotTotal
     });
   }
 
-  const seatedPlayers = getSeatedActivePlayers(room.roomPlayers);
-  const contenders = seatedPlayers.filter((player) => !player.hasFolded);
+  const seatedPlayers = seatedPlayersBeforeSettle;
+  const contenders = contendersBeforeSettle;
   const winnerUserIds = [...new Set(input.winnerUserIds ?? [])];
 
   const potTotal = Math.max(0, toNumber(hand.potTotal));

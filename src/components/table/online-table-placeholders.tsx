@@ -41,6 +41,52 @@ const HAND_RANK_LABELS = {
   }
 } as const;
 
+const SUIT_META = {
+  S: { symbol: "♠", zh: "黑桃", en: "Spades", isRed: false },
+  H: { symbol: "♥", zh: "红桃", en: "Hearts", isRed: true },
+  D: { symbol: "♦", zh: "方片", en: "Diamonds", isRed: true },
+  C: { symbol: "♣", zh: "梅花", en: "Clubs", isRed: false }
+} as const;
+
+type SuitCode = keyof typeof SUIT_META;
+
+type ParsedCard = {
+  rank: string;
+  suit: SuitCode;
+  displayRank: string;
+  symbol: string;
+  suitNameZh: string;
+  suitNameEn: string;
+  isRed: boolean;
+};
+
+function parseCardCode(card: string | null): ParsedCard | null {
+  if (!card || card.length < 2) {
+    return null;
+  }
+
+  const normalized = card.toUpperCase().trim();
+  const rankCode = normalized[0];
+  const suitCode = normalized[1] as SuitCode;
+
+  if (!(suitCode in SUIT_META)) {
+    return null;
+  }
+
+  const displayRank = rankCode === "T" ? "10" : rankCode;
+  const suitMeta = SUIT_META[suitCode];
+
+  return {
+    rank: rankCode,
+    suit: suitCode,
+    displayRank,
+    symbol: suitMeta.symbol,
+    suitNameZh: suitMeta.zh,
+    suitNameEn: suitMeta.en,
+    isRed: suitMeta.isRed
+  };
+}
+
 function getBoardRevealCount(game: RoomState["game"] | null, boardCards: string[]): number {
   if (boardCards.length > 0) {
     return Math.max(0, Math.min(5, boardCards.length));
@@ -143,20 +189,59 @@ export function OnlineTablePlaceholders({
           <div className="mt-2 flex gap-2">
             {Array.from({ length: 2 }, (_, index) => {
               const card = myHoleCards[index] ?? null;
+              const parsed = parseCardCode(card);
+              const highlighted = !!card && myBestFiveCardSet.has(card.toUpperCase());
+              const toneClass =
+                parsed?.isRed
+                  ? "text-[#dc2626]"
+                  : "text-[#111827]";
+              const fallbackLabel = card ?? "";
 
               return (
                 <div
                   key={`hole-card-${index + 1}`}
                   className={[
-                    "grid h-11 w-8 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
-                    card && myBestFiveCardSet.has(card.toUpperCase())
-                      ? "border-stitch-secondary/60 bg-stitch-secondary/20 text-stitch-secondary"
-                      : card
-                        ? "border-stitch-mint/45 bg-stitch-mint/15 text-stitch-mint"
-                      : "border-stitch-outlineVariant/40 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
+                    "relative h-14 w-10 overflow-hidden rounded-md border shadow-[0_6px_14px_rgba(2,6,23,0.35)]",
+                    parsed
+                      ? highlighted
+                        ? "border-amber-400/80 bg-gradient-to-b from-white to-slate-100"
+                        : "border-white/80 bg-gradient-to-b from-white to-slate-100"
+                      : "border-stitch-outlineVariant/40 bg-stitch-surfaceContainerHighest/80"
                   ].join(" ")}
+                  aria-label={
+                    parsed
+                      ? isZh
+                        ? `${parsed.suitNameZh}${parsed.displayRank}`
+                        : `${parsed.displayRank} of ${parsed.suitNameEn}`
+                      : isZh
+                        ? "空牌位"
+                        : "Empty card slot"
+                  }
                 >
-                  {card ?? ""}
+                  {parsed ? (
+                    <>
+                      <span
+                        className={[
+                          "absolute left-1 top-0.5 text-[9px] font-bold leading-none",
+                          toneClass
+                        ].join(" ")}
+                      >
+                        {parsed.displayRank}
+                      </span>
+                      <span
+                        className={[
+                          "grid h-full w-full place-items-center text-base font-black",
+                          toneClass
+                        ].join(" ")}
+                      >
+                        {parsed.symbol}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-[10px] font-semibold tracking-[0.03em] text-stitch-onSurfaceVariant">
+                      {fallbackLabel}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -186,20 +271,67 @@ export function OnlineTablePlaceholders({
             {Array.from({ length: 5 }, (_, index) => {
               const isRevealed = index < boardRevealCount;
               const card = boardCards[index] ?? null;
+              const parsed = isRevealed ? parseCardCode(card) : null;
+              const highlighted =
+                isRevealed && !!card && myBestFiveCardSet.has(card.toUpperCase());
+              const toneClass =
+                parsed?.isRed
+                  ? "text-[#dc2626]"
+                  : "text-[#111827]";
 
               return (
                 <div
                   key={`board-card-${index + 1}`}
                   className={[
-                    "grid h-10 w-7 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
-                    isRevealed && card && myBestFiveCardSet.has(card.toUpperCase())
-                      ? "border-stitch-secondary/60 bg-stitch-secondary/20 text-stitch-secondary"
-                      : isRevealed
-                        ? "border-stitch-primary/40 bg-stitch-primary/10 text-stitch-primary"
-                      : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
+                    "relative h-12 w-8 overflow-hidden rounded-md border shadow-[0_5px_12px_rgba(2,6,23,0.32)]",
+                    !isRevealed
+                      ? "border-sky-300/45 bg-[linear-gradient(135deg,#0f766e_0%,#075985_100%)]"
+                      : highlighted
+                        ? "border-amber-400/85 bg-gradient-to-b from-white to-slate-100"
+                        : "border-white/80 bg-gradient-to-b from-white to-slate-100"
                   ].join(" ")}
+                  aria-label={
+                    !isRevealed
+                      ? isZh
+                        ? "未翻开的公共牌"
+                        : "Hidden board card"
+                      : parsed
+                        ? isZh
+                          ? `${parsed.suitNameZh}${parsed.displayRank}`
+                          : `${parsed.displayRank} of ${parsed.suitNameEn}`
+                        : isZh
+                          ? "未知牌面"
+                          : "Unknown card"
+                  }
                 >
-                  {isRevealed ? card ?? "?" : ""}
+                  {!isRevealed ? (
+                    <div className="grid h-full w-full place-items-center text-[10px] font-black text-white/90">
+                      ★
+                    </div>
+                  ) : parsed ? (
+                    <>
+                      <span
+                        className={[
+                          "absolute left-1 top-0.5 text-[8px] font-bold leading-none",
+                          toneClass
+                        ].join(" ")}
+                      >
+                        {parsed.displayRank}
+                      </span>
+                      <span
+                        className={[
+                          "grid h-full w-full place-items-center text-sm font-black",
+                          toneClass
+                        ].join(" ")}
+                      >
+                        {parsed.symbol}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-[10px] font-semibold text-stitch-onSurfaceVariant">
+                      ?
+                    </span>
+                  )}
                 </div>
               );
             })}

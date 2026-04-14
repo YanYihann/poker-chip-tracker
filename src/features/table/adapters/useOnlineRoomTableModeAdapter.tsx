@@ -457,9 +457,40 @@ export function useOnlineRoomTableModeAdapter(
           setError(null);
 
           try {
+            const latest = await getRoom(roomCode);
+            setRoomState(latest);
+
+            if (latest.game?.status !== "showdown") {
+              setError(
+                isZh
+                  ? "当前牌局尚未进入可结算状态，请等待本手动作同步完成。"
+                  : "Hand is not ready for settlement yet. Please wait for state sync."
+              );
+              return;
+            }
+
             const next = await settleHand(roomCode);
             setRoomState(next);
           } catch (settleError) {
+            if (
+              settleError instanceof Error &&
+              settleError.message.includes("Hand is not ready for settlement")
+            ) {
+              try {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                const retriedLatest = await getRoom(roomCode);
+                setRoomState(retriedLatest);
+
+                if (retriedLatest.game?.status === "showdown") {
+                  const retried = await settleHand(roomCode);
+                  setRoomState(retried);
+                  return;
+                }
+              } catch {
+                // ignore retry sub-errors and fall back to unified message below
+              }
+            }
+
             setError(
               settleError instanceof Error
                 ? settleError.message
