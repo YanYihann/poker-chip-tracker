@@ -40,6 +40,7 @@ export function BottomActionPanel({
   amountControl
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
+  const shouldShowEmptyMainActions = mainActions.length === 0 && utilityActions.length === 0 && !canOpenSettlement;
 
   return (
     <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[22px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-2 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:rounded-t-[28px] sm:px-4 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-3">
@@ -141,11 +142,11 @@ export function BottomActionPanel({
               </span>
             </button>
           ))
-        ) : (
+        ) : shouldShowEmptyMainActions ? (
           <div className="col-span-4 rounded-2xl border border-stitch-outlineVariant/25 bg-stitch-surfaceContainerHigh p-3 text-center text-xs text-stitch-onSurfaceVariant">
             {isZh ? "\u5f53\u524d\u65e0\u53ef\u6267\u884c\u64cd\u4f5c" : "No available betting actions in this phase."}
           </div>
-        )}
+        ) : null}
       </div>
 
       {canOpenSettlement ? (

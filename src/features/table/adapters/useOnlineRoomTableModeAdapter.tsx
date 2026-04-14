@@ -5,7 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { OnlineTablePlaceholders } from "@/components/table/online-table-placeholders";
-import { getRoom, submitRoomAction, type RoomState } from "@/features/rooms/api";
+import {
+  decideNextHand,
+  getRoom,
+  settleHand,
+  submitRoomAction,
+  type RoomState
+} from "@/features/rooms/api";
 import type { TableModeAdapter } from "@/features/table/mode/types";
 import { getRoomSocket } from "@/features/rooms/realtime";
 import { buildPlaceholderPlayers } from "@/lib/table-layout";
@@ -137,9 +143,17 @@ export function useOnlineRoomTableModeAdapter(
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const [actionAmountInput, setActionAmountInput] = useState("");
+  const [settlementOpen, setSettlementOpen] = useState(false);
 
   const game = roomState?.game ?? null;
+  const isHost = roomState?.me?.isHost ?? false;
   const actionCopy = ACTION_COPY[locale];
+  const canSettle =
+    variant === "local" &&
+    Boolean(game?.status === "showdown" && game.canSettle && isHost);
+  const canStartNextHand =
+    variant === "local" &&
+    Boolean(game?.status === "settled" && game.canDecideNextHand && isHost);
 
   useEffect(() => {
     if (!roomCode) {
@@ -219,6 +233,12 @@ export function useOnlineRoomTableModeAdapter(
     setActionAmountInput(String(defaultAmount));
   }, [game?.currentBet, game?.handId, game?.legalActions, game?.minBet, game?.minRaiseDelta, game?.status]);
 
+  useEffect(() => {
+    if (game?.status !== "showdown") {
+      setSettlementOpen(false);
+    }
+  }, [game?.status]);
+
   const tablePlayers = useMemo(() => toSeatPlayers(roomState, locale, isZh), [isZh, locale, roomState]);
 
   const legalActions = useMemo<OnlineActionType[]>(
@@ -281,8 +301,65 @@ export function useOnlineRoomTableModeAdapter(
     [actionAmountInput, actionCopy, game, isZh, legalActions, pendingAction, roomCode]
   );
 
+  const settlementPlayers = useMemo(() => {
+    if (!roomState) {
+      return [];
+    }
+
+    const eligibleIds = new Set(game?.eligibleWinnerUserIds ?? []);
+    const candidates =
+      eligibleIds.size === 0
+        ? roomState.players
+        : roomState.players.filter((player) => eligibleIds.has(player.userId));
+
+    return candidates.map((player) => ({
+      id: player.userId,
+      name: player.displayName,
+      stackLabel: formatCurrency(player.stack, locale),
+      status: player.status
+    }));
+  }, [game?.eligibleWinnerUserIds, locale, roomState]);
+
+  const utilityActions = useMemo(
+    () =>
+      canStartNextHand
+        ? [
+            {
+              id: "next-hand",
+              label: isZh ? "开始下一手" : "Start Next Hand",
+              onPress: async () => {
+                if (!roomCode || pendingAction || !canStartNextHand) {
+                  return;
+                }
+
+                setPendingAction(true);
+                setError(null);
+
+                try {
+                  const next = await decideNextHand(roomCode, true);
+                  setRoomState(next);
+                } catch (nextHandError) {
+                  setError(
+                    nextHandError instanceof Error
+                      ? nextHandError.message
+                      : isZh
+                        ? "无法开始下一手。"
+                        : "Unable to start next hand."
+                  );
+                } finally {
+                  setPendingAction(false);
+                }
+              }
+            }
+          ]
+        : [],
+    [canStartNextHand, isZh, pendingAction, roomCode]
+  );
+
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
   const hasRaiseActions = legalActions.includes("bet") || legalActions.includes("raise");
+  const shouldShowActionPanel =
+    showActionPanel || canSettle || utilityActions.length > 0 || pendingAction;
 
   const title =
     variant === "local"
@@ -315,9 +392,13 @@ export function useOnlineRoomTableModeAdapter(
     status: toTableStatus(game),
     actingPlayerId: game?.activePlayerUserId ?? null,
     mainActions,
-    utilityActions: [],
-    canOpenSettlement: false,
-    onOpenSettlement: () => undefined,
+    utilityActions,
+    canOpenSettlement: canSettle,
+    onOpenSettlement: () => {
+      if (canSettle) {
+        setSettlementOpen(true);
+      }
+    },
     amountControl:
       showActionPanel && hasRaiseActions && game
         ? {
@@ -354,15 +435,86 @@ export function useOnlineRoomTableModeAdapter(
           }
         : null,
     statusHint:
-      game && game.status === "in-progress" && !game.isMyTurn
+      pendingAction
+        ? isZh
+          ? "操作提交中..."
+          : "Submitting action..."
+        : canSettle
+          ? isZh
+            ? "本手已进入待结算，房主可打开结算面板。"
+            : "Hand is awaiting settlement. Host can open settlement."
+          : canStartNextHand
+            ? isZh
+              ? "本手已结算，房主可开始下一手。"
+              : "Hand settled. Host can start the next hand."
+            : game && game.status === "in-progress" && !game.isMyTurn
         ? isZh
           ? "当前未轮到你行动，等待服务端推进回合。"
           : "It is not your turn. Waiting for server turn progression."
-        : pendingAction
-          ? isZh
-            ? "操作提交中..."
-            : "Submitting action..."
-          : null,
+        : null,
+    settlement:
+      variant === "local"
+        ? {
+            isOpen: settlementOpen,
+            players: settlementPlayers,
+            canUndo: false,
+            canReopen: false,
+            onClose: () => setSettlementOpen(false),
+            onQuickWin: async (winnerId: string) => {
+              if (!roomCode || pendingAction || !canSettle || !winnerId) {
+                return;
+              }
+
+              setPendingAction(true);
+              setError(null);
+
+              try {
+                const next = await settleHand(roomCode, [winnerId]);
+                setRoomState(next);
+                setSettlementOpen(false);
+              } catch (settleError) {
+                setError(
+                  settleError instanceof Error
+                    ? settleError.message
+                    : isZh
+                      ? "结算失败。"
+                      : "Failed to settle hand."
+                );
+              } finally {
+                setPendingAction(false);
+              }
+            },
+            onQuickSplit: async (winnerIds: string[]) => {
+              if (!roomCode || pendingAction || !canSettle || winnerIds.length === 0) {
+                return;
+              }
+
+              const uniqueWinners = Array.from(new Set(winnerIds));
+
+              setPendingAction(true);
+              setError(null);
+
+              try {
+                const next = await settleHand(roomCode, uniqueWinners);
+                setRoomState(next);
+                setSettlementOpen(false);
+              } catch (settleError) {
+                setError(
+                  settleError instanceof Error
+                    ? settleError.message
+                    : isZh
+                      ? "结算失败。"
+                      : "Failed to settle hand."
+                );
+              } finally {
+                setPendingAction(false);
+              }
+            },
+            onUndo: () => undefined,
+            onEditHand: () => undefined,
+            onReopenSettlement: () => undefined
+          }
+        : null,
     supplementaryContent:
       variant === "online" ? (
         <OnlineTablePlaceholders
@@ -373,6 +525,6 @@ export function useOnlineRoomTableModeAdapter(
           boardCards={game?.boardCards ?? []}
         />
       ) : null,
-    showActionPanel
+    showActionPanel: shouldShowActionPanel
   };
 }
