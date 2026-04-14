@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 
@@ -8,121 +8,142 @@ import type { RoomState } from "@/features/rooms/api";
 type OnlineTablePlaceholdersProps = {
   game: RoomState["game"] | null;
   roomStatus: RoomState["room"]["status"] | null;
+  myHoleCards: string[];
+  boardCards: string[];
 };
 
-function getBoardRevealCount(street: NonNullable<RoomState["game"]>["street"]): number {
-  if (street === "flop") {
+function getBoardRevealCount(game: RoomState["game"] | null, boardCards: string[]): number {
+  if (boardCards.length > 0) {
+    return Math.max(0, Math.min(5, boardCards.length));
+  }
+
+  if (!game) {
+    return 0;
+  }
+
+  if (game.street === "flop") {
     return 3;
   }
 
-  if (street === "turn") {
+  if (game.street === "turn") {
     return 4;
   }
 
-  if (street === "river" || street === "showdown") {
+  if (game.street === "river" || game.street === "showdown") {
     return 5;
   }
 
   return 0;
 }
 
-export function OnlineTablePlaceholders({ game, roomStatus }: OnlineTablePlaceholdersProps) {
+export function OnlineTablePlaceholders({
+  game,
+  roomStatus,
+  myHoleCards,
+  boardCards
+}: OnlineTablePlaceholdersProps) {
   const { isZh } = useLanguage();
 
-  const boardRevealCount = useMemo(() => {
-    if (!game) {
-      return 0;
-    }
-
-    return getBoardRevealCount(game.street);
-  }, [game]);
+  const boardRevealCount = useMemo(() => getBoardRevealCount(game, boardCards), [boardCards, game]);
 
   const showdownLabel = useMemo(() => {
     if (!game) {
-      return isZh ? "等待牌局开始后同步摊牌状态" : "Showdown state will sync after the hand begins.";
+      return isZh
+        ? "等待牌局开始后同步摊牌状态。"
+        : "Showdown state will sync after the hand starts.";
     }
 
     if (game.status === "showdown") {
       return isZh
-        ? "摊牌占位：等待服务端结算确认。"
-        : "Showdown placeholder: waiting for server settlement confirmation.";
+        ? "摊牌阶段中，等待房主结算。"
+        : "In showdown phase, waiting for host settlement.";
     }
 
     if (game.status === "settled") {
       return isZh
-        ? "本手已结算，下一手将继续由服务端广播。"
-        : "Hand settled. The next hand state will be broadcast by the server.";
+        ? "本手已结算，等待下一手开始。"
+        : "Hand settled. Waiting for the next hand.";
     }
 
-    return isZh ? "当前未进入摊牌阶段。" : "Showdown has not started for this hand.";
+    return isZh ? "当前未进入摊牌。" : "Showdown has not started for this hand.";
   }, [game, isZh]);
 
   return (
     <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
       <p className="text-[11px] uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">
-        {isZh ? "在线占位信息" : "Online Placeholders"}
+        {isZh ? "在线发牌状态" : "Online Dealing State"}
       </p>
 
       <div className="mt-3 grid gap-3">
         <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
           <p className="text-xs font-semibold text-stitch-onSurface">
-            {isZh ? "私有手牌（占位）" : "Private Hole Cards (Placeholder)"}
+            {isZh ? "我的底牌（仅自己可见）" : "My Hole Cards (Private)"}
           </p>
           <div className="mt-2 flex gap-2">
-            {Array.from({ length: 2 }, (_, index) => (
-              <div
-                key={`hole-card-${index + 1}`}
-                className="h-11 w-8 rounded-md border border-stitch-outlineVariant/40 bg-stitch-surfaceContainerHighest/80"
-              />
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
-            {isZh
-              ? "当前仅显示占位，后续阶段会接入服务端私有牌数据。"
-              : "Currently placeholders only. A future phase will hydrate server private-card data."}
-          </p>
-        </section>
-
-        <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-          <p className="text-xs font-semibold text-stitch-onSurface">
-            {isZh ? "公共牌（占位）" : "Board Cards (Placeholder)"}
-          </p>
-          <div className="mt-2 flex gap-1.5">
-            {Array.from({ length: 5 }, (_, index) => {
-              const isRevealed = index < boardRevealCount;
+            {Array.from({ length: 2 }, (_, index) => {
+              const card = myHoleCards[index] ?? null;
 
               return (
                 <div
-                  key={`board-card-${index + 1}`}
+                  key={`hole-card-${index + 1}`}
                   className={[
-                    "grid h-10 w-7 place-items-center rounded-md border text-[10px]",
-                    isRevealed
-                      ? "border-stitch-primary/40 bg-stitch-primary/10 text-stitch-primary"
-                      : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
+                    "grid h-11 w-8 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
+                    card
+                      ? "border-stitch-mint/45 bg-stitch-mint/15 text-stitch-mint"
+                      : "border-stitch-outlineVariant/40 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
                   ].join(" ")}
                 >
-                  {isRevealed ? "?" : ""}
+                  {card ?? ""}
                 </div>
               );
             })}
           </div>
           <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
             {isZh
-              ? "翻牌/转牌/河牌推进由服务端街道状态控制。"
-              : "Flop/turn/river progression is driven by server street state."}
+              ? "服务端仅向当前用户返回自己的两张底牌。"
+              : "Server only returns your own two private hole cards."}
           </p>
         </section>
 
         <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
           <p className="text-xs font-semibold text-stitch-onSurface">
-            {isZh ? "摊牌状态（占位）" : "Showdown State (Placeholder)"}
+            {isZh ? "公共牌（按街道公开）" : "Board Cards (Street-Revealed)"}
+          </p>
+          <div className="mt-2 flex gap-1.5">
+            {Array.from({ length: 5 }, (_, index) => {
+              const isRevealed = index < boardRevealCount;
+              const card = boardCards[index] ?? null;
+
+              return (
+                <div
+                  key={`board-card-${index + 1}`}
+                  className={[
+                    "grid h-10 w-7 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
+                    isRevealed
+                      ? "border-stitch-primary/40 bg-stitch-primary/10 text-stitch-primary"
+                      : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
+                  ].join(" ")}
+                >
+                  {isRevealed ? card ?? "?" : ""}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
+            {isZh
+              ? "翻牌前 0 张、翻牌 3 张、转牌 4 张、河牌 5 张。"
+              : "Preflop 0, flop 3, turn 4, river 5 public cards."}
+          </p>
+        </section>
+
+        <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
+          <p className="text-xs font-semibold text-stitch-onSurface">
+            {isZh ? "摊牌状态" : "Showdown State"}
           </p>
           <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">{showdownLabel}</p>
           {roomStatus && !game ? (
             <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
-              {isZh
-                ? `当前房间状态：${roomStatus}`
-                : `Current room status: ${roomStatus}`}
+              {isZh ? `当前房间状态：${roomStatus}` : `Current room status: ${roomStatus}`}
             </p>
           ) : null}
         </section>
@@ -130,4 +151,3 @@ export function OnlineTablePlaceholders({ game, roomStatus }: OnlineTablePlaceho
     </article>
   );
 }
-

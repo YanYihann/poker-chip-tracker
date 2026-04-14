@@ -7,13 +7,21 @@ import { CommunityBoard } from "./community-board";
 
 type CentralPotProps = {
   amountLabel: string;
+  boardCards?: string[] | null;
   streetLabel: string;
   statusLabel: string;
   street: "preflop" | "flop" | "turn" | "river" | "showdown";
   handKey: string;
 };
 
-export function CentralPot({ amountLabel, streetLabel, statusLabel, street, handKey }: CentralPotProps) {
+export function CentralPot({
+  amountLabel,
+  boardCards,
+  streetLabel,
+  statusLabel,
+  street,
+  handKey
+}: CentralPotProps) {
   const { isZh } = useLanguage();
 
   return (
@@ -33,7 +41,7 @@ export function CentralPot({ amountLabel, streetLabel, statusLabel, street, hand
         </Badge>
       </div>
 
-      <CommunityBoard street={street} handKey={handKey} />
+      <CommunityBoard street={street} handKey={handKey} boardCards={boardCards} />
     </section>
   );
 }

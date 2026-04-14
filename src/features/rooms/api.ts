@@ -69,6 +69,8 @@ export type RoomState = {
     minRaiseDelta: number;
     canSettle: boolean;
     canDecideNextHand: boolean;
+    myHoleCards: string[];
+    boardCards: string[];
     eligibleWinnerUserIds: string[];
     lastSettlement: {
       entries: Array<{

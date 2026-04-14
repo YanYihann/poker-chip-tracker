@@ -5,11 +5,19 @@ import { performance } from "node:perf_hooks";
 import type { Prisma } from "@prisma/client";
 
 import { recordPerfSample } from "../../lib/perf-metrics.js";
+import {
+  createStandardDeck,
+  dealCards,
+  isCardCode,
+  revealedBoardCardsByStreet,
+  shuffleDeck,
+  type CardCode,
+  type StreetCode
+} from "./deck.js";
 
 const ROOM_CODE_ALPHABET = "0123456789";
 const ROOM_CODE_LENGTH = 4;
 
-type StreetCode = "PREFLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN";
 type PublicStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
 type HandStatusCode = "ACTIVE" | "SHOWDOWN" | "SETTLED" | "CANCELLED";
 type StoredPositionCode = "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO";
@@ -58,6 +66,9 @@ type HandRecord = {
   bbSeat: number;
   activeSeat: number | null;
   potTotal: bigint | number;
+  deckShuffled: string[];
+  boardCards: string[];
+  holeCardsByUser: Prisma.JsonValue | null;
   settledAt: Date | null;
   results: HandResultRecord[];
 };
@@ -141,6 +152,8 @@ export type RoomState = {
     minRaiseDelta: number;
     canSettle: boolean;
     canDecideNextHand: boolean;
+    myHoleCards: string[];
+    boardCards: string[];
     eligibleWinnerUserIds: string[];
     lastSettlement: {
       entries: Array<{
@@ -204,6 +217,36 @@ function normalizeHandStatus(value: string | null | undefined): HandStatusCode {
     return "CANCELLED";
   }
   return "ACTIVE";
+}
+
+function normalizeCardList(value: unknown): CardCode[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .filter((card): card is CardCode => isCardCode(card));
+}
+
+function normalizeHoleCardsByUser(
+  value: Prisma.JsonValue | null | undefined
+): Record<string, CardCode[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const result: Record<string, CardCode[]> = {};
+
+  for (const [key, cards] of Object.entries(value as Record<string, unknown>)) {
+    if (key.trim().length === 0) {
+      continue;
+    }
+
+    result[key] = normalizeCardList(cards);
+  }
+
+  return result;
 }
 
 function toPublicStreet(street: StreetCode): PublicStreet {
@@ -274,6 +317,23 @@ function getNextSeat(
   }
 
   return null;
+}
+
+function getClockwisePlayersFromSeat(
+  orderedPlayers: RoomPlayerRecord[],
+  startSeat: number
+): RoomPlayerRecord[] {
+  if (orderedPlayers.length === 0) {
+    return [];
+  }
+
+  const startIndex = orderedPlayers.findIndex((player) => player.seatIndex === startSeat);
+  const safeStartIndex = startIndex >= 0 ? startIndex : 0;
+
+  return orderedPlayers.map((_, offset) => {
+    const cursor = (safeStartIndex + offset) % orderedPlayers.length;
+    return orderedPlayers[cursor];
+  });
 }
 
 function getActionablePlayers(players: RoomPlayerRecord[]): RoomPlayerRecord[] {
@@ -418,6 +478,9 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
             bbSeat: true,
             activeSeat: true,
             potTotal: true,
+            deckShuffled: true,
+            boardCards: true,
+            holeCardsByUser: true,
             settledAt: true,
             results: {
               select: {
@@ -534,6 +597,10 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
       netChange: toNumber(result.netChange)
     }))
     .sort((a, b) => b.netChange - a.netChange);
+  const reservedBoardCards = normalizeCardList(latestHand?.boardCards ?? []);
+  const boardCards = revealedBoardCardsByStreet(reservedBoardCards, streetCode);
+  const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
+  const myHoleCards = currentUserId ? holeCardsByUser[currentUserId] ?? [] : [];
 
   return {
     room: {
@@ -583,6 +650,8 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
             minRaiseDelta: Math.max(1, toNumber(room.bigBlind)),
             canSettle: !!mePlayer?.isHost && gameStatus === "showdown",
             canDecideNextHand: !!mePlayer?.isHost && gameStatus === "settled",
+            myHoleCards,
+            boardCards,
             eligibleWinnerUserIds: contenders.map((player) => player.userId),
             lastSettlement: gameStatus === "settled" ? { entries: settlementEntries } : null
           }
@@ -880,6 +949,18 @@ async function startNextHand(input: {
     ? getNextSeat(eligiblePlayers, dealerSeat, () => true)
     : getNextSeat(eligiblePlayers, sbSeat ?? dealerSeat, () => true);
   const labelBySeat = computePositionLabelBySeat(eligiblePlayers, dealerSeat, sbSeat, bbSeat);
+  const dealStartSeat =
+    sbSeat ??
+    getNextSeat(eligiblePlayers, dealerSeat, () => true) ??
+    (eligiblePlayers[0]?.seatIndex ?? dealerSeat);
+  const dealingOrderPlayers = getClockwisePlayersFromSeat(eligiblePlayers, dealStartSeat);
+  const shuffledDeck = shuffleDeck(createStandardDeck());
+  const { holeCardsByUser, boardCards } = dealCards({
+    shuffledDeck,
+    dealingOrderUserIds: dealingOrderPlayers.map((player) => player.userId),
+    holeCardsPerPlayer: 2,
+    boardCardCount: 5
+  });
 
   await Promise.all(
     seatedPlayers.map((player) => {
@@ -991,7 +1072,10 @@ async function startNextHand(input: {
       bbSeat: bbSeat ?? sbSeat ?? dealerSeat,
       activeSeat: firstActiveSeat,
       potTotal: BigInt(potTotal),
-      sidePotTotal: BigInt(0)
+      sidePotTotal: BigInt(0),
+      deckShuffled: shuffledDeck,
+      boardCards,
+      holeCardsByUser: holeCardsByUser as Prisma.InputJsonValue
     }
   });
 

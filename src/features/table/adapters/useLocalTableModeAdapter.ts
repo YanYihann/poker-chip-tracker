@@ -71,6 +71,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     onPlayerCountChange: controller.setPlayerCount,
     players,
     potLabel: formatCurrency(controller.pot, locale),
+    boardCards: null,
     street: controller.street,
     streetLabel: STREET_LABELS[locale][controller.street],
     statusLabel: STATUS_LABELS[locale][controller.status],

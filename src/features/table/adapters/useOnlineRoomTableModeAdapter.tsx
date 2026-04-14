@@ -288,6 +288,7 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
     backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,
     potLabel: game ? formatCurrency(game.potTotal, locale) : "$0",
+    boardCards: game?.boardCards ?? [],
     street: game?.street ?? "preflop",
     streetLabel: game ? STREET_LABELS[locale][game.street] : STREET_LABELS[locale].preflop,
     statusLabel: game ? STATUS_LABELS[locale][game.status] : isZh ? "等待中" : "Waiting",
@@ -337,9 +338,13 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
             : "Submitting action..."
           : null,
     supplementaryContent: (
-      <OnlineTablePlaceholders game={game} roomStatus={roomState?.room.status ?? null} />
+      <OnlineTablePlaceholders
+        game={game}
+        roomStatus={roomState?.room.status ?? null}
+        myHoleCards={game?.myHoleCards ?? []}
+        boardCards={game?.boardCards ?? []}
+      />
     ),
     showActionPanel
   };
 }
-

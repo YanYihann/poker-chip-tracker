@@ -11,13 +11,22 @@ import { getSeatCoordinates } from "@/lib/table-layout";
 type PokerTableProps = {
   players: TableSeatPlayer[];
   potLabel: string;
+  boardCards?: string[] | null;
   streetLabel: string;
   statusLabel: string;
   street: "preflop" | "flop" | "turn" | "river" | "showdown";
   handKey: string;
 };
 
-export function PokerTable({ players, potLabel, streetLabel, statusLabel, street, handKey }: PokerTableProps) {
+export function PokerTable({
+  players,
+  potLabel,
+  boardCards,
+  streetLabel,
+  statusLabel,
+  street,
+  handKey
+}: PokerTableProps) {
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const seatCoordinates = getSeatCoordinates(players.length);
@@ -69,6 +78,7 @@ export function PokerTable({ players, potLabel, streetLabel, statusLabel, street
 
         <CentralPot
           amountLabel={potLabel}
+          boardCards={boardCards}
           streetLabel={streetLabel}
           statusLabel={statusLabel}
           street={street}

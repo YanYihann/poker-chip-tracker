@@ -8,9 +8,14 @@ type StreetStage = "preflop" | "flop" | "turn" | "river" | "showdown";
 type CommunityBoardProps = {
   street: StreetStage;
   handKey: string;
+  boardCards?: string[] | null;
 };
 
-function toRevealCount(street: StreetStage): number {
+function toRevealCount(street: StreetStage, boardCards?: string[] | null): number {
+  if (boardCards && boardCards.length > 0) {
+    return Math.max(0, Math.min(5, boardCards.length));
+  }
+
   if (street === "flop") {
     return 3;
   }
@@ -23,8 +28,8 @@ function toRevealCount(street: StreetStage): number {
   return 0;
 }
 
-export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
-  const revealCount = toRevealCount(street);
+export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardProps) {
+  const revealCount = toRevealCount(street, boardCards);
   const previousRevealCountRef = useRef(0);
   const previousHandKeyRef = useRef(handKey);
 
@@ -51,6 +56,7 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
       {Array.from({ length: 5 }, (_, index) => {
         const isRevealed = index < revealCount;
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;
+        const cardLabel = isRevealed ? (boardCards?.[index] ?? "") : "";
 
         return (
           <div
@@ -90,6 +96,11 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0)_44%)]" />
                 <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_2px_2px,rgba(78,51,27,0.11)_1.1px,transparent_1.2px)] [background-size:5px_5px]" />
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(to_top,rgba(84,48,16,0.24),transparent)]" />
+                {cardLabel ? (
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-semibold tracking-[0.04em] text-[#5a3b1f] sm:text-[10px]">
+                    {cardLabel}
+                  </span>
+                ) : null}
               </motion.div>
             ) : (
               <div className="absolute inset-0 overflow-hidden rounded-[7px] border border-[#8d5f27] bg-[radial-gradient(circle_at_52%_26%,#b91f24_0%,#7f1017_38%,#4e090d_84%,#370507_100%)] sm:rounded-[8px]">

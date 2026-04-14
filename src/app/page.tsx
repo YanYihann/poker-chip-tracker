@@ -372,6 +372,7 @@ function HomePageContent() {
             <PokerTable
               players={tablePlayers}
               potLabel={formatCurrency(game.potTotal, locale)}
+              boardCards={game.boardCards}
               streetLabel={streetLabels[game.street]}
               statusLabel={statusLabels[game.status]}
               street={game.street}

@@ -85,6 +85,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         <PokerTable
           players={adapter.players}
           potLabel={adapter.potLabel}
+          boardCards={adapter.boardCards}
           streetLabel={adapter.streetLabel}
           statusLabel={adapter.statusLabel}
           street={adapter.street}

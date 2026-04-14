@@ -66,6 +66,7 @@ export type TableModeAdapter = {
   onPlayerCountChange?: (nextCount: number) => void;
   players: TableSeatPlayer[];
   potLabel: string;
+  boardCards?: string[] | null;
   street: Street;
   streetLabel: string;
   statusLabel: string;
