@@ -132,7 +132,7 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
           >
             {!isRevealed ? (
               <div className="grid h-full w-full place-items-center text-[10px] font-black text-white/90">
-                ★
+                {"\u2605"}
               </div>
             ) : parsed ? (
               <>
