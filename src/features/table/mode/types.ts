@@ -82,6 +82,7 @@ export type TableModeAdapter = {
   resume?: TableModeResumeModel;
   banner?: TableBannerModel | null;
   statusHint?: string | null;
+  mainContent?: ReactNode;
   supplementaryContent?: ReactNode;
   showActionPanel?: boolean;
 };

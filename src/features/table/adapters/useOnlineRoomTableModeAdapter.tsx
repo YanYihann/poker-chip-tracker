@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
-import { OnlineTablePlaceholders } from "@/components/table/online-table-placeholders";
+import { OnlineHandSettlementView } from "@/components/table/online-hand-settlement-view";
+import { OnlineMyHoleCards } from "@/components/table/online-my-hole-cards";
 import {
   decideNextHand,
   getRoom,
@@ -80,6 +81,11 @@ function formatCurrency(amount: number, locale: AppLocale): string {
   }).format(Math.abs(amount));
 
   return amount < 0 ? `-$${formatted}` : `$${formatted}`;
+}
+
+function formatSignedCurrency(amount: number, locale: AppLocale): string {
+  const formatted = formatCurrency(Math.abs(amount), locale);
+  return amount >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
 function toTableStatus(game: RoomState["game"]): TableModeAdapter["status"] {
@@ -252,14 +258,14 @@ export function useOnlineRoomTableModeAdapter(
   const [pendingAction, setPendingAction] = useState(false);
   const [actionAmountInput, setActionAmountInput] = useState("");
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const settledSyncHandRef = useRef<string | null>(null);
 
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
   const usesAutoEvaluator = variant === "online";
   const actionCopy = ACTION_COPY[locale];
-  const canSettle = Boolean(game?.status === "showdown" && isHost);
-  const canOpenManualSettlement = canSettle && !usesAutoEvaluator;
-  const canAutoSettle = canSettle && usesAutoEvaluator;
+  const canSettle = Boolean(game?.status === "showdown" && isHost && !usesAutoEvaluator);
+  const canOpenManualSettlement = canSettle;
   const canStartNextHand = Boolean(game?.status === "settled" && isHost);
 
   useEffect(() => {
@@ -267,6 +273,7 @@ export function useOnlineRoomTableModeAdapter(
       setLoading(false);
       setRoomState(null);
       setError(null);
+      settledSyncHandRef.current = null;
       return;
     }
 
@@ -320,6 +327,22 @@ export function useOnlineRoomTableModeAdapter(
       }
 
       setRoomState((prev) => applyRoomActionPatch(prev, patch));
+
+      if (patch.game?.status === "settled" && patch.game.handId) {
+        const settledHandKey = `${patch.roomCode}:${patch.game.handId}`;
+        if (settledSyncHandRef.current === settledHandKey) {
+          return;
+        }
+
+        settledSyncHandRef.current = settledHandKey;
+        void getRoom(roomCode)
+          .then((nextRoom) => {
+            if (active) {
+              setRoomState(nextRoom);
+            }
+          })
+          .catch(() => undefined);
+      }
     };
 
     void loadRoom();
@@ -355,8 +378,6 @@ export function useOnlineRoomTableModeAdapter(
       setSettlementOpen(false);
     }
   }, [game?.status]);
-
-  const tablePlayers = useMemo(() => toSeatPlayers(roomState, locale, isZh), [isZh, locale, roomState]);
 
   const legalActions = useMemo<OnlineActionType[]>(
     () => (game?.isMyTurn && game.status === "in-progress" ? game.legalActions : []),
@@ -437,73 +458,39 @@ export function useOnlineRoomTableModeAdapter(
     }));
   }, [game?.eligibleWinnerUserIds, locale, roomState]);
 
+  const settlementEntries = game?.lastSettlement?.entries ?? [];
+  const settlementEntryByUserId = useMemo(
+    () => new Map(settlementEntries.map((entry) => [entry.userId, entry])),
+    [settlementEntries]
+  );
+
+  const tablePlayers = useMemo(() => {
+    const basePlayers = toSeatPlayers(roomState, locale, isZh);
+
+    if (variant !== "online" || game?.status !== "settled") {
+      return basePlayers;
+    }
+
+    return basePlayers.map((player) => {
+      const settledEntry = settlementEntryByUserId.get(player.id);
+      if (!settledEntry) {
+        return player;
+      }
+
+      return {
+        ...player,
+        revealedCards: [...settledEntry.holeCards.slice(0, 2)],
+        resultDeltaLabel: formatSignedCurrency(settledEntry.netChange, locale)
+      };
+    });
+  }, [game?.status, isZh, locale, roomState, settlementEntryByUserId, variant]);
+
   const utilityActions = useMemo(() => {
     const actions: Array<{
       id: string;
       label: string;
       onPress: () => Promise<void>;
     }> = [];
-
-    if (canAutoSettle) {
-      actions.push({
-        id: "auto-settle",
-        label: isZh ? "自动牌力结算" : "Auto Settle",
-        onPress: async () => {
-          if (!roomCode || pendingAction || !canAutoSettle) {
-            return;
-          }
-
-          setPendingAction(true);
-          setError(null);
-
-          try {
-            const latest = await getRoom(roomCode);
-            setRoomState(latest);
-
-            if (latest.game?.status !== "showdown") {
-              setError(
-                isZh
-                  ? "当前牌局尚未进入可结算状态，请等待本手动作同步完成。"
-                  : "Hand is not ready for settlement yet. Please wait for state sync."
-              );
-              return;
-            }
-
-            const next = await settleHand(roomCode);
-            setRoomState(next);
-          } catch (settleError) {
-            if (
-              settleError instanceof Error &&
-              settleError.message.includes("Hand is not ready for settlement")
-            ) {
-              try {
-                await new Promise((resolve) => setTimeout(resolve, 250));
-                const retriedLatest = await getRoom(roomCode);
-                setRoomState(retriedLatest);
-
-                if (retriedLatest.game?.status === "showdown") {
-                  const retried = await settleHand(roomCode);
-                  setRoomState(retried);
-                  return;
-                }
-              } catch {
-                // ignore retry sub-errors and fall back to unified message below
-              }
-            }
-
-            setError(
-              settleError instanceof Error
-                ? settleError.message
-                : isZh
-                  ? "自动结算失败。"
-                  : "Failed to auto settle hand."
-            );
-          } finally {
-            setPendingAction(false);
-          }
-        }
-      });
-    }
 
     if (canStartNextHand) {
       actions.push(
@@ -565,12 +552,19 @@ export function useOnlineRoomTableModeAdapter(
     }
 
     return actions;
-  }, [canAutoSettle, canStartNextHand, isZh, pendingAction, roomCode]);
+  }, [canStartNextHand, isZh, pendingAction, roomCode]);
 
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
   const hasRaiseActions = legalActions.includes("bet") || legalActions.includes("raise");
   const shouldShowActionPanel =
     showActionPanel || canSettle || utilityActions.length > 0 || pendingAction;
+  const isSettledOnlineView =
+    variant === "online" && game?.status === "settled" && settlementEntries.length > 0;
+  const settledPotTotal = useMemo(
+    () =>
+      settlementEntries.reduce((sum, entry) => sum + Math.max(0, Math.trunc(entry.amountWon ?? 0)), 0),
+    [settlementEntries]
+  );
 
   const title =
     variant === "local"
@@ -588,13 +582,18 @@ export function useOnlineRoomTableModeAdapter(
         : isZh
           ? "在线牌桌"
           : "Online Table";
+  const potLabel = isSettledOnlineView
+    ? formatCurrency(settledPotTotal, locale)
+    : game
+      ? formatCurrency(game.potTotal, locale)
+      : "$0";
 
   return {
     mode: variant === "local" ? "local" : "online",
     title,
     backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,
-    potLabel: game ? formatCurrency(game.potTotal, locale) : "$0",
+    potLabel,
     boardCards: game?.boardCards ?? [],
     street: game?.street ?? "preflop",
     streetLabel: game ? STREET_LABELS[locale][game.street] : STREET_LABELS[locale].preflop,
@@ -652,16 +651,20 @@ export function useOnlineRoomTableModeAdapter(
           : "Submitting action..."
         : canSettle
           ? isZh
-            ? usesAutoEvaluator
-              ? "本手已进入待结算，房主可执行自动牌力结算。"
-              : "本手已进入待结算，房主可打开结算面板。"
-            : usesAutoEvaluator
-              ? "Hand is awaiting settlement. Host can run auto hand evaluation."
-              : "Hand is awaiting settlement. Host can open settlement."
+            ? "本手已进入待结算，房主可打开结算面板。"
+            : "Hand is awaiting settlement. Host can open settlement."
+          : variant === "online" && game?.status === "showdown"
+            ? isZh
+              ? "系统正在自动进行牌力结算，请稍候..."
+              : "Auto hand evaluation is in progress..."
           : canStartNextHand
             ? isZh
               ? "本手已结算，房主可开始下一手。"
               : "Hand settled. Host can start the next hand."
+            : variant === "online" && game?.status === "settled"
+              ? isZh
+                ? "本手已结算，等待房主选择下一手或结束整局。"
+                : "Hand settled. Waiting for host decision."
             : game && game.status === "in-progress" && !game.isMyTurn
         ? isZh
           ? "当前未轮到你行动，等待服务端推进回合。"
@@ -729,16 +732,19 @@ export function useOnlineRoomTableModeAdapter(
       onEditHand: () => undefined,
       onReopenSettlement: () => undefined
     },
-    supplementaryContent:
-      variant === "online" ? (
-        <OnlineTablePlaceholders
-          mode={variant}
-          game={game}
-          roomStatus={roomState?.room.status ?? null}
-          meUserId={roomState?.me?.userId ?? null}
-          myHoleCards={game?.myHoleCards ?? []}
-          boardCards={game?.boardCards ?? []}
+    mainContent:
+      isSettledOnlineView && game ? (
+        <OnlineHandSettlementView
+          players={tablePlayers}
+          potLabel={potLabel}
+          boardCards={game.boardCards}
+          handKey={`${variant}-settled-${game.handId ?? "unknown-hand"}`}
+          settlementEntries={settlementEntries}
         />
+      ) : undefined,
+    supplementaryContent:
+      variant === "online" && !isSettledOnlineView ? (
+        <OnlineMyHoleCards cards={game?.myHoleCards ?? []} />
       ) : null,
     showActionPanel: shouldShowActionPanel
   };

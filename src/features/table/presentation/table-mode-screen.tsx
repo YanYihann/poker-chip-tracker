@@ -82,23 +82,29 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
           </article>
         ) : null}
 
-        <PokerTable
-          players={adapter.players}
-          potLabel={adapter.potLabel}
-          boardCards={adapter.boardCards}
-          streetLabel={adapter.streetLabel}
-          statusLabel={adapter.statusLabel}
-          street={adapter.street}
-          handKey={adapter.handKey}
-        />
+        {adapter.mainContent ? (
+          adapter.mainContent
+        ) : (
+          <>
+            <PokerTable
+              players={adapter.players}
+              potLabel={adapter.potLabel}
+              boardCards={adapter.boardCards}
+              streetLabel={adapter.streetLabel}
+              statusLabel={adapter.statusLabel}
+              street={adapter.street}
+              handKey={adapter.handKey}
+            />
 
-        {adapter.supplementaryContent ? adapter.supplementaryContent : null}
+            {adapter.supplementaryContent ? adapter.supplementaryContent : null}
 
-        {adapter.statusHint ? (
-          <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
-            {adapter.statusHint}
-          </article>
-        ) : null}
+            {adapter.statusHint ? (
+              <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
+                {adapter.statusHint}
+              </article>
+            ) : null}
+          </>
+        )}
       </section>
 
       {showActionPanel ? (

@@ -225,6 +225,7 @@ export type RoomState = {
         amountWon: number;
         netChange: number;
         handRankCode: HandRankCode | null;
+        holeCards: string[];
         bestFiveCards: string[];
       }>;
     } | null;
@@ -814,6 +815,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   const toCall = mePlayer ? Math.max(0, currentBet - toNumber(mePlayer.currentBet)) : 0;
   const contenders = sortedPlayers.filter((player) => !player.hasFolded && player.seatIndex !== null);
   const playerNameMap = new Map(players.map((player) => [player.userId, player.displayName]));
+  const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
   const showdownEvaluationByUserId =
     roomMode === "online"
       ? (() => {
@@ -850,6 +852,10 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
         amountWon: toNumber(result.amountWon),
         netChange: toNumber(result.netChange),
         handRankCode: showdownEvaluation?.handRankCode ?? null,
+        holeCards:
+          roomMode === "online" && gameStatus === "settled"
+            ? [...(holeCardsByUser[result.userId] ?? []).slice(0, 2)]
+            : [],
         bestFiveCards: showdownEvaluation?.bestFiveCards ?? []
       };
     })
@@ -857,7 +863,6 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   const reservedBoardCards =
     roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];
   const boardCards = roomMode === "online" ? revealedBoardCardsByStreet(reservedBoardCards, streetCode) : [];
-  const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
   const myHoleCards =
     roomMode === "online" && currentUserId ? holeCardsByUser[currentUserId] ?? [] : [];
 
@@ -1381,6 +1386,82 @@ async function settleCurrentHand(input: {
   });
 }
 
+async function fetchRoomForSettlementById(input: {
+  tx: Prisma.TransactionClient;
+  roomId: string;
+}): Promise<RoomRecord | null> {
+  return (await input.tx.gameRoom.findUnique({
+    where: {
+      id: input.roomId
+    },
+    include: {
+      roomPlayers: true,
+      hands: {
+        orderBy: {
+          handNumber: "desc"
+        },
+        take: 1,
+        select: {
+          id: true,
+          handNumber: true,
+          street: true,
+          status: true,
+          dealerSeat: true,
+          sbSeat: true,
+          bbSeat: true,
+          activeSeat: true,
+          potTotal: true,
+          deckShuffled: true,
+          boardCards: true,
+          holeCardsByUser: true,
+          settledAt: true,
+          results: {
+            select: {
+              id: true,
+              userId: true,
+              resultType: true,
+              amountWon: true,
+              netChange: true
+            }
+          }
+        }
+      }
+    }
+  })) as RoomRecord | null;
+}
+
+async function autoSettleOnlineIfNeeded(input: {
+  tx: Prisma.TransactionClient;
+  roomId: string;
+}): Promise<void> {
+  const room = await fetchRoomForSettlementById({
+    tx: input.tx,
+    roomId: input.roomId
+  });
+
+  if (!room) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+
+  if (room.status !== "ACTIVE" || toPublicRoomMode(room.gameMode) !== "online") {
+    return;
+  }
+
+  const hand = room.hands[0];
+  if (!hand) {
+    throw new Error("HAND_NOT_FOUND");
+  }
+
+  if (normalizeHandStatus(hand.status) !== "SHOWDOWN") {
+    return;
+  }
+
+  await settleCurrentHand({
+    tx: input.tx,
+    room
+  });
+}
+
 async function startNextHand(input: {
   tx: Prisma.TransactionClient;
   roomId: string;
@@ -1592,6 +1673,13 @@ async function startNextHand(input: {
       sidePotTotal: BigInt(0)
     }
   });
+
+  if (immediateShowdown && roomMode === "online") {
+    await autoSettleOnlineIfNeeded({
+      tx,
+      roomId: room.id
+    });
+  }
 }
 
 async function finalizeRoomAndArchive(input: {
@@ -2284,6 +2372,10 @@ export async function applyPlayerActionByRoomCode(input: {
         handId: hand.id,
         finalPotTotal
       });
+      await autoSettleOnlineIfNeeded({
+        tx,
+        roomId: room.id
+      });
       return;
     }
 
@@ -2350,6 +2442,10 @@ export async function applyPlayerActionByRoomCode(input: {
         handId: hand.id,
         finalPotTotal
       });
+      await autoSettleOnlineIfNeeded({
+        tx,
+        roomId: room.id
+      });
       return;
     }
 
@@ -2388,6 +2484,10 @@ export async function applyPlayerActionByRoomCode(input: {
         roomId: room.id,
         handId: hand.id,
         finalPotTotal
+      });
+      await autoSettleOnlineIfNeeded({
+        tx,
+        roomId: room.id
       });
       return;
     }

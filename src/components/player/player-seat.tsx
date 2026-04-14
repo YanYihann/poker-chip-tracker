@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { Badge } from "@/components/ui/badge";
+import { SimPokerCard } from "@/components/cards/sim-poker-card";
 import { cn } from "@/lib/cn";
 
 import type { TableSeatPlayer } from "./types";
@@ -70,7 +71,33 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
             <p className="truncate text-[10px] font-body font-semibold text-stitch-onSurface">{player.name}</p>
           ) : null}
           <p className="text-[10px] text-stitch-onSurfaceVariant">{player.stackLabel}</p>
+          {player.resultDeltaLabel ? (
+            <p
+              className={cn(
+                "mt-0.5 text-[10px] font-semibold",
+                player.resultDeltaLabel.startsWith("+")
+                  ? "text-stitch-mint"
+                  : "text-stitch-tertiary"
+              )}
+            >
+              {player.resultDeltaLabel}
+            </p>
+          ) : null}
         </div>
+
+        {player.revealedCards && player.revealedCards.length > 0 ? (
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 2 }, (_, index) => (
+              <SimPokerCard
+                key={`${player.id}-revealed-${index}`}
+                card={player.revealedCards?.[index] ?? null}
+                size="xs"
+                hidden={!player.revealedCards?.[index]}
+                isZh={isZh}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {player.positionLabel ? (
           <Badge

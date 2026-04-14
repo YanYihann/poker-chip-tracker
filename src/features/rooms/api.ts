@@ -99,6 +99,7 @@ export type RoomState = {
           | "four-of-a-kind"
           | "straight-flush"
           | null;
+        holeCards: string[];
         bestFiveCards: string[];
       }>;
     } | null;
