@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
+import { fetchProfile } from "@/features/auth/api";
 import {
   getRoom,
   setPlayerBuyIn,
@@ -50,11 +51,14 @@ export default function WaitingRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [smallBlind, setSmallBlind] = useState(100);
   const [bigBlind, setBigBlind] = useState(200);
-  const [buyInInput, setBuyInInput] = useState("10000");
+  const [totalAssets, setTotalAssets] = useState(10000);
+  const [buyInInput, setBuyInInput] = useState("");
+  const [buyInTouched, setBuyInTouched] = useState(false);
 
   const isHost = roomState?.me?.isHost ?? false;
   const isReady = roomState?.me?.isReady ?? false;
   const roomStatus = roomState?.room.status ?? "waiting";
+  const maxBuyIn = Math.max(0, Math.floor(totalAssets));
 
   const sortedPlayers = useMemo(
     () =>
@@ -80,12 +84,11 @@ export default function WaitingRoomPage() {
   }, [roomState?.room.bigBlind, roomState?.room.smallBlind]);
 
   useEffect(() => {
-    const me = roomState?.players.find((player) => player.userId === roomState?.me?.userId);
-    if (!me) {
+    if (buyInTouched) {
       return;
     }
-    setBuyInInput(String(Math.max(1, Math.trunc(me.stack))));
-  }, [roomState?.me?.userId, roomState?.players]);
+    setBuyInInput(maxBuyIn > 0 ? String(maxBuyIn) : "");
+  }, [buyInTouched, maxBuyIn]);
 
   useEffect(() => {
     let active = true;
@@ -95,9 +98,18 @@ export default function WaitingRoomPage() {
       setLoading(true);
       setError(null);
       try {
-        const state = await getRoom(roomCode);
+        const [state, profile] = await Promise.all([
+          getRoom(roomCode),
+          fetchProfile().catch(() => null)
+        ]);
         if (active) {
           setRoomState(state);
+          if (profile) {
+            const parsedAssets = Number(profile.totalAssets);
+            if (Number.isFinite(parsedAssets)) {
+              setTotalAssets(Math.max(0, Math.floor(parsedAssets)));
+            }
+          }
         }
       } catch (loadError) {
         if (active) {
@@ -303,20 +315,47 @@ export default function WaitingRoomPage() {
                       onChange={(event) => {
                         const digits = event.target.value.replace(/[^\d]/g, "");
                         const normalized = digits.replace(/^0+(?=\d)/, "");
-                        setBuyInInput(normalized);
+                        if (!normalized) {
+                          setBuyInInput("");
+                          setBuyInTouched(true);
+                          return;
+                        }
+
+                        const parsed = Number(normalized);
+                        if (!Number.isFinite(parsed)) {
+                          return;
+                        }
+
+                        const clamped = Math.min(maxBuyIn, Math.max(0, Math.floor(parsed)));
+                        setBuyInInput(clamped > 0 ? String(clamped) : "");
+                        setBuyInTouched(true);
                       }}
                       className="flex-1 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
                     />
                     <button
                       type="button"
-                      disabled={pendingAction !== null || !buyInInput || Number(buyInInput) <= 0}
+                      disabled={
+                        pendingAction !== null ||
+                        !buyInInput ||
+                        Number(buyInInput) <= 0 ||
+                        Number(buyInInput) > maxBuyIn
+                      }
                       className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
                       onClick={async () => {
+                        const parsedBuyIn = Math.floor(Number(buyInInput));
+                        const boundedBuyIn = Math.min(maxBuyIn, parsedBuyIn);
+
+                        if (!Number.isFinite(parsedBuyIn) || boundedBuyIn <= 0) {
+                          setError(isZh ? "\u5e26\u5165\u7b79\u7801\u5fc5\u987b\u5927\u4e8e 0\u3002" : "Buy-in must be greater than 0.");
+                          return;
+                        }
+
                         setPendingAction("buyin");
                         setError(null);
                         try {
-                          const next = await setPlayerBuyIn(roomCode, Math.floor(Number(buyInInput)));
+                          const next = await setPlayerBuyIn(roomCode, boundedBuyIn);
                           setRoomState(next);
+                          setBuyInInput(String(boundedBuyIn));
                         } catch (buyInError) {
                           setError(
                             buyInError instanceof Error
@@ -333,6 +372,9 @@ export default function WaitingRoomPage() {
                       {pendingAction === "buyin" ? (isZh ? "\u4fdd\u5b58\u4e2d..." : "Saving...") : isZh ? "\u4fdd\u5b58" : "Save"}
                     </button>
                   </div>
+                  <p className="mt-1 text-[11px] text-stitch-onSurfaceVariant">
+                    {isZh ? "\u53ef\u5e26\u5165\u4e0a\u9650" : "Max Buy-in"}: {formatDollar(maxBuyIn)}
+                  </p>
                 </div>
 
                 <button

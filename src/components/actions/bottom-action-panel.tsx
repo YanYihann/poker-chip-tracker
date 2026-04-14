@@ -42,7 +42,7 @@ export function BottomActionPanel({
   const { isZh } = useLanguage();
 
   return (
-    <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[28px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:px-4">
+    <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[22px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-2 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:rounded-t-[28px] sm:px-4 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-3">
       {utilityActions.length > 0 ? (
         <div className="flex items-center justify-center gap-2">
           {utilityActions.map((action) => (
@@ -63,18 +63,18 @@ export function BottomActionPanel({
       ) : null}
 
       {amountControl ? (
-        <div className="mt-2">
-          <div className="grid grid-cols-5 gap-1 rounded-xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1">
+        <div className="mt-1.5 sm:mt-2">
+          <div className="grid grid-cols-5 gap-1 rounded-lg border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1 sm:rounded-xl">
             <button
               type="button"
-              className="h-8 min-w-0 rounded-lg bg-stitch-tertiary/20 px-1 text-[11px] font-semibold text-stitch-tertiary transition hover:brightness-110"
+              className="h-7 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(-100)}
             >
               -100
             </button>
             <button
               type="button"
-              className="h-8 min-w-0 rounded-lg bg-stitch-tertiary/20 px-1 text-[11px] font-semibold text-stitch-tertiary transition hover:brightness-110"
+              className="h-7 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(-50)}
             >
               -50
@@ -84,18 +84,18 @@ export function BottomActionPanel({
               inputMode="numeric"
               value={amountControl.value}
               onChange={(event) => amountControl.onValueChange(event.target.value)}
-              className="h-8 min-w-0 w-full rounded-lg border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-1 text-center text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+              className="h-7 min-w-0 w-full rounded-md border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-1 text-center text-[13px] text-stitch-onSurface outline-none focus:border-stitch-primary/50 sm:h-8 sm:rounded-lg sm:text-sm"
             />
             <button
               type="button"
-              className="h-8 min-w-0 rounded-lg bg-stitch-mint/20 px-1 text-[11px] font-semibold text-stitch-mint transition hover:brightness-110"
+              className="h-7 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(50)}
             >
               +50
             </button>
             <button
               type="button"
-              className="h-8 min-w-0 rounded-lg bg-stitch-mint/20 px-1 text-[11px] font-semibold text-stitch-mint transition hover:brightness-110"
+              className="h-7 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(100)}
             >
               +100
@@ -108,14 +108,14 @@ export function BottomActionPanel({
         </div>
       ) : null}
 
-      <div className="mt-2 grid grid-cols-4 gap-2">
+      <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:mt-2 sm:gap-2">
         {mainActions.length > 0 ? (
           mainActions.map((action) => (
             <button
               key={action.id}
               type="button"
               className={cn(
-                "flex h-16 flex-col items-center justify-center rounded-2xl border px-2 text-center transition active:scale-95",
+                "flex h-14 flex-col items-center justify-center rounded-xl border px-1.5 text-center transition active:scale-95 sm:h-16 sm:rounded-2xl sm:px-2",
                 action.id === "all-in"
                   ? "border-stitch-primary/40 bg-stitch-surfaceContainerHighest text-stitch-primary"
                   : action.id === "bet" || action.id === "raise"
@@ -127,9 +127,18 @@ export function BottomActionPanel({
               onClick={action.onPress}
             >
               {!isZh ? (
-                <span className="font-label text-[9px] uppercase tracking-[0.2em] opacity-80">{action.topLabel}</span>
+                <span className="font-label text-[8px] uppercase tracking-[0.16em] opacity-80 sm:text-[9px] sm:tracking-[0.2em]">
+                  {action.topLabel}
+                </span>
               ) : null}
-              <span className={cn("font-headline text-base font-bold italic", !isZh ? "mt-1" : "")}>{action.mainLabel}</span>
+              <span
+                className={cn(
+                  "font-headline text-[1.02rem] font-bold italic sm:text-base",
+                  !isZh ? "mt-0.5 sm:mt-1" : ""
+                )}
+              >
+                {action.mainLabel}
+              </span>
             </button>
           ))
         ) : (
