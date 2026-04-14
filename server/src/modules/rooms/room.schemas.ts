@@ -23,6 +23,10 @@ export const setBuyInSchema = z.object({
   buyIn: z.number().int().positive()
 });
 
+export const setSeatSchema = z.object({
+  seatIndex: z.number().int().min(0).max(9).nullable()
+});
+
 export const roomActionSchema = z.object({
   actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"]),
   amount: z.number().int().positive().optional()

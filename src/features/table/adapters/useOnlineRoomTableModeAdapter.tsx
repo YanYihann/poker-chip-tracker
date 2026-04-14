@@ -75,6 +75,32 @@ const ACTION_COPY: Record<
   }
 };
 
+const LAST_ACTION_LABELS: Record<
+  AppLocale,
+  Record<NonNullable<NonNullable<RoomState["game"]>["lastAction"]>["actionType"], string>
+> = {
+  zh: {
+    fold: "弃牌",
+    check: "过牌",
+    call: "跟注",
+    bet: "下注",
+    raise: "加注",
+    "all-in": "全下",
+    "post-sb": "下小盲",
+    "post-bb": "下大盲"
+  },
+  en: {
+    fold: "folded",
+    check: "checked",
+    call: "called",
+    bet: "bet",
+    raise: "raised",
+    "all-in": "went all-in",
+    "post-sb": "posted SB",
+    "post-bb": "posted BB"
+  }
+};
+
 function formatCurrency(amount: number, locale: AppLocale): string {
   const formatted = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
     maximumFractionDigits: 0
@@ -198,6 +224,7 @@ function applyRoomActionPatch(prev: RoomState | null, patch: RoomActionPatch): R
       isConnected: next.isConnected
     };
   });
+  const playerNameByUserId = new Map(nextPlayers.map((player) => [player.userId, player.displayName]));
 
   const previousGame = prev.game;
   const nextGame =
@@ -224,6 +251,18 @@ function applyRoomActionPatch(prev: RoomState | null, patch: RoomActionPatch): R
           canDecideNextHand: previousGame?.canDecideNextHand ?? false,
           myHoleCards: previousGame?.myHoleCards ?? [],
           boardCards: patch.game.boardCards,
+          lastAction: patch.game.lastAction
+            ? {
+                userId: patch.game.lastAction.userId,
+                displayName:
+                  playerNameByUserId.get(patch.game.lastAction.userId) ??
+                  previousGame?.lastAction?.displayName ??
+                  patch.game.lastAction.userId,
+                actionType: patch.game.lastAction.actionType,
+                amount: patch.game.lastAction.amount,
+                street: patch.game.lastAction.street
+              }
+            : null,
           eligibleWinnerUserIds: nextPlayers
             .filter((player) => player.status !== "folded")
             .map((player) => player.userId),
@@ -560,6 +599,24 @@ export function useOnlineRoomTableModeAdapter(
     showActionPanel || canSettle || utilityActions.length > 0 || pendingAction;
   const isSettledOnlineView =
     variant === "online" && game?.status === "settled" && settlementEntries.length > 0;
+  const topActionHint = useMemo(() => {
+    if (variant !== "online" || !roomState || roomState.room.status !== "active") {
+      return null;
+    }
+
+    if (!game?.lastAction) {
+      return isZh ? "上一位操作：等待首个动作" : "Previous action: waiting for first move";
+    }
+
+    const amountText =
+      game.lastAction.amount > 0 ? ` ${formatCurrency(game.lastAction.amount, locale)}` : "";
+    const actionLabel = LAST_ACTION_LABELS[locale][game.lastAction.actionType];
+    if (isZh) {
+      return `上一位操作：${game.lastAction.displayName} ${actionLabel}${amountText}`;
+    }
+
+    return `Previous action: ${game.lastAction.displayName} ${actionLabel}${amountText}`;
+  }, [game?.lastAction, isZh, locale, roomState, variant]);
   const settledPotTotal = useMemo(
     () =>
       settlementEntries.reduce((sum, entry) => sum + Math.max(0, Math.trunc(entry.amountWon ?? 0)), 0),
@@ -670,6 +727,7 @@ export function useOnlineRoomTableModeAdapter(
           ? "当前未轮到你行动，等待服务端推进回合。"
           : "It is not your turn. Waiting for server turn progression."
         : null,
+    topActionHint,
     settlement: usesAutoEvaluator
       ? null
       : {

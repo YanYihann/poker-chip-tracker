@@ -37,6 +37,14 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         backHref={adapter.backHref}
       />
 
+      {adapter.topActionHint ? (
+        <section className="px-4 pt-3">
+          <article className="rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-xs font-medium text-stitch-onSurface">
+            {adapter.topActionHint}
+          </article>
+        </section>
+      ) : null}
+
       <section className="flex-1 space-y-3 px-4 pb-4 pt-4">
         {adapter.banner ? (
           <article

@@ -69,6 +69,16 @@ type HandResultRecord = {
   netChange: bigint | number;
 };
 
+type HandActionRecord = {
+  userId: string;
+  seatIndex: number;
+  street: StreetCode;
+  actionType: string;
+  amount: bigint | number;
+  actionOrder: number;
+  createdAt: Date;
+};
+
 type HandRecord = {
   id: string;
   handNumber: number;
@@ -84,6 +94,7 @@ type HandRecord = {
   holeCardsByUser: Prisma.JsonValue | null;
   settledAt: Date | null;
   results: HandResultRecord[];
+  actions?: HandActionRecord[];
 };
 
 type RoomRecord = {
@@ -139,6 +150,15 @@ type RoomPatchSnapshotHandRecord = {
   activeSeat: number | null;
   potTotal: bigint | number;
   boardCards: string[];
+  actions: Array<{
+    userId: string;
+    seatIndex: number;
+    street: StreetCode;
+    actionType: string;
+    amount: bigint | number;
+    actionOrder: number;
+    createdAt: Date;
+  }>;
 };
 
 type RoomPatchSnapshot = {
@@ -152,6 +172,8 @@ type RoomPatchSnapshot = {
   roomPlayers: RoomPatchSnapshotPlayerRecord[];
   hands: RoomPatchSnapshotHandRecord[];
 };
+
+type PublicActionType = PlayerActionType | "post-sb" | "post-bb";
 
 export type ApplyPlayerActionResult = {
   roomState: RoomState | null;
@@ -217,6 +239,13 @@ export type RoomState = {
     canDecideNextHand: boolean;
     myHoleCards: string[];
     boardCards: string[];
+    lastAction: {
+      userId: string;
+      displayName: string;
+      actionType: PublicActionType;
+      amount: number;
+      street: PublicStreet;
+    } | null;
     eligibleWinnerUserIds: string[];
     lastSettlement: {
       entries: Array<{
@@ -584,6 +613,21 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
             boardCards: true,
             holeCardsByUser: true,
             settledAt: true,
+            actions: {
+              orderBy: {
+                actionOrder: "desc"
+              },
+              take: 1,
+              select: {
+                userId: true,
+                seatIndex: true,
+                street: true,
+                actionType: true,
+                amount: true,
+                actionOrder: true,
+                createdAt: true
+              }
+            },
             results: {
               select: {
                 id: true,
@@ -602,6 +646,40 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
       roomCode: normalizedRoomCode
     });
   }
+}
+
+function toPublicActionType(actionType: string | null | undefined): PublicActionType | null {
+  if (!actionType) {
+    return null;
+  }
+
+  const normalized = actionType.toUpperCase();
+  if (normalized === "FOLD") {
+    return "fold";
+  }
+  if (normalized === "CHECK") {
+    return "check";
+  }
+  if (normalized === "CALL") {
+    return "call";
+  }
+  if (normalized === "BET") {
+    return "bet";
+  }
+  if (normalized === "RAISE") {
+    return "raise";
+  }
+  if (normalized === "ALL_IN") {
+    return "all-in";
+  }
+  if (normalized === "POST_SB") {
+    return "post-sb";
+  }
+  if (normalized === "POST_BB") {
+    return "post-bb";
+  }
+
+  return null;
 }
 
 async function fetchRoomPatchSnapshotByCode(roomCode: string): Promise<RoomPatchSnapshot | null> {
@@ -643,12 +721,27 @@ async function fetchRoomPatchSnapshotByCode(roomCode: string): Promise<RoomPatch
           dealerSeat: true,
           sbSeat: true,
           bbSeat: true,
-          activeSeat: true,
-          potTotal: true,
-          boardCards: true
+            activeSeat: true,
+            potTotal: true,
+            boardCards: true,
+            actions: {
+              orderBy: {
+                actionOrder: "desc"
+              },
+              take: 1,
+              select: {
+                userId: true,
+                seatIndex: true,
+                street: true,
+                actionType: true,
+                amount: true,
+                actionOrder: true,
+                createdAt: true
+              }
+            }
+          }
         }
       }
-    }
   })) as RoomPatchSnapshot | null;
 }
 
@@ -677,6 +770,17 @@ function buildRoomActionPatchFromSnapshot(snapshot: RoomPatchSnapshot): RoomActi
     roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];
   const boardCards = roomMode === "online" ? revealedBoardCardsByStreet(reservedBoardCards, streetCode) : [];
   const minBet = Math.max(1, toNumber(snapshot.bigBlind));
+  const latestAction = latestHand?.actions[0] ?? null;
+  const latestActionType = toPublicActionType(latestAction?.actionType);
+  const lastAction =
+    latestAction && latestActionType
+      ? {
+          userId: latestAction.userId,
+          actionType: latestActionType,
+          amount: toNumber(latestAction.amount),
+          street: toPublicStreet(normalizeStreet(latestAction.street))
+        }
+      : null;
 
   return {
     type: "action-applied",
@@ -699,7 +803,8 @@ function buildRoomActionPatchFromSnapshot(snapshot: RoomPatchSnapshot): RoomActi
             bbSeat: latestHand.bbSeat ?? null,
             minBet,
             minRaiseDelta: minBet,
-            boardCards
+            boardCards,
+            lastAction
           },
     players: players.map((player) => {
       const stack = toNumber(player.stack);
@@ -815,6 +920,18 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   const toCall = mePlayer ? Math.max(0, currentBet - toNumber(mePlayer.currentBet)) : 0;
   const contenders = sortedPlayers.filter((player) => !player.hasFolded && player.seatIndex !== null);
   const playerNameMap = new Map(players.map((player) => [player.userId, player.displayName]));
+  const latestActionRecord = latestHand?.actions?.[0] ?? null;
+  const latestActionType = toPublicActionType(latestActionRecord?.actionType);
+  const lastAction =
+    latestActionRecord && latestActionType
+      ? {
+          userId: latestActionRecord.userId,
+          displayName: playerNameMap.get(latestActionRecord.userId) ?? latestActionRecord.userId,
+          actionType: latestActionType,
+          amount: toNumber(latestActionRecord.amount),
+          street: toPublicStreet(normalizeStreet(latestActionRecord.street))
+        }
+      : null;
   const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
   const showdownEvaluationByUserId =
     roomMode === "online"
@@ -892,7 +1009,11 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
         }
       : null,
     canStart:
-      !!mePlayer?.isHost && roomStatus === "waiting" && players.length >= 2 && allReady,
+      !!mePlayer?.isHost &&
+      roomStatus === "waiting" &&
+      players.length >= 2 &&
+      players.every((player) => player.seatIndex !== null) &&
+      allReady,
     game:
       roomStatus !== "active"
         ? null
@@ -917,6 +1038,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
             canDecideNextHand: !!mePlayer?.isHost && gameStatus === "settled",
             myHoleCards,
             boardCards,
+            lastAction,
             eligibleWinnerUserIds: contenders.map((player) => player.userId),
             lastSettlement: gameStatus === "settled" ? { entries: settlementEntries } : null
           }
@@ -1874,18 +1996,20 @@ export async function joinRoomByCode(input: {
       throw new Error("ROOM_FULL");
     }
 
-    const usedSeats = new Set(activePlayers.map((player) => player.seatIndex).filter((seat) => seat !== null));
+    const shouldAssignSeatImmediately = room.status !== "WAITING";
     let nextSeat: number | null = null;
-
-    for (let i = 0; i < room.maxPlayers; i += 1) {
-      if (!usedSeats.has(i)) {
-        nextSeat = i;
-        break;
+    if (shouldAssignSeatImmediately) {
+      const usedSeats = new Set(activePlayers.map((player) => player.seatIndex).filter((seat) => seat !== null));
+      for (let i = 0; i < room.maxPlayers; i += 1) {
+        if (!usedSeats.has(i)) {
+          nextSeat = i;
+          break;
+        }
       }
-    }
 
-    if (nextSeat === null) {
-      throw new Error("ROOM_FULL");
+      if (nextSeat === null) {
+        throw new Error("ROOM_FULL");
+      }
     }
 
     const displayName = await resolveDisplayName(input.userId, input.displayName);
@@ -1908,8 +2032,7 @@ export async function joinRoomByCode(input: {
       where: { id: member.id },
       data: {
         isConnected: true,
-        leftAt: null,
-        seatIndex: member.seatIndex ?? 0
+        leftAt: null
       }
     });
   }
@@ -1984,9 +2107,67 @@ export async function setPlayerReadyByRoomCode(input: {
     throw new Error("ROOM_NOT_WAITING");
   }
 
+  if (input.isReady && member.seatIndex === null) {
+    throw new Error("SEAT_NOT_SELECTED");
+  }
+
   await prisma.roomPlayer.update({
     where: { id: member.id },
     data: { isReady: input.isReady }
+  });
+
+  const next = await fetchRoomByCode(input.roomCode);
+  if (!next) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+  return buildRoomState(next, input.userId);
+}
+
+export async function setPlayerSeatByRoomCode(input: {
+  roomCode: string;
+  userId: string;
+  seatIndex: number | null;
+}): Promise<RoomState> {
+  const room = await fetchRoomByCode(input.roomCode);
+
+  if (!room) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+
+  const member = room.roomPlayers.find((player) => player.userId === input.userId && !player.leftAt);
+  if (!member) {
+    throw new Error("NOT_A_MEMBER");
+  }
+
+  if (room.status !== "WAITING") {
+    throw new Error("ROOM_NOT_WAITING");
+  }
+
+  if (input.seatIndex !== null && (input.seatIndex < 0 || input.seatIndex >= room.maxPlayers)) {
+    throw new Error("INVALID_SEAT");
+  }
+
+  if (
+    input.seatIndex !== null &&
+    room.roomPlayers.some(
+      (player) =>
+        !player.leftAt &&
+        player.id !== member.id &&
+        player.seatIndex !== null &&
+        player.seatIndex === input.seatIndex
+    )
+  ) {
+    throw new Error("SEAT_TAKEN");
+  }
+
+  const seatChanged = member.seatIndex !== input.seatIndex;
+
+  await prisma.roomPlayer.update({
+    where: { id: member.id },
+    data: {
+      seatIndex: input.seatIndex,
+      isReady: seatChanged ? false : member.isReady
+    }
   });
 
   const next = await fetchRoomByCode(input.roomCode);
@@ -2100,13 +2281,21 @@ async function startFirstHand(roomCode: string, hostUserId: string): Promise<voi
       throw new Error("ROOM_ALREADY_STARTED");
     }
 
-    const activePlayers = getSeatedActivePlayers(room.roomPlayers);
-    const readyPlayers = activePlayers.filter((player) => player.isReady);
-
-    if (readyPlayers.length < 2 || readyPlayers.length !== activePlayers.length) {
+    const activeMembers = room.roomPlayers.filter((player) => !player.leftAt);
+    if (activeMembers.length < 2) {
       throw new Error("ROOM_NOT_READY");
     }
 
+    if (activeMembers.some((player) => player.seatIndex === null)) {
+      throw new Error("SEAT_SELECTION_INCOMPLETE");
+    }
+
+    const readyPlayers = activeMembers.filter((player) => player.isReady);
+    if (readyPlayers.length !== activeMembers.length) {
+      throw new Error("ROOM_NOT_READY");
+    }
+
+    const activePlayers = getSeatedActivePlayers(activeMembers);
     const hostPlayer = activePlayers.find((player) => player.userId === hostUserId);
     if (!hostPlayer || hostPlayer.seatIndex === null) {
       throw new Error("NOT_A_MEMBER");

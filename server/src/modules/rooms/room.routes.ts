@@ -9,6 +9,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   roomCodeParamSchema,
+  setSeatSchema,
   setBuyInSchema,
   settleHandSchema,
   updateBlindsSchema,
@@ -23,6 +24,7 @@ import {
   joinRoomByCode,
   settleHandByRoomCode,
   setPlayerBuyInByRoomCode,
+  setPlayerSeatByRoomCode,
   setPlayerReadyByRoomCode,
   startRoomByHost,
   updateRoomBlindsByCode
@@ -86,6 +88,18 @@ function sendRoomError(error: unknown, res: Response): void {
       return;
     case "ROOM_NOT_READY":
       res.status(409).json({ message: "All players must be ready before start." });
+      return;
+    case "SEAT_NOT_SELECTED":
+      res.status(409).json({ message: "Please choose a seat before ready." });
+      return;
+    case "SEAT_TAKEN":
+      res.status(409).json({ message: "Selected seat is already taken." });
+      return;
+    case "SEAT_SELECTION_INCOMPLETE":
+      res.status(409).json({ message: "All players must choose seats before start." });
+      return;
+    case "INVALID_SEAT":
+      res.status(400).json({ message: "Invalid seat index." });
       return;
     case "ROOM_NOT_ACTIVE":
       res.status(409).json({ message: "Room game is not active." });
@@ -228,6 +242,27 @@ export function createRoomRouter() {
         roomCode,
         userId: req.authSession!.userId,
         buyIn: payload.buyIn
+      });
+
+      res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        sendValidationError(error, res);
+        return;
+      }
+      sendRoomError(error, res);
+    }
+  });
+
+  router.patch("/:roomCode/seat", async (req: Request, res: Response) => {
+    try {
+      const { roomCode } = roomCodeParamSchema.parse(req.params);
+      const payload = setSeatSchema.parse(req.body);
+      const roomState = await setPlayerSeatByRoomCode({
+        roomCode,
+        userId: req.authSession!.userId,
+        seatIndex: payload.seatIndex
       });
 
       res.status(200).json({ room: roomState });

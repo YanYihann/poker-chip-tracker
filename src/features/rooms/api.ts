@@ -81,6 +81,21 @@ export type RoomState = {
     canDecideNextHand: boolean;
     myHoleCards: string[];
     boardCards: string[];
+    lastAction: {
+      userId: string;
+      displayName: string;
+      actionType:
+        | "fold"
+        | "check"
+        | "call"
+        | "bet"
+        | "raise"
+        | "all-in"
+        | "post-sb"
+        | "post-bb";
+      amount: number;
+      street: "preflop" | "flop" | "turn" | "river" | "showdown";
+    } | null;
     eligibleWinnerUserIds: string[];
     lastSettlement: {
       entries: Array<{
@@ -125,6 +140,12 @@ export type RoomActionPatch = {
     minBet: number;
     minRaiseDelta: number;
     boardCards: string[];
+    lastAction: {
+      userId: string;
+      actionType: NonNullable<NonNullable<RoomState["game"]>["lastAction"]>["actionType"];
+      amount: number;
+      street: NonNullable<NonNullable<RoomState["game"]>["lastAction"]>["street"];
+    } | null;
   } | null;
   players: Array<{
     userId: string;
@@ -214,6 +235,14 @@ export async function setPlayerBuyIn(roomCode: string, buyIn: number): Promise<R
   const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/buy-in`, {
     method: "PATCH",
     body: JSON.stringify({ buyIn })
+  });
+  return payload.room;
+}
+
+export async function setPlayerSeat(roomCode: string, seatIndex: number | null): Promise<RoomState> {
+  const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/seat`, {
+    method: "PATCH",
+    body: JSON.stringify({ seatIndex })
   });
   return payload.room;
 }

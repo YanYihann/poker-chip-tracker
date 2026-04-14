@@ -28,6 +28,12 @@ export type RoomActionPatch = {
     minBet: number;
     minRaiseDelta: number;
     boardCards: string[];
+    lastAction: {
+      userId: string;
+      actionType: NonNullable<NonNullable<RoomState["game"]>["lastAction"]>["actionType"];
+      amount: number;
+      street: NonNullable<NonNullable<RoomState["game"]>["lastAction"]>["street"];
+    } | null;
   } | null;
   players: Array<{
     userId: string;
@@ -61,7 +67,15 @@ export function buildRoomActionPatch(roomState: RoomState): RoomActionPatch {
           bbSeat: roomState.game.bbSeat,
           minBet: roomState.game.minBet,
           minRaiseDelta: roomState.game.minRaiseDelta,
-          boardCards: roomState.game.boardCards
+          boardCards: roomState.game.boardCards,
+          lastAction: roomState.game.lastAction
+            ? {
+                userId: roomState.game.lastAction.userId,
+                actionType: roomState.game.lastAction.actionType,
+                amount: roomState.game.lastAction.amount,
+                street: roomState.game.lastAction.street
+              }
+            : null
         }
       : null,
     players: roomState.players.map((player) => ({

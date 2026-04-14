@@ -11,6 +11,7 @@ import { fetchProfile } from "@/features/auth/api";
 import {
   getRoom,
   setPlayerBuyIn,
+  setPlayerSeat,
   setReady,
   startRoom,
   updateRoomBlinds,
@@ -48,7 +49,7 @@ function WaitingRoomPageContent() {
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingAction, setPendingAction] = useState<"ready" | "start" | "blinds" | "buyin" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"ready" | "start" | "blinds" | "buyin" | "seat" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [smallBlind, setSmallBlind] = useState(100);
   const [bigBlind, setBigBlind] = useState(200);
@@ -68,6 +69,11 @@ function WaitingRoomPageContent() {
     [roomState]
   );
   const maxBuyIn = Math.max(0, Math.floor(totalAssets ?? mePlayer?.stack ?? 0));
+  const mySeatIndex = mePlayer?.seatIndex ?? null;
+  const unseatedCount = useMemo(
+    () => (roomState?.players ?? []).filter((player) => player.seatIndex === null).length,
+    [roomState?.players]
+  );
 
   const sortedPlayers = useMemo(
     () =>
@@ -104,7 +110,7 @@ function WaitingRoomPageContent() {
       return;
     }
 
-    if (roomStatus !== "waiting" || buyInTouched || pendingAction !== null) {
+    if (roomStatus !== "waiting" || buyInTouched) {
       return;
     }
 
@@ -143,13 +149,11 @@ function WaitingRoomPageContent() {
           buyInError instanceof Error
             ? buyInError.message
             : isZh
-              ? "无法自动设置带入筹码。"
+              ? "\u65e0\u6cd5\u81ea\u52a8\u8bbe\u7f6e\u5e26\u5165\u7b79\u7801\u3002"
               : "Unable to auto save buy-in."
         );
       } finally {
-        if (active) {
-          setPendingAction(null);
-        }
+        setPendingAction((current) => (current === "buyin" ? null : current));
       }
     };
 
@@ -158,7 +162,7 @@ function WaitingRoomPageContent() {
     return () => {
       active = false;
     };
-  }, [buyInTouched, isZh, maxBuyIn, mePlayer, pendingAction, roomCode, roomState?.me, roomStatus]);
+  }, [buyInTouched, isZh, maxBuyIn, mePlayer, roomCode, roomState?.me, roomStatus]);
 
   useEffect(() => {
     let active = true;
@@ -289,7 +293,9 @@ function WaitingRoomPageContent() {
                         {player.isHost ? (isZh ? " (\u623f\u4e3b)" : " (Host)") : ""}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {player.isConnected ? (isZh ? "\u5728\u7ebf" : "Online") : isZh ? "\u79bb\u7ebf" : "Offline"} | {formatDollar(player.stack)}
+                        {player.isConnected ? (isZh ? "\u5728\u7ebf" : "Online") : isZh ? "\u79bb\u7ebf" : "Offline"} |{" "}
+                        {player.seatIndex === null ? (isZh ? "\u672a\u9009\u4f4d" : "No Seat") : `S${player.seatIndex + 1}`} |{" "}
+                        {formatDollar(player.stack)}
                       </p>
                     </div>
                     <span
@@ -379,6 +385,116 @@ function WaitingRoomPageContent() {
               <div className="mt-3 grid grid-cols-1 gap-2">
                 <div className="rounded-2xl bg-stitch-surfaceContainerHigh p-3">
                   <p className="text-xs text-stitch-onSurfaceVariant">
+                    {isZh ? "\u5f00\u59cb\u524d\u8bf7\u5148\u9009\u5ea7\u4f4d" : "Please choose your seat before game starts"}
+                  </p>
+                  <div className="mt-2 grid grid-cols-5 gap-2">
+                    {Array.from({ length: roomState.room.maxPlayers }, (_, seatIndex) => {
+                      const occupiedBy = roomState.players.find((player) => player.seatIndex === seatIndex) ?? null;
+                      const occupiedByMe = occupiedBy?.userId === roomState.me?.userId;
+                      const isTaken = !!occupiedBy && !occupiedByMe;
+                      const isSelectedByMe = mySeatIndex === seatIndex;
+
+                      return (
+                        <button
+                          key={`seat-${seatIndex}`}
+                          type="button"
+                          disabled={pendingAction !== null || roomStatus !== "waiting" || isTaken}
+                          className={[
+                            "rounded-xl border px-1 py-2 text-center text-[11px] transition",
+                            isSelectedByMe
+                              ? "border-stitch-primary bg-stitch-primary/20 text-stitch-primary"
+                              : isTaken
+                                ? "border-stitch-outlineVariant/20 bg-stitch-surfaceContainer text-stitch-onSurfaceVariant/70"
+                                : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainer text-stitch-onSurface hover:border-stitch-primary/50"
+                          ].join(" ")}
+                          onClick={async () => {
+                            if (!roomCode || pendingAction !== null || roomStatus !== "waiting") {
+                              return;
+                            }
+                            if (mySeatIndex === seatIndex) {
+                              return;
+                            }
+
+                            setPendingAction("seat");
+                            setError(null);
+                            try {
+                              const next = await setPlayerSeat(roomCode, seatIndex);
+                              setRoomState(next);
+                            } catch (seatError) {
+                              setError(
+                                seatError instanceof Error
+                                  ? seatError.message
+                                  : isZh
+                                    ? "\u65e0\u6cd5\u9009\u62e9\u5ea7\u4f4d\u3002"
+                                    : "Unable to choose seat."
+                              );
+                            } finally {
+                              setPendingAction(null);
+                            }
+                          }}
+                        >
+                          <p className="font-semibold tracking-wide">S{seatIndex + 1}</p>
+                          <p className="mt-0.5 truncate">
+                            {occupiedBy
+                              ? occupiedByMe
+                                ? isZh
+                                  ? "\u6211"
+                                  : "Me"
+                                : occupiedBy.displayName
+                              : isZh
+                                ? "\u7a7a\u4f4d"
+                                : "Open"}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-stitch-onSurfaceVariant">
+                      {mySeatIndex === null
+                        ? isZh
+                          ? "\u4f60\u8fd8\u672a\u9009\u5ea7\u4f4d\u3002"
+                          : "You have not selected a seat yet."
+                        : isZh
+                          ? `\u5df2\u9009\u5ea7\u4f4d: S${mySeatIndex + 1}`
+                          : `Selected seat: S${mySeatIndex + 1}`}
+                    </p>
+                    {mySeatIndex !== null ? (
+                      <button
+                        type="button"
+                        disabled={pendingAction !== null || roomStatus !== "waiting"}
+                        className="rounded-lg bg-stitch-surfaceContainer px-2 py-1 text-[11px] text-stitch-onSurfaceVariant disabled:opacity-50"
+                        onClick={async () => {
+                          if (!roomCode || pendingAction !== null || roomStatus !== "waiting") {
+                            return;
+                          }
+
+                          setPendingAction("seat");
+                          setError(null);
+                          try {
+                            const next = await setPlayerSeat(roomCode, null);
+                            setRoomState(next);
+                          } catch (seatError) {
+                            setError(
+                              seatError instanceof Error
+                                ? seatError.message
+                                : isZh
+                                  ? "\u65e0\u6cd5\u91cd\u7f6e\u5ea7\u4f4d\u3002"
+                                  : "Unable to clear seat."
+                            );
+                          } finally {
+                            setPendingAction(null);
+                          }
+                        }}
+                      >
+                        {isZh ? "\u91cd\u65b0\u9009\u5ea7" : "Clear Seat"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-stitch-surfaceContainerHigh p-3">
+                  <p className="text-xs text-stitch-onSurfaceVariant">
                     {isZh ? "\u5148\u8bbe\u7f6e\u4f60\u7684\u5e26\u5165\u7b79\u7801\u518d\u51c6\u5907" : "Set your buy-in chips before ready"}
                   </p>
                   <div className="mt-2 flex items-center gap-2">
@@ -453,7 +569,7 @@ function WaitingRoomPageContent() {
 
                 <button
                   type="button"
-                  disabled={pendingAction !== null || roomStatus !== "waiting"}
+                  disabled={pendingAction !== null || roomStatus !== "waiting" || mySeatIndex === null}
                   className="rounded-xl bg-stitch-mint/20 px-4 py-2 text-sm font-semibold text-stitch-mint disabled:opacity-50"
                   onClick={async () => {
                     setPendingAction("ready");
@@ -487,36 +603,49 @@ function WaitingRoomPageContent() {
                 </button>
 
                 {isHost ? (
-                  <button
-                    type="button"
-                    disabled={pendingAction !== null || !roomState.canStart}
-                    className="rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
-                    onClick={async () => {
-                      setPendingAction("start");
-                      setError(null);
-                      try {
-                        await startRoom(roomCode);
-                      } catch (startError) {
-                        setError(
-                          startError instanceof Error
-                            ? startError.message
-                            : isZh
-                              ? "\u65e0\u6cd5\u5f00\u59cb\u6e38\u620f\u3002"
-                              : "Unable to start room."
-                        );
-                      } finally {
-                        setPendingAction(null);
-                      }
-                    }}
-                  >
-                    {pendingAction === "start"
-                      ? isZh
-                        ? "\u5f00\u59cb\u4e2d..."
-                        : "Starting..."
-                      : isZh
-                        ? "\u623f\u4e3b\u5f00\u59cb\u6e38\u620f"
-                        : "Host Start Game"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={pendingAction !== null || !roomState.canStart}
+                      className="rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
+                      onClick={async () => {
+                        setPendingAction("start");
+                        setError(null);
+                        try {
+                          await startRoom(roomCode);
+                        } catch (startError) {
+                          setError(
+                            startError instanceof Error
+                              ? startError.message
+                              : isZh
+                                ? "\u65e0\u6cd5\u5f00\u59cb\u6e38\u620f\u3002"
+                                : "Unable to start room."
+                          );
+                        } finally {
+                          setPendingAction(null);
+                        }
+                      }}
+                    >
+                      {pendingAction === "start"
+                        ? isZh
+                          ? "\u786e\u8ba4\u4e2d..."
+                          : "Confirming..."
+                        : isZh
+                          ? "\u623f\u4e3b\u786e\u8ba4\u5e76\u6b63\u5f0f\u5f00\u5c40"
+                          : "Host Confirm & Start"}
+                    </button>
+                    {!roomState.canStart ? (
+                      <p className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-[11px] text-stitch-onSurfaceVariant">
+                        {unseatedCount > 0
+                          ? isZh
+                            ? `\u8fd8\u6709 ${unseatedCount} \u540d\u73a9\u5bb6\u672a\u9009\u5ea7\u4f4d\u3002`
+                            : `${unseatedCount} player(s) still need to choose seats.`
+                          : isZh
+                            ? "\u8bf7\u7b49\u5f85\u6240\u6709\u73a9\u5bb6\u51c6\u5907\u540e\u7531\u623f\u4e3b\u786e\u8ba4\u5f00\u5c40\u3002"
+                            : "Wait for all players to be ready, then host confirms to start."}
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             </article>
@@ -556,3 +685,4 @@ export default function WaitingRoomPage() {
     </OnlineAuthGate>
   );
 }
+
