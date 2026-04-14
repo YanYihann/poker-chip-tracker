@@ -256,12 +256,8 @@ export function useOnlineRoomTableModeAdapter(
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
   const actionCopy = ACTION_COPY[locale];
-  const canSettle =
-    variant === "local" &&
-    Boolean(game?.status === "showdown" && isHost);
-  const canStartNextHand =
-    variant === "local" &&
-    Boolean(game?.status === "settled" && isHost);
+  const canSettle = Boolean(game?.status === "showdown" && isHost);
+  const canStartNextHand = Boolean(game?.status === "settled" && isHost);
 
   useEffect(() => {
     if (!roomCode) {
@@ -468,6 +464,33 @@ export function useOnlineRoomTableModeAdapter(
                   setPendingAction(false);
                 }
               }
+            },
+            {
+              id: "end-session",
+              label: isZh ? "结束牌局并归档" : "End Session & Archive",
+              onPress: async () => {
+                if (!roomCode || pendingAction || !canStartNextHand) {
+                  return;
+                }
+
+                setPendingAction(true);
+                setError(null);
+
+                try {
+                  const next = await decideNextHand(roomCode, false);
+                  setRoomState(next);
+                } catch (endSessionError) {
+                  setError(
+                    endSessionError instanceof Error
+                      ? endSessionError.message
+                      : isZh
+                        ? "无法结束并归档当前牌局。"
+                        : "Unable to end and archive the current session."
+                  );
+                } finally {
+                  setPendingAction(false);
+                }
+              }
             }
           ]
         : [],
@@ -570,69 +593,66 @@ export function useOnlineRoomTableModeAdapter(
           ? "当前未轮到你行动，等待服务端推进回合。"
           : "It is not your turn. Waiting for server turn progression."
         : null,
-    settlement:
-      variant === "local"
-        ? {
-            isOpen: settlementOpen,
-            players: settlementPlayers,
-            canUndo: false,
-            canReopen: false,
-            onClose: () => setSettlementOpen(false),
-            onQuickWin: async (winnerId: string) => {
-              if (!roomCode || pendingAction || !canSettle || !winnerId) {
-                return;
-              }
+    settlement: {
+      isOpen: settlementOpen,
+      players: settlementPlayers,
+      canUndo: false,
+      canReopen: false,
+      onClose: () => setSettlementOpen(false),
+      onQuickWin: async (winnerId: string) => {
+        if (!roomCode || pendingAction || !canSettle || !winnerId) {
+          return;
+        }
 
-              setPendingAction(true);
-              setError(null);
+        setPendingAction(true);
+        setError(null);
 
-              try {
-                const next = await settleHand(roomCode, [winnerId]);
-                setRoomState(next);
-                setSettlementOpen(false);
-              } catch (settleError) {
-                setError(
-                  settleError instanceof Error
-                    ? settleError.message
-                    : isZh
-                      ? "结算失败。"
-                      : "Failed to settle hand."
-                );
-              } finally {
-                setPendingAction(false);
-              }
-            },
-            onQuickSplit: async (winnerIds: string[]) => {
-              if (!roomCode || pendingAction || !canSettle || winnerIds.length === 0) {
-                return;
-              }
+        try {
+          const next = await settleHand(roomCode, [winnerId]);
+          setRoomState(next);
+          setSettlementOpen(false);
+        } catch (settleError) {
+          setError(
+            settleError instanceof Error
+              ? settleError.message
+              : isZh
+                ? "结算失败。"
+                : "Failed to settle hand."
+          );
+        } finally {
+          setPendingAction(false);
+        }
+      },
+      onQuickSplit: async (winnerIds: string[]) => {
+        if (!roomCode || pendingAction || !canSettle || winnerIds.length === 0) {
+          return;
+        }
 
-              const uniqueWinners = Array.from(new Set(winnerIds));
+        const uniqueWinners = Array.from(new Set(winnerIds));
 
-              setPendingAction(true);
-              setError(null);
+        setPendingAction(true);
+        setError(null);
 
-              try {
-                const next = await settleHand(roomCode, uniqueWinners);
-                setRoomState(next);
-                setSettlementOpen(false);
-              } catch (settleError) {
-                setError(
-                  settleError instanceof Error
-                    ? settleError.message
-                    : isZh
-                      ? "结算失败。"
-                      : "Failed to settle hand."
-                );
-              } finally {
-                setPendingAction(false);
-              }
-            },
-            onUndo: () => undefined,
-            onEditHand: () => undefined,
-            onReopenSettlement: () => undefined
-          }
-        : null,
+        try {
+          const next = await settleHand(roomCode, uniqueWinners);
+          setRoomState(next);
+          setSettlementOpen(false);
+        } catch (settleError) {
+          setError(
+            settleError instanceof Error
+              ? settleError.message
+              : isZh
+                ? "结算失败。"
+                : "Failed to settle hand."
+          );
+        } finally {
+          setPendingAction(false);
+        }
+      },
+      onUndo: () => undefined,
+      onEditHand: () => undefined,
+      onReopenSettlement: () => undefined
+    },
     supplementaryContent:
       variant === "online" ? (
         <OnlineTablePlaceholders

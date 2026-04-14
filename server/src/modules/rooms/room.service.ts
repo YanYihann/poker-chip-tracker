@@ -772,6 +772,50 @@ async function moveHandToShowdown(input: {
   });
 }
 
+type SidePot = {
+  amount: number;
+  participantUserIds: string[];
+};
+
+function buildSidePotsFromContributions(
+  contributions: Array<{
+    userId: string;
+    amount: number;
+  }>
+): SidePot[] {
+  const active = contributions
+    .filter((item) => item.amount > 0)
+    .map((item) => ({ ...item }))
+    .sort((a, b) => a.amount - b.amount);
+
+  if (active.length === 0) {
+    return [];
+  }
+
+  const sidePots: SidePot[] = [];
+  let previousLevel = 0;
+
+  while (active.length > 0) {
+    const currentLevel = active[0].amount;
+    const layer = currentLevel - previousLevel;
+
+    if (layer > 0) {
+      const participantUserIds = active.map((item) => item.userId);
+      sidePots.push({
+        amount: layer * participantUserIds.length,
+        participantUserIds
+      });
+    }
+
+    while (active.length > 0 && active[0].amount === currentLevel) {
+      active.shift();
+    }
+    previousLevel = currentLevel;
+  }
+
+  return sidePots;
+}
+
 async function settleCurrentHand(input: {
   tx: Prisma.TransactionClient;
   room: RoomRecord;
@@ -810,15 +854,7 @@ async function settleCurrentHand(input: {
   const potTotal = Math.max(0, toNumber(hand.potTotal));
   const sortedWinners = [...winners].sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
   const payoutByUserId = new Map<string, number>();
-
-  if (sortedWinners.length > 0) {
-    const eachShare = Math.floor(potTotal / sortedWinners.length);
-    const remainder = potTotal % sortedWinners.length;
-
-    sortedWinners.forEach((winner, index) => {
-      payoutByUserId.set(winner.userId, eachShare + (index === 0 ? remainder : 0));
-    });
-  }
+  const splitWinnerUserIds = new Set<string>();
 
   const actions = await tx.handAction.findMany({
     where: {
@@ -834,6 +870,59 @@ async function settleCurrentHand(input: {
   for (const action of actions) {
     const previous = contributedByUserId.get(action.userId) ?? 0;
     contributedByUserId.set(action.userId, previous + toNumber(action.amount));
+  }
+
+  const sidePots = buildSidePotsFromContributions(
+    seatedPlayers.map((player) => ({
+      userId: player.userId,
+      amount: contributedByUserId.get(player.userId) ?? 0
+    }))
+  );
+
+  const computedTotalPot = sidePots.reduce((sum, sidePot) => sum + sidePot.amount, 0);
+  if (sidePots.length === 0 && potTotal > 0) {
+    sidePots.push({
+      amount: potTotal,
+      participantUserIds: seatedPlayers.map((player) => player.userId)
+    });
+  } else if (sidePots.length > 0 && computedTotalPot !== potTotal) {
+    const adjusted = Math.max(0, sidePots[0].amount + (potTotal - computedTotalPot));
+    sidePots[0] = {
+      ...sidePots[0],
+      amount: adjusted
+    };
+  }
+
+  const contenderSet = new Set(contenders.map((player) => player.userId));
+  const winnerIdSet = new Set(sortedWinners.map((player) => player.userId));
+  const contenderByUserId = new Map(contenders.map((player) => [player.userId, player]));
+
+  for (const sidePot of sidePots) {
+    if (sidePot.amount <= 0) {
+      continue;
+    }
+
+    const eligibleWinners = sidePot.participantUserIds
+      .filter((userId) => contenderSet.has(userId) && winnerIdSet.has(userId))
+      .map((userId) => contenderByUserId.get(userId))
+      .filter((player): player is RoomPlayerRecord => !!player)
+      .sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
+
+    if (eligibleWinners.length === 0) {
+      throw new Error("INVALID_WINNERS");
+    }
+
+    const eachShare = Math.floor(sidePot.amount / eligibleWinners.length);
+    const remainder = sidePot.amount % eligibleWinners.length;
+
+    eligibleWinners.forEach((winner, index) => {
+      const previous = payoutByUserId.get(winner.userId) ?? 0;
+      payoutByUserId.set(winner.userId, previous + eachShare + (index === 0 ? remainder : 0));
+    });
+
+    if (eligibleWinners.length > 1) {
+      eligibleWinners.forEach((winner) => splitWinnerUserIds.add(winner.userId));
+    }
   }
 
   for (const winner of sortedWinners) {
@@ -858,11 +947,13 @@ async function settleCurrentHand(input: {
     }
   });
 
-  const resultType: "WIN" | "SPLIT" = sortedWinners.length === 1 ? "WIN" : "SPLIT";
+  const globalResultType: "WIN" | "SPLIT" = sortedWinners.length === 1 ? "WIN" : "SPLIT";
   for (const player of seatedPlayers) {
     const amountWon = payoutByUserId.get(player.userId) ?? 0;
     const contribution = contributedByUserId.get(player.userId) ?? 0;
     const netChange = amountWon - contribution;
+    const resultType: "WIN" | "SPLIT" =
+      amountWon > 0 && splitWinnerUserIds.has(player.userId) ? "SPLIT" : globalResultType;
 
     await tx.handResult.create({
       data: {

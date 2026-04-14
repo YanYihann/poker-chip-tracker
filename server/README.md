@@ -34,6 +34,15 @@ Backend foundation for Railway + Neon.
 - `GET /api/rooms/:roomCode`
 - `PATCH /api/rooms/:roomCode/ready`
 - `POST /api/rooms/:roomCode/start`
+- `POST /api/rooms/:roomCode/settle` (temporary host-manual settlement, server-authoritative)
+- `POST /api/rooms/:roomCode/next-hand` (continue or archive session)
+
+## Settlement Mode (Temporary)
+
+- Current online settlement is **host-manual on server** (not client-authoritative).
+- Single winner and split pot are supported.
+- Side-pot payout is contribution-layer based and requires host-selected winners to cover each eligible side pot.
+- Automatic hand evaluation is planned for a future phase.
 
 ## WebSocket events
 

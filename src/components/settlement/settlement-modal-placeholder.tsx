@@ -74,6 +74,9 @@ export function SettlementModalPlaceholder({
         <p className="mt-2 text-sm text-stitch-onSurfaceVariant">
           选择赢家后可执行 Quick Win / Quick Split，所有变更可通过 Undo 回滚。
         </p>
+        <p className="mt-2 text-xs text-stitch-tertiary">
+          Temporary: 结算由房主在服务端手动确认，自动牌力评估将在后续版本提供。
+        </p>
 
         <div className="mt-4 max-h-44 space-y-2 overflow-y-auto pr-1">
           {players.map((player) => {
