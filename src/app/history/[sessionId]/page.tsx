@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { fetchSessionDetail, type SessionDetail } from "@/features/auth/api";
@@ -18,7 +19,7 @@ function formatMoney(value: string, locale: AppLocale): string {
   return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
-export default function SessionDetailPage() {
+function SessionDetailPageContent() {
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";
   const { isZh, localeTag } = useLanguage();
@@ -158,5 +159,13 @@ export default function SessionDetailPage() {
         ) : null}
       </section>
     </main>
+  );
+}
+
+export default function SessionDetailPage() {
+  return (
+    <OnlineAuthGate title="Session Detail" backHref="/history">
+      <SessionDetailPageContent />
+    </OnlineAuthGate>
   );
 }

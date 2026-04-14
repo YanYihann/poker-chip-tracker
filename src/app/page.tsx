@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { BottomActionPanel } from "@/components/actions/bottom-action-panel";
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import type { TableSeatPlayer } from "@/components/player/types";
@@ -595,7 +596,9 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
-      <HomePageContent />
+      <OnlineAuthGate title="PokerChip Ledger" backHref="/local">
+        <HomePageContent />
+      </OnlineAuthGate>
     </Suspense>
   );
 }

@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { joinRoom } from "@/features/rooms/api";
 
-export default function JoinRoomPage() {
+function JoinRoomPageContent() {
   const router = useRouter();
   const { isZh } = useLanguage();
   const [roomCode, setRoomCode] = useState("");
@@ -95,5 +96,13 @@ export default function JoinRoomPage() {
         </Link>
       </section>
     </main>
+  );
+}
+
+export default function JoinRoomPage() {
+  return (
+    <OnlineAuthGate title="Join Room" backHref="/profile">
+      <JoinRoomPageContent />
+    </OnlineAuthGate>
   );
 }

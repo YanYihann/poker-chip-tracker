@@ -1,244 +1,236 @@
-﻿# Incremental Migration Audit (Phase 0)
+# Incremental Migration Audit (Phase 0, Dual-Mode Lock)
 
-Date: 2026-04-13
-Scope: Audit existing local-only app and prepare client-server migration without rewriting UI.
+Date: 2026-04-14  
+Scope: lock the principle "preserve local mode + add online mode as additive flow", audit current repo, and define an incremental architecture plan.
 
-## 1) Architecture Summary
+## 0) Locked Constraints
 
-Current architecture is a **single Next.js client app** with local-first state and storage:
+- Do not replace or remove existing local poker mode.
+- Add online multiplayer mode as a separate capability.
+- Preserve current mobile table UI and visual style.
+- Prefer incremental refactors over rewrites.
+- Reuse existing components first.
 
-- UI layer: `src/app/*` + `src/components/*`
-- State layer: multiple zustand stores in `src/store/*`
-- Domain/controller layer: mostly centralized in `src/features/table/useTableController.ts`
-- Pure helper rules: `src/features/table/rules.ts`
-- Snapshot/persistence: `src/features/table/snapshot.ts` + `src/features/persistence/storage.ts` (localStorage only)
+## 1) Current Repo Architecture Summary
 
-Observation:
-- UI components are mostly presentational and reusable.
-- Business logic is currently mixed inside `useTableController` (state machine + chip accounting + settlement + autosave + archive).
-- Source of truth is local browser state (stores + localStorage), not server.
+### Frontend
 
-## 2) Local-only State Inventory (Required Domains)
+- Next.js app in `src/app/*`.
+- Shared poker table UI is already componentized (`src/components/*`).
+- Two game logic tracks currently coexist:
+  - Local in-memory/localStorage game engine path (`src/features/table/*` + `src/store/*`).
+  - Server-authoritative online room/game path (`src/features/rooms/*` + online pages).
 
-### Players
-- Primary state: `useSessionStore.players`
-- Fields include stack/currentBet/totalInvested/status/position.
-- Local-only mutation points:
-  - `src/store/useSessionStore.ts`
-  - `src/features/table/useTableController.ts` (`applyPlayerChipChange`, `runAction`, settlement handlers)
+### Backend
 
-### Turn order
-- Primary state: `useHandStore.actionOrder`, `useHandStore.actingPlayerId`, `useHandStore.actionIndex`
-- Local-only calculation:
-  - `src/features/table/rules.ts` (`buildActionOrder`, `getNextActingPlayerId`)
-  - `src/features/table/useTableController.ts` (`settleRoundIfNeeded`, `runSetPlayerCount`)
+- Express + Prisma server in `server/`.
+- Auth/profile/rooms modules are present.
+- Server contains authoritative room + hand progression logic (`server/src/modules/rooms/room.service.ts`).
+- Session/history archival is persisted in DB and exposed via profile endpoints.
 
-### Bets
-- Table-level: `useBettingStore.currentBet`, `minBet`, `minRaiseDelta`, `lastAggressiveAmount`
-- Player-level bet contribution: `player.currentBet`, `player.totalInvestedThisHand`
-- Local-only mutation:
-  - `src/store/useBettingStore.ts`
-  - `src/features/table/useTableController.ts` (`runAction`)
+### Important observation
 
-### Pot
-- Primary state: `useBettingStore.pot`
-- Local-only mutation:
-  - `src/store/useBettingStore.ts`
-  - `src/features/table/useTableController.ts` (`runAction`, `runQuickWin`, `runQuickSplit`)
+- Local mode logic still exists, but current top-level table route (`src/app/page.tsx`) is online-room-driven.
+- This means local capabilities are currently code-present but flow-fragmented.
+- Dual-mode support should focus on restoring a clean local entry path while retaining current online flow.
 
-### Hand stage
-- Primary state: `useHandStore.street`, `useHandStore.status`
-- Local-only transitions:
-  - `src/store/useHandStore.ts`
-  - `src/features/table/useTableController.ts` (`settleRoundIfNeeded`, `runEditHand`, `runEndHand`, `runReopenSettlement`)
+## 2) Reusable Component Inventory (Preserve As-Is Where Possible)
 
-### Session history
-- Archive list: `useArchiveStore.entries`
-- Undo stack and audit trail: `useHandStore.historyStack`, `useHandStore.auditTrail`
-- Storage backend: localStorage keys in `src/features/persistence/storage.ts`
-  - `poker-chip-ledger/live-session`
-  - `poker-chip-ledger/archive-sessions`
+### High-value reusable UI
 
-## 3) UI vs Business Logic Separation Plan
-
-### Keep in UI/ViewModel (client-only)
-- Rendering and style composition:
-  - `src/components/*`
-  - `src/app/page.tsx`, `src/app/history/page.tsx`
-- Visual-only interaction state (dialogs open state can stay local if derived from server status).
-- Motion effects (`useMotionStore`) as presentation concern.
-
-### Move to domain/application layer (then server-authoritative)
-- Action legality checks (Fold/Check/Call/Bet/Raise/All-in availability).
-- Turn progression and street transitions.
-- Pot/bet/stack accounting and settlement math.
-- Undo/edit/reopen semantics.
-- Session archive generation semantics.
-
-### Introduce boundary interfaces first (no multiplayer yet)
-- `GameEngine` (pure deterministic domain functions)
-- `TableRepository` (load/save snapshot abstraction)
-- `GameGateway` (future server API/socket abstraction)
-
-This allows replacing local impl with server impl later while preserving existing UI components.
-
-## 4) Reusable UI Components to Preserve
-
-These should remain mostly unchanged during migration:
-
-- `src/components/layout/app-top-bar.tsx`
 - `src/components/table/poker-table.tsx`
 - `src/components/player/player-seat.tsx`
 - `src/components/pot/central-pot.tsx`
+- `src/components/pot/community-board.tsx`
 - `src/components/actions/bottom-action-panel.tsx`
-- `src/components/settlement/settlement-modal-placeholder.tsx`
-- `src/components/history/history-page-placeholder.tsx`
+- `src/components/layout/app-top-bar.tsx`
 - `src/components/ui/badge.tsx`
-- Theme/tokens:
-  - `src/styles/tokens.css`
-  - `src/styles/stitch-theme.css`
-  - `src/app/globals.css`
 
-## 5) File-by-File Migration Plan
+### Shared UX/theming assets
 
-### App entry and pages
-- `src/app/page.tsx`
-  - Keep UI composition.
-  - Move formatting helpers (currency/status labels) into selectors/view-model utilities.
-  - Continue consuming a single controller hook API to avoid UI churn.
-- `src/app/history/page.tsx`
-  - Keep as is; switch data source from local archive store to server-backed history query later.
+- `src/styles/tokens.css`
+- `src/styles/stitch-theme.css`
+- `src/app/globals.css`
+- `src/lib/table-layout.ts`
 
-### Controller and feature logic
+### Reusable online pages
+
+- `src/app/rooms/create/page.tsx`
+- `src/app/rooms/join/page.tsx`
+- `src/app/rooms/[roomCode]/page.tsx`
+- `src/app/auth/page.tsx`
+- `src/app/profile/page.tsx`
+- `src/app/history/*`
+
+## 3) Local-Only Game Logic Inventory
+
+These are local-mode authoritative today:
+
 - `src/features/table/useTableController.ts`
-  - Split into:
-    - `src/features/table/useTableViewModel.ts` (UI-facing hook only)
-    - `src/domain/game/engine.ts` (pure rule transitions)
-    - `src/application/table/table-service.ts` (orchestrates actions + repository/gateway)
-  - Remove direct localStorage usage from this file.
+  - action legality + transitions
+  - pot/stack mutations
+  - quick settlement / undo / edit / reopen
+  - autosave/resume
 - `src/features/table/rules.ts`
-  - Keep and migrate pure functions into `src/domain/game/rules/*`.
-  - Add tests before changing behavior.
+  - position assignment, action order, turn helpers
 - `src/features/table/snapshot.ts`
-  - Replace direct multi-store coupling with mapper utilities:
-    - `domain state <-> client DTO <-> server DTO`
-
-### Persistence
+  - store snapshot create/apply
 - `src/features/persistence/storage.ts`
-  - Keep temporarily as fallback/local recovery.
-  - Hide behind `TableRepository` interface and add `LocalTableRepository` implementation.
-  - Add `RemoteTableRepository` stub for future server migration.
-
-### Stores
+  - localStorage live snapshot + archive
 - `src/store/useSessionStore.ts`
-  - Keep for client cache/UI state.
-  - Stop embedding mock bootstrap in final server mode; initialize from repository/gateway snapshot.
 - `src/store/useHandStore.ts`
-  - Keep temporary undo UI support.
-  - Move authoritative hand progression out of store methods into domain/application service.
 - `src/store/useBettingStore.ts`
-  - Keep as denormalized read model cache; avoid direct business mutations in components/controller.
 - `src/store/useSettlementStore.ts`
-  - Keep for modal/view state.
-  - Settlement decisions should call application service rather than mutate core game values directly.
 - `src/store/useArchiveStore.ts`
-  - Replace localStorage read/write with repository query methods.
-- `src/store/useMotionStore.ts`
-  - Keep unchanged (purely visual).
-- `src/store/useAppStore.ts`
-  - Keep or merge into table view model as lightweight UI state.
+- `src/store/useMotionStore.ts` (visual events; reusable in both modes)
 
-### Types and libs
-- `src/types/domain.ts`
-  - Split into:
-    - `src/domain/game/types.ts` (authoritative game types)
-    - `src/application/contracts/*.ts` (DTO/API contracts)
-    - `src/features/table/view-model-types.ts` (UI-only display models)
-- `src/lib/table-layout.ts`, `src/lib/cn.ts`
-  - Keep unchanged (UI utilities).
+## 4) State Management Audit
 
-### Components
-- `src/components/*`
-  - Preserve signatures where possible.
-  - If needed, only narrow props to view models, not raw domain entities.
+### Local state stack
 
-### Config/docs
-- `AGENTS.md`
-  - Already present and aligned with incremental migration constraints.
-  - No mandatory change required in this phase.
+- Zustand multi-store design with snapshot-based undo/resume.
+- Good for local mode continuation.
+- Not currently wired as the main entry flow.
 
-## 6) Risk List
+### Online state stack
 
-1. Fat controller risk
-- `useTableController` currently mixes many responsibilities; direct split may break action ordering/settlement edge cases.
+- `RoomState` is fetched via REST and refreshed via socket broadcasts.
+- State mostly held in page-level React state (`useState`) on online pages.
+- Server is already authoritative for turn/action legality/settlement outcomes.
 
-2. Divergent state risk
-- Same concepts exist across multiple stores (`currentBet` and per-player `currentBet`, status flags), easy to desync during refactor.
+### Gap to solve
 
-3. Undo semantics risk
-- Undo currently depends on whole-snapshot stack; partial migration to server can break deterministic rollback.
+- No explicit mode boundary contract yet.
+- Shared UI is present, but shared view-model contract is not formalized.
+- Need controller adapters rather than mode-specific UI duplication.
 
-4. Autosave/resume conflict risk
-- Local autosave may conflict with future server snapshots if not versioned and namespaced.
+## 5) Session / History Logic Audit
 
-5. UI coupling risk
-- Some UI labels/formatting are embedded in page/controller; moving too aggressively can cause accidental visual regression.
+### Local path
 
-6. Test coverage gap risk
-- No explicit automated tests around betting/settlement transitions yet; migration without baseline tests is high risk.
+- Archive lives in localStorage (`poker-chip-ledger/archive-sessions`).
+- UI placeholder exists (`history-page-placeholder`) but current route uses server history.
 
-7. Placeholder folders drift risk
-- `src/features/betting|hand|session|settlement` exist but empty, can cause confusion and architectural drift without clear ownership.
+### Online path
 
-## 7) Recommended New Folders/Modules
+- Session archive is generated server-side when host ends session (`finalizeRoomAndArchive`).
+- Profile/history pages consume:
+  - `GET /api/profile/sessions`
+  - `GET /api/profile/sessions/:sessionId`
 
-Client (incremental, no multiplayer yet):
+### Recommendation
 
-- `src/domain/game/`
-  - `types.ts`
-  - `engine.ts`
-  - `rules/turn-order.ts`
-  - `rules/betting.ts`
-  - `rules/settlement.ts`
-- `src/application/table/`
-  - `table-service.ts`
-  - `table-selectors.ts`
-  - `ports.ts` (repository/gateway interfaces)
-- `src/infrastructure/repository/`
-  - `local-table-repository.ts`
-  - `remote-table-repository.ts` (stub initially)
-- `src/infrastructure/gateway/`
-  - `http-game-gateway.ts` (stub)
-  - `ws-game-gateway.ts` (stub)
-- `src/features/table/`
-  - `useTableViewModel.ts`
+- Keep both history systems temporarily:
+  - local history for local mode continuity
+  - server history for online mode
+- Unify at UI level later via explicit "Local / Online" filter or tabs.
 
-Future server:
+## 6) Clean Dual-Mode Architecture Proposal
 
-- `server/src/modules/auth/*`
-- `server/src/modules/rooms/*`
-- `server/src/modules/game/*`
-- `server/src/modules/sessions/*`
-- `server/src/realtime/*`
-- `server/src/db/*`
+### Design principle
 
-## 8) Suggested Incremental Migration Phases (No Multiplayer Yet)
+One shared table UI, two mode-specific controllers.
 
-Phase 0 (this audit):
-- Document current state and boundaries.
+### Layering
 
-Phase 1:
-- Extract pure game engine from `useTableController` with zero UI change.
-- Add unit tests for action legality, turn rotation, settlement, undo.
+1. **Presentation layer (shared)**
+   - existing `src/components/*`
+   - accepts unified table view-model props only
 
-Phase 2:
-- Introduce repository interfaces and keep localStorage implementation as default.
-- Controller becomes view-model hook that calls application service only.
+2. **Mode controller layer**
+   - local controller adapter (wrap existing local stores/rules)
+   - online controller adapter (wrap REST + socket room state)
 
-Phase 3:
-- Scaffold `/server` and define API/socket contracts.
-- Add remote repository/gateway behind feature flag; keep local fallback.
+3. **Mode data/application layer**
+   - local repositories (localStorage snapshot/archive)
+   - online gateway/repository (API + realtime transport)
 
-Phase 4:
-- Switch source of truth to server for room/game/session state.
-- Retain current UI component tree and visual style.
+4. **Domain logic**
+   - local engine remains deterministic and testable
+   - online authoritative domain remains in server room service
+
+### Source-of-truth rules
+
+- Local mode: client local state is authoritative.
+- Online mode: server state is authoritative.
+- Shared UI must not embed mode-specific mutation logic.
+
+## 7) Proposed Folder / Module Structure (Incremental Target)
+
+```text
+src/
+  app/
+    page.tsx                      # route resolver / mode entry shell
+    local/page.tsx                # local mode entry (new)
+    online/page.tsx               # online table entry (can wrap current room flow)
+    rooms/*                       # existing online lobby/join/create pages
+  components/
+    ...                           # keep current shared UI components
+  features/
+    local/
+      controller.ts               # adapter over current useTableController
+      repository.ts               # local snapshot/archive adapter
+    online/
+      controller.ts               # adapter over RoomState + actions
+      gateway.ts                  # REST + socket wiring
+    table/
+      view-model.ts               # shared table VM contracts/selectors
+      contracts.ts                # mode-agnostic action/result contracts
+  store/
+    ...                           # keep existing local-mode stores
+```
+
+Server remains:
+
+```text
+server/src/modules/auth/*
+server/src/modules/profile/*
+server/src/modules/rooms/*        # authoritative online game logic
+server/src/realtime/*
+```
+
+## 8) Migration Plan (No Gameplay Rewrite in This Phase)
+
+### Phase 0 (this phase)
+
+- Audit and lock constraints.
+- Update project rules (`AGENTS.md`).
+- Do not change gameplay behavior.
+
+### Phase 1
+
+- Introduce explicit mode routing (`local` vs `online`) without removing existing online pages.
+- Reconnect local mode entry to current local controller/stores.
+- Keep shared table components unchanged.
+
+### Phase 2
+
+- Add shared table view-model contracts.
+- Build local and online controller adapters returning same VM shape.
+- Remove mode branching from shared UI components.
+
+### Phase 3
+
+- Split history UI by source (local vs online) while preserving both datasets.
+- Keep server profile/session endpoints unchanged.
+
+### Phase 4
+
+- Incremental test hardening:
+  - local engine transition tests
+  - online room service contract tests
+  - UI smoke checks for both modes
+
+## 9) Main Risks and Controls
+
+1. **Accidental local-mode regression**  
+   Control: no deletion of local stores/controller before local route passes smoke tests.
+
+2. **Shared UI drift due mode-specific branching**  
+   Control: enforce shared VM contract at adapter boundary.
+
+3. **History confusion (local vs online data source)**  
+   Control: explicitly label source in history UX and keep repositories separate.
+
+4. **Large rewrites hidden as "cleanup"**  
+   Control: phase-by-phase PR scope with migration checklist tied to AGENTS rules.

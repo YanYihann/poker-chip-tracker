@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { createRoom } from "@/features/rooms/api";
 
-export default function CreateRoomPage() {
+function CreateRoomPageContent() {
   const router = useRouter();
   const { isZh } = useLanguage();
   const [maxPlayers, setMaxPlayers] = useState(6);
@@ -77,5 +78,13 @@ export default function CreateRoomPage() {
         </Link>
       </section>
     </main>
+  );
+}
+
+export default function CreateRoomPage() {
+  return (
+    <OnlineAuthGate title="Create Room" backHref="/profile">
+      <CreateRoomPageContent />
+    </OnlineAuthGate>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useLanguage } from "@/components/i18n/language-provider";
@@ -175,6 +176,20 @@ function AuthPageContent() {
                     : "Register & Login"}
             </button>
           </form>
+
+          <div className="mt-4 rounded-2xl bg-stitch-surfaceContainerHigh px-3 py-3 text-center">
+            <p className="text-xs text-stitch-onSurfaceVariant">
+              {isZh
+                ? "不登录也可继续使用本地模式。"
+                : "You can continue in local mode without signing in."}
+            </p>
+            <Link
+              href="/local"
+              className="mt-2 inline-block rounded-xl bg-stitch-surfaceContainer px-3 py-2 text-xs text-stitch-onSurface"
+            >
+              {isZh ? "继续本地模式" : "Continue Local Mode"}
+            </Link>
+          </div>
         </div>
       </section>
     </main>

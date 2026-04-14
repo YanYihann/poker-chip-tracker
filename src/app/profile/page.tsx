@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import {
@@ -84,7 +85,7 @@ async function buildAvatarDataUrl(file: File): Promise<string> {
   return output;
 }
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const router = useRouter();
   const { isZh, localeTag, locale, setLocale } = useLanguage();
 
@@ -424,5 +425,13 @@ export default function ProfilePage() {
         ) : null}
       </section>
     </main>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <OnlineAuthGate title="Profile" backHref="/">
+      <ProfilePageContent />
+    </OnlineAuthGate>
   );
 }

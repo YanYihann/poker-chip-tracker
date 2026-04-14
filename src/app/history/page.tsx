@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { fetchRecentSessions, type RecentSession } from "@/features/auth/api";
@@ -18,7 +19,7 @@ function formatMoney(value: string, locale: AppLocale): string {
   return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   const { isZh, localeTag } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,5 +90,13 @@ export default function HistoryPage() {
           : null}
       </section>
     </main>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <OnlineAuthGate title="Session History" backHref="/">
+      <HistoryPageContent />
+    </OnlineAuthGate>
   );
 }

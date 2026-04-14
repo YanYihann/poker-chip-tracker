@@ -1,98 +1,86 @@
 # AGENTS.md
 
-## Goal
-Refactor the existing local-only mobile poker scoring web app into a multiplayer client-server app.
+## Mission
+Evolve this app into **dual-mode poker scoring**:
+- keep existing **local mode** fully working
+- add **online multiplayer mode** as a new capability
+- preserve the current mobile poker table UI and visual style
+- ship changes incrementally (no rewrite)
 
-## Non-negotiables
-- Do NOT rewrite the project from scratch.
-- Preserve the current mobile-first table UI and overall interaction style as much as possible.
-- Refactor incrementally.
-- Keep existing working UI components whenever possible.
-- Move business logic out of local-only state into a backend service.
-- The server must become the source of truth for room state, turn state, betting state, hand state, and session history.
+## Phase 0 Lock (Must Hold in All Future Phases)
+- Do not remove or replace local mode.
+- Online mode is additive, not a replacement flow.
+- Reuse existing UI components wherever possible.
+- Keep current mobile layout, interactions, and theme tokens stable.
+- Avoid large structural rewrites when a small adapter/refactor can solve it.
 
-## Target architecture
-- Existing frontend stays as the main client.
-- Add a backend service in `/server` deployable to Render.
-- Use Neon Postgres for persistence.
-- Use environment variables for all secrets and runtime config.
-- Prefer WebSocket-based realtime updates for room/game state.
-- Use a proper ORM with migrations.
+## Product Modes
+### Local mode
+- Source of truth: local client state + local persistence (current stores/snapshot/storage path).
+- Must remain playable offline / single-device.
+- Existing local/session behavior is preserved unless explicitly approved.
 
-## Feature goals
-1. Register / login / logout
-2. Profile page
-3. Create room
-4. Join room by room code
-5. Waiting room / lobby
-6. Host starts game
-7. Multiplayer shared game state
-8. Show action bar only for current player
-9. Save finished sessions into each user profile
-10. Preserve current visual design
+### Online mode
+- Source of truth: backend room/game/session state.
+- Client state is a projection/cache of server state.
+- Realtime updates via socket events; authoritative mutation via server APIs.
 
-## Suggested stack
-### Frontend
-- Keep the existing frontend framework and file structure if practical
-- TypeScript where possible
-- Reuse current mobile UI
-- Use a client-side store only for UI state, not as the source of truth
+## Architecture Guardrails
+- Keep presentation components mode-agnostic:
+  - `src/components/table/*`
+  - `src/components/player/*`
+  - `src/components/pot/*`
+  - `src/components/actions/*`
+- Introduce mode-specific controllers/adapters instead of branching UI everywhere.
+- Keep game-rule logic out of page files.
+- Keep transport details (`fetch`, sockets) outside reusable UI.
+- Keep server routes thin and service/domain logic centralized.
+- Keep persistence responsibilities explicit:
+  - local mode -> local repository
+  - online mode -> API/socket repository
 
-### Backend
-- Node.js + TypeScript
-- Express or Fastify
-- Socket.IO or ws for realtime room updates
-- Prisma or Drizzle ORM
-- JWT or secure cookie session auth
+## Implementation Rules
+- Never delete local-mode stores/controllers until replacement local flow is verified working.
+- Prefer extraction over rewrite (move logic into modules first, then switch call sites).
+- Minimize UI churn: only change props and composition where needed for dual-mode support.
+- Preserve style tokens and current visual hierarchy.
+- Keep TypeScript types explicit for mode boundaries and DTOs.
+- Every phase must leave app runnable.
 
-## Coding rules
-- Do not remove existing working features unless replacing them with server-backed versions.
-- Keep UI components separate from business logic.
-- Keep database access inside server-only modules.
-- Keep API routes/controllers thin.
-- Put game rules into dedicated service modules.
-- Add types for all room, player, hand, action, and session objects.
-- Every phase must keep the app runnable.
+## Suggested Dual-Mode Module Direction
+- `src/features/local/*` for local controller + persistence adapter.
+- `src/features/online/*` for room/game API + realtime adapter.
+- `src/features/table/*` for shared table view-model contracts/selectors.
+- `src/components/*` remains shared presentation-first.
+- `server/src/modules/*` remains online authoritative domain.
+
+## Definition of Done Per Phase
+- Local mode still works end-to-end.
+- Online mode behavior for touched flows still works end-to-end.
+- No unnecessary visual redesign/regression.
+- Lint and typecheck pass (or blocker is explicitly documented).
+- Changed files and residual tasks are summarized.
 
 ## Commands
-Adjust these if the repo already uses different scripts.
-
 ### Frontend
-- install: npm install
-- dev: npm run dev
-- lint: npm run lint
-- typecheck: npm run typecheck
-- build: npm run build
+- install: `npm install`
+- dev: `npm run dev`
+- lint: `npm run lint`
+- typecheck: `npm run typecheck`
+- build: `npm run build`
 
 ### Backend
-If added in `/server`:
-- install: cd server && npm install
-- dev: cd server && npm run dev
-- lint: cd server && npm run lint
-- typecheck: cd server && npm run typecheck
-- build: cd server && npm run build
+- install: `cd server && npm install`
+- dev: `cd server && npm run dev`
+- lint: `cd server && npm run lint`
+- typecheck: `cd server && npm run typecheck`
+- build: `cd server && npm run build`
 
-## Definition of done for each phase
-- No unnecessary UI redesign
-- Existing screens still work unless explicitly replaced
-- No TypeScript errors
-- No lint errors
-- New code is documented briefly
-- Changed files are summarized
-- Remaining tasks are listed clearly
-
-## Important gameplay rules
-- The server decides whose turn it is.
-- The client must never decide authoritatively whether an action is legal.
-- If it is NOT the current user's turn, the client must hide the action bar.
-- If it IS the current user's turn, the client shows only legal actions for that state.
-- Completed game/session results must be persisted and linked to each participating user.
-
-## Prompt discipline for Codex
+## Prompt Discipline for Codex
 Before coding:
-1. Read the repo
-2. Identify current local-only state
-3. Explain the migration plan
-4. Implement only the requested phase
-5. Run lint and typecheck
-6. Summarize changes
+1. Read `AGENTS.md` and `docs/*`.
+2. Confirm local mode preservation constraints.
+3. Audit reuse opportunities before adding new files.
+4. Implement only requested phase scope.
+5. Run lint and typecheck (front + server when relevant).
+6. Summarize architecture impact, changed files, and next incremental step.
