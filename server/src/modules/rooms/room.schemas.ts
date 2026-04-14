@@ -39,7 +39,7 @@ export const updateBlindsSchema = z
   });
 
 export const settleHandSchema = z.object({
-  winnerUserIds: z.array(z.string().uuid()).min(1)
+  winnerUserIds: z.array(z.string().uuid()).default([])
 });
 
 export const nextHandDecisionSchema = z.object({

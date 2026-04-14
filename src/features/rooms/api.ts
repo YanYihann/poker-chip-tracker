@@ -267,7 +267,7 @@ export async function updateRoomBlinds(
 
 export async function settleHand(
   roomCode: string,
-  winnerUserIds: string[]
+  winnerUserIds: string[] = []
 ): Promise<RoomState> {
   const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/settle`, {
     method: "POST",

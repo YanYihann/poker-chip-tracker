@@ -255,8 +255,11 @@ export function useOnlineRoomTableModeAdapter(
 
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
+  const usesAutoEvaluator = variant === "online";
   const actionCopy = ACTION_COPY[locale];
   const canSettle = Boolean(game?.status === "showdown" && isHost);
+  const canOpenManualSettlement = canSettle && !usesAutoEvaluator;
+  const canAutoSettle = canSettle && usesAutoEvaluator;
   const canStartNextHand = Boolean(game?.status === "settled" && isHost);
 
   useEffect(() => {
@@ -434,68 +437,104 @@ export function useOnlineRoomTableModeAdapter(
     }));
   }, [game?.eligibleWinnerUserIds, locale, roomState]);
 
-  const utilityActions = useMemo(
-    () =>
-      canStartNextHand
-        ? [
-            {
-              id: "next-hand",
-              label: isZh ? "开始下一手" : "Start Next Hand",
-              onPress: async () => {
-                if (!roomCode || pendingAction || !canStartNextHand) {
-                  return;
-                }
+  const utilityActions = useMemo(() => {
+    const actions: Array<{
+      id: string;
+      label: string;
+      onPress: () => Promise<void>;
+    }> = [];
 
-                setPendingAction(true);
-                setError(null);
+    if (canAutoSettle) {
+      actions.push({
+        id: "auto-settle",
+        label: isZh ? "自动牌力结算" : "Auto Settle",
+        onPress: async () => {
+          if (!roomCode || pendingAction || !canAutoSettle) {
+            return;
+          }
 
-                try {
-                  const next = await decideNextHand(roomCode, true);
-                  setRoomState(next);
-                } catch (nextHandError) {
-                  setError(
-                    nextHandError instanceof Error
-                      ? nextHandError.message
-                      : isZh
-                        ? "无法开始下一手。"
-                        : "Unable to start next hand."
-                  );
-                } finally {
-                  setPendingAction(false);
-                }
-              }
-            },
-            {
-              id: "end-session",
-              label: isZh ? "结束牌局并归档" : "End Session & Archive",
-              onPress: async () => {
-                if (!roomCode || pendingAction || !canStartNextHand) {
-                  return;
-                }
+          setPendingAction(true);
+          setError(null);
 
-                setPendingAction(true);
-                setError(null);
+          try {
+            const next = await settleHand(roomCode);
+            setRoomState(next);
+          } catch (settleError) {
+            setError(
+              settleError instanceof Error
+                ? settleError.message
+                : isZh
+                  ? "自动结算失败。"
+                  : "Failed to auto settle hand."
+            );
+          } finally {
+            setPendingAction(false);
+          }
+        }
+      });
+    }
 
-                try {
-                  const next = await decideNextHand(roomCode, false);
-                  setRoomState(next);
-                } catch (endSessionError) {
-                  setError(
-                    endSessionError instanceof Error
-                      ? endSessionError.message
-                      : isZh
-                        ? "无法结束并归档当前牌局。"
-                        : "Unable to end and archive the current session."
-                  );
-                } finally {
-                  setPendingAction(false);
-                }
-              }
+    if (canStartNextHand) {
+      actions.push(
+        {
+          id: "next-hand",
+          label: isZh ? "开始下一手" : "Start Next Hand",
+          onPress: async () => {
+            if (!roomCode || pendingAction || !canStartNextHand) {
+              return;
             }
-          ]
-        : [],
-    [canStartNextHand, isZh, pendingAction, roomCode]
-  );
+
+            setPendingAction(true);
+            setError(null);
+
+            try {
+              const next = await decideNextHand(roomCode, true);
+              setRoomState(next);
+            } catch (nextHandError) {
+              setError(
+                nextHandError instanceof Error
+                  ? nextHandError.message
+                  : isZh
+                    ? "无法开始下一手。"
+                    : "Unable to start next hand."
+              );
+            } finally {
+              setPendingAction(false);
+            }
+          }
+        },
+        {
+          id: "end-session",
+          label: isZh ? "结束牌局并归档" : "End Session & Archive",
+          onPress: async () => {
+            if (!roomCode || pendingAction || !canStartNextHand) {
+              return;
+            }
+
+            setPendingAction(true);
+            setError(null);
+
+            try {
+              const next = await decideNextHand(roomCode, false);
+              setRoomState(next);
+            } catch (endSessionError) {
+              setError(
+                endSessionError instanceof Error
+                  ? endSessionError.message
+                  : isZh
+                    ? "无法结束并归档当前牌局。"
+                    : "Unable to end and archive the current session."
+              );
+            } finally {
+              setPendingAction(false);
+            }
+          }
+        }
+      );
+    }
+
+    return actions;
+  }, [canAutoSettle, canStartNextHand, isZh, pendingAction, roomCode]);
 
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
   const hasRaiseActions = legalActions.includes("bet") || legalActions.includes("raise");
@@ -534,9 +573,9 @@ export function useOnlineRoomTableModeAdapter(
     actingPlayerId: game?.activePlayerUserId ?? null,
     mainActions,
     utilityActions,
-    canOpenSettlement: canSettle,
+    canOpenSettlement: canOpenManualSettlement,
     onOpenSettlement: () => {
-      if (canSettle) {
+      if (canOpenManualSettlement) {
         setSettlementOpen(true);
       }
     },
@@ -582,8 +621,12 @@ export function useOnlineRoomTableModeAdapter(
           : "Submitting action..."
         : canSettle
           ? isZh
-            ? "本手已进入待结算，房主可打开结算面板。"
-            : "Hand is awaiting settlement. Host can open settlement."
+            ? usesAutoEvaluator
+              ? "本手已进入待结算，房主可执行自动牌力结算。"
+              : "本手已进入待结算，房主可打开结算面板。"
+            : usesAutoEvaluator
+              ? "Hand is awaiting settlement. Host can run auto hand evaluation."
+              : "Hand is awaiting settlement. Host can open settlement."
           : canStartNextHand
             ? isZh
               ? "本手已结算，房主可开始下一手。"
@@ -593,7 +636,9 @@ export function useOnlineRoomTableModeAdapter(
           ? "当前未轮到你行动，等待服务端推进回合。"
           : "It is not your turn. Waiting for server turn progression."
         : null,
-    settlement: {
+    settlement: usesAutoEvaluator
+      ? null
+      : {
       isOpen: settlementOpen,
       players: settlementPlayers,
       canUndo: false,

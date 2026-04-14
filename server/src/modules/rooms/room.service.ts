@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 
 import { recordPerfSample } from "../../lib/perf-metrics.js";
 import type { RoomActionPatch, RoomActionTraceMeta } from "../../realtime/room-patch.js";
+import { compareHoldemHandStrength, evaluateBestHoldemHand } from "./hand-evaluator.js";
 import {
   createStandardDeck,
   dealCards,
@@ -991,9 +992,10 @@ function buildSidePotsFromContributions(
 async function settleCurrentHand(input: {
   tx: Prisma.TransactionClient;
   room: RoomRecord;
-  winnerUserIds: string[];
+  winnerUserIds?: string[];
 }): Promise<void> {
   const { tx, room } = input;
+  const roomMode = toPublicRoomMode(room.gameMode);
   const hand = room.hands[0];
 
   if (!hand) {
@@ -1010,21 +1012,9 @@ async function settleCurrentHand(input: {
 
   const seatedPlayers = getSeatedActivePlayers(room.roomPlayers);
   const contenders = seatedPlayers.filter((player) => !player.hasFolded);
-  const winnerUserIds = [...new Set(input.winnerUserIds)];
-
-  if (winnerUserIds.length === 0) {
-    throw new Error("WINNERS_REQUIRED");
-  }
-
-  const winnerSet = new Set(winnerUserIds);
-  const winners = contenders.filter((player) => winnerSet.has(player.userId));
-
-  if (winners.length !== winnerUserIds.length) {
-    throw new Error("INVALID_WINNERS");
-  }
+  const winnerUserIds = [...new Set(input.winnerUserIds ?? [])];
 
   const potTotal = Math.max(0, toNumber(hand.potTotal));
-  const sortedWinners = [...winners].sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
   const payoutByUserId = new Map<string, number>();
   const splitWinnerUserIds = new Set<string>();
 
@@ -1051,6 +1041,52 @@ async function settleCurrentHand(input: {
     }))
   );
 
+  const contenderSet = new Set(contenders.map((player) => player.userId));
+  const contenderByUserId = new Map(contenders.map((player) => [player.userId, player]));
+
+  const manualWinnerSet = new Set(winnerUserIds);
+  if (roomMode !== "online") {
+    if (winnerUserIds.length === 0) {
+      throw new Error("WINNERS_REQUIRED");
+    }
+
+    const manualWinners = contenders.filter((player) => manualWinnerSet.has(player.userId));
+    if (manualWinners.length !== winnerUserIds.length) {
+      throw new Error("INVALID_WINNERS");
+    }
+  }
+
+  const contenderStrengthByUserId =
+    roomMode === "online"
+      ? (() => {
+          const boardCards = normalizeCardList(hand.boardCards);
+          const holeCardsByUser = normalizeHoleCardsByUser(hand.holeCardsByUser);
+
+          if (boardCards.length < 5) {
+            throw new Error("HAND_NOT_SHOWDOWN");
+          }
+
+          const strengthByUserId = new Map<
+            string,
+            ReturnType<typeof evaluateBestHoldemHand>
+          >();
+
+          for (const contender of contenders) {
+            const holeCards = holeCardsByUser[contender.userId] ?? [];
+            if (holeCards.length < 2) {
+              throw new Error("INVALID_WINNERS");
+            }
+
+            strengthByUserId.set(
+              contender.userId,
+              evaluateBestHoldemHand([...holeCards.slice(0, 2), ...boardCards.slice(0, 5)])
+            );
+          }
+
+          return strengthByUserId;
+        })()
+      : null;
+
   const computedTotalPot = sidePots.reduce((sum, sidePot) => sum + sidePot.amount, 0);
   if (sidePots.length === 0 && potTotal > 0) {
     sidePots.push({
@@ -1065,20 +1101,59 @@ async function settleCurrentHand(input: {
     };
   }
 
-  const contenderSet = new Set(contenders.map((player) => player.userId));
-  const winnerIdSet = new Set(sortedWinners.map((player) => player.userId));
-  const contenderByUserId = new Map(contenders.map((player) => [player.userId, player]));
-
   for (const sidePot of sidePots) {
     if (sidePot.amount <= 0) {
       continue;
     }
 
-    const eligibleWinners = sidePot.participantUserIds
-      .filter((userId) => contenderSet.has(userId) && winnerIdSet.has(userId))
+    const eligibleParticipants = sidePot.participantUserIds
+      .filter((userId) => contenderSet.has(userId))
       .map((userId) => contenderByUserId.get(userId))
       .filter((player): player is RoomPlayerRecord => !!player)
       .sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
+
+    if (eligibleParticipants.length === 0) {
+      throw new Error("INVALID_WINNERS");
+    }
+
+    let eligibleWinners: RoomPlayerRecord[] = [];
+    if (roomMode === "online") {
+      if (!contenderStrengthByUserId) {
+        throw new Error("INVALID_WINNERS");
+      }
+
+      const topWinners: RoomPlayerRecord[] = [];
+      let topStrength: ReturnType<typeof evaluateBestHoldemHand> | null = null;
+
+      for (const participant of eligibleParticipants) {
+        const strength = contenderStrengthByUserId.get(participant.userId);
+        if (!strength) {
+          throw new Error("INVALID_WINNERS");
+        }
+
+        if (!topStrength) {
+          topStrength = strength;
+          topWinners.push(participant);
+          continue;
+        }
+
+        const comparison = compareHoldemHandStrength(strength, topStrength);
+        if (comparison > 0) {
+          topStrength = strength;
+          topWinners.length = 0;
+          topWinners.push(participant);
+          continue;
+        }
+
+        if (comparison === 0) {
+          topWinners.push(participant);
+        }
+      }
+
+      eligibleWinners = topWinners.sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
+    } else {
+      eligibleWinners = eligibleParticipants.filter((player) => manualWinnerSet.has(player.userId));
+    }
 
     if (eligibleWinners.length === 0) {
       throw new Error("INVALID_WINNERS");
@@ -1097,7 +1172,11 @@ async function settleCurrentHand(input: {
     }
   }
 
-  for (const winner of sortedWinners) {
+  const paidWinners = seatedPlayers
+    .filter((player) => (payoutByUserId.get(player.userId) ?? 0) > 0)
+    .sort((a, b) => (a.seatIndex ?? 999) - (b.seatIndex ?? 999));
+
+  for (const winner of paidWinners) {
     const amountWon = payoutByUserId.get(winner.userId) ?? 0;
     if (amountWon <= 0) {
       continue;
@@ -1119,7 +1198,7 @@ async function settleCurrentHand(input: {
     }
   });
 
-  const globalResultType: "WIN" | "SPLIT" = sortedWinners.length === 1 ? "WIN" : "SPLIT";
+  const globalResultType: "WIN" | "SPLIT" = paidWinners.length <= 1 ? "WIN" : "SPLIT";
   for (const player of seatedPlayers) {
     const amountWon = payoutByUserId.get(player.userId) ?? 0;
     const contribution = contributedByUserId.get(player.userId) ?? 0;
