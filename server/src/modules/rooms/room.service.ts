@@ -2469,6 +2469,9 @@ export async function settleHandByRoomCode(input: {
             bbSeat: true,
             activeSeat: true,
             potTotal: true,
+            deckShuffled: true,
+            boardCards: true,
+            holeCardsByUser: true,
             settledAt: true,
             results: {
               select: {
