@@ -167,7 +167,19 @@ async function fetchRoomByCode(roomCode) {
     return (await prisma.gameRoom.findUnique({
         where: { roomCode: normalizeRoomCode(roomCode) },
         include: {
-            roomPlayers: true,
+            roomPlayers: {
+                include: {
+                    user: {
+                        select: {
+                            profile: {
+                                select: {
+                                    avatarUrl: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             hands: {
                 orderBy: {
                     handNumber: "desc"
@@ -232,6 +244,7 @@ function buildRoomState(room, currentUserId) {
             id: player.id,
             userId: player.userId,
             displayName: player.displayName,
+            avatarUrl: player.user?.profile?.avatarUrl ?? null,
             seatIndex: player.seatIndex,
             isHost: player.isHost,
             isReady: player.isReady,
@@ -864,6 +877,18 @@ export async function getRoomStateByCode(roomCode, currentUserId) {
     }
     return buildRoomState(room, currentUserId);
 }
+export async function getRoomStatesByCodeForUsers(roomCode, userIds) {
+    const room = await fetchRoomByCode(roomCode);
+    if (!room) {
+        return null;
+    }
+    const statesByUserId = new Map();
+    const uniqueUserIds = Array.from(new Set(userIds.filter((userId) => userId.trim().length > 0)));
+    for (const userId of uniqueUserIds) {
+        statesByUserId.set(userId, buildRoomState(room, userId));
+    }
+    return statesByUserId;
+}
 export async function setPlayerReadyByRoomCode(input) {
     const room = await fetchRoomByCode(input.roomCode);
     if (!room) {
@@ -1142,13 +1167,19 @@ export async function applyPlayerActionByRoomCode(input) {
                 actionOrder: actionCount + 1
             }
         });
-        const nextPlayers = (await tx.roomPlayer.findMany({
-            where: {
-                roomId: room.id,
-                leftAt: null
+        const seatedNextPlayers = players.map((player) => {
+            if (player.id !== actor.id) {
+                return player;
             }
-        }));
-        const seatedNextPlayers = getSeatedActivePlayers(nextPlayers);
+            return {
+                ...player,
+                stack: BigInt(nextStack),
+                currentBet: BigInt(nextCurrentBet),
+                hasFolded,
+                isAllIn: nextStack <= 0,
+                isEliminated: nextStack <= 0
+            };
+        });
         const contenders = getContendingPlayers(seatedNextPlayers);
         const actionable = getActionablePlayers(seatedNextPlayers);
         if (contenders.length <= 1 || actionable.length === 0) {

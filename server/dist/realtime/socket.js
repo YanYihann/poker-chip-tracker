@@ -5,7 +5,7 @@ import { resolveCorsOrigin } from "../config/cors.js";
 import { env } from "../config/env.js";
 import { applyPlayerActionByRoomCode, getRoomStateByCode, setPlayerConnectionByRoomCode, setPlayerReadyByRoomCode, startRoomByHost } from "../modules/rooms/room.service.js";
 import { resolveSession } from "../modules/auth/session.service.js";
-import { broadcastRoomState, roomChannel, setRealtimeServer } from "./room-broadcast.js";
+import { roomChannel, scheduleBroadcastRoomState, setRealtimeServer } from "./room-broadcast.js";
 const subscribePayloadSchema = z.object({
     roomCode: z.string().trim().regex(/^\d{4}$/)
 });
@@ -73,7 +73,7 @@ export function setupSocketServer(httpServer) {
                     userId: auth.userId,
                     isConnected: true
                 });
-                await broadcastRoomState(payload.roomCode);
+                scheduleBroadcastRoomState(payload.roomCode);
             }
             catch {
                 socket.emit("room:error", { message: "Invalid subscribe payload." });
@@ -89,7 +89,7 @@ export function setupSocketServer(httpServer) {
                     userId: auth.userId,
                     isConnected: false
                 });
-                await broadcastRoomState(payload.roomCode);
+                scheduleBroadcastRoomState(payload.roomCode);
             }
             catch {
                 socket.emit("room:error", { message: "Invalid unsubscribe payload." });
@@ -103,7 +103,7 @@ export function setupSocketServer(httpServer) {
                     userId: auth.userId,
                     isReady: payload.isReady
                 });
-                await broadcastRoomState(payload.roomCode);
+                scheduleBroadcastRoomState(payload.roomCode);
             }
             catch {
                 socket.emit("room:error", { message: "Unable to update ready state." });
@@ -116,7 +116,7 @@ export function setupSocketServer(httpServer) {
                     roomCode: payload.roomCode,
                     hostUserId: auth.userId
                 });
-                await broadcastRoomState(payload.roomCode);
+                scheduleBroadcastRoomState(payload.roomCode);
             }
             catch {
                 socket.emit("room:error", { message: "Unable to start room." });
@@ -131,7 +131,7 @@ export function setupSocketServer(httpServer) {
                     actionType: payload.actionType,
                     amount: payload.amount
                 });
-                await broadcastRoomState(payload.roomCode);
+                scheduleBroadcastRoomState(payload.roomCode);
             }
             catch {
                 socket.emit("room:error", { message: "Unable to apply action." });
@@ -144,7 +144,7 @@ export function setupSocketServer(httpServer) {
                     userId: auth.userId,
                     isConnected: false
                 });
-                await broadcastRoomState(roomCode);
+                scheduleBroadcastRoomState(roomCode);
             }));
         });
     });

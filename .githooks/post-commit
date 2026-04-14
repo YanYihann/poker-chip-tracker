@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+
+if [ -z "$branch" ] || [ "$branch" = "HEAD" ]; then
+  exit 0
+fi
+
+if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+  git push --quiet || echo "[auto-push] push failed." >&2
+else
+  git push --quiet -u origin "$branch" || echo "[auto-push] first push failed; please configure remote auth." >&2
+fi
+
+exit 0

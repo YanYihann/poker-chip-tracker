@@ -1220,6 +1220,26 @@ export async function getRoomStateByCode(
   return buildRoomState(room, currentUserId);
 }
 
+export async function getRoomStatesByCodeForUsers(
+  roomCode: string,
+  userIds: string[]
+): Promise<Map<string, RoomState> | null> {
+  const room = await fetchRoomByCode(roomCode);
+
+  if (!room) {
+    return null;
+  }
+
+  const statesByUserId = new Map<string, RoomState>();
+  const uniqueUserIds = Array.from(new Set(userIds.filter((userId) => userId.trim().length > 0)));
+
+  for (const userId of uniqueUserIds) {
+    statesByUserId.set(userId, buildRoomState(room, userId));
+  }
+
+  return statesByUserId;
+}
+
 export async function setPlayerReadyByRoomCode(input: {
   roomCode: string;
   userId: string;
@@ -1578,14 +1598,21 @@ export async function applyPlayerActionByRoomCode(input: {
       }
     });
 
-    const nextPlayers = (await tx.roomPlayer.findMany({
-      where: {
-        roomId: room.id,
-        leftAt: null
+    const seatedNextPlayers = players.map((player) => {
+      if (player.id !== actor.id) {
+        return player;
       }
-    })) as RoomPlayerRecord[];
 
-    const seatedNextPlayers = getSeatedActivePlayers(nextPlayers);
+      return {
+        ...player,
+        stack: BigInt(nextStack),
+        currentBet: BigInt(nextCurrentBet),
+        hasFolded,
+        isAllIn: nextStack <= 0,
+        isEliminated: nextStack <= 0
+      };
+    });
+
     const contenders = getContendingPlayers(seatedNextPlayers);
     const actionable = getActionablePlayers(seatedNextPlayers);
 

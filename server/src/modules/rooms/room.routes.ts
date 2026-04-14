@@ -26,7 +26,7 @@ import {
   startRoomByHost,
   updateRoomBlindsByCode
 } from "./room.service.js";
-import { broadcastRoomState } from "../../realtime/room-broadcast.js";
+import { scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
 
 function sendValidationError(error: ZodError, res: Response): void {
   res.status(400).json({
@@ -122,8 +122,8 @@ export function createRoomRouter() {
         ...payload
       });
 
-      await broadcastRoomState(roomState.room.code);
       res.status(201).json({ room: roomState });
+      scheduleBroadcastRoomState(roomState.room.code);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -142,8 +142,8 @@ export function createRoomRouter() {
         displayName: payload.displayName
       });
 
-      await broadcastRoomState(roomState.room.code);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomState.room.code);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -190,8 +190,8 @@ export function createRoomRouter() {
         isReady: payload.isReady
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -211,8 +211,8 @@ export function createRoomRouter() {
         buyIn: payload.buyIn
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -230,8 +230,8 @@ export function createRoomRouter() {
         hostUserId: req.authSession!.userId
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -252,8 +252,8 @@ export function createRoomRouter() {
         bigBlind: payload.bigBlind
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -274,8 +274,8 @@ export function createRoomRouter() {
         amount: payload.amount
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -295,8 +295,8 @@ export function createRoomRouter() {
         winnerUserIds: payload.winnerUserIds
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
@@ -316,8 +316,8 @@ export function createRoomRouter() {
         continueSession: payload.continueSession
       });
 
-      await broadcastRoomState(roomCode);
       res.status(200).json({ room: roomState });
+      scheduleBroadcastRoomState(roomCode);
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);
