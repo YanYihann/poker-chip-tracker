@@ -1,5 +1,14 @@
 import type { RoomState } from "../modules/rooms/room.service.js";
 
+export type RoomActionTraceMeta = {
+  traceId: string;
+  clientActionAtMs: number | null;
+  requestReceivedAtMs: number;
+  dbTransactionStartedAtMs: number;
+  dbTransactionCommittedAtMs: number;
+  websocketBroadcastSentAtMs?: number;
+};
+
 export type RoomActionPatch = {
   type: "action-applied";
   roomCode: string;
@@ -29,6 +38,7 @@ export type RoomActionPatch = {
     isReady: boolean;
     isConnected: boolean;
   }>;
+  meta?: RoomActionTraceMeta;
 };
 
 export function buildRoomActionPatch(roomState: RoomState): RoomActionPatch {
