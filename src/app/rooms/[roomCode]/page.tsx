@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { fetchProfile } from "@/features/auth/api";
@@ -40,7 +41,7 @@ function formatDollar(amount: number): string {
   return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
-export default function WaitingRoomPage() {
+function WaitingRoomPageContent() {
   const params = useParams<{ roomCode: string }>();
   const roomCode = (params.roomCode ?? "").toUpperCase();
   const { isZh } = useLanguage();
@@ -455,7 +456,7 @@ export default function WaitingRoomPage() {
                     : "Game is active. Enter the table UI."}
                 </p>
                 <Link
-                  href={`/?room=${roomState.room.code}`}
+                  href={`/online?room=${roomState.room.code}`}
                   className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
                 >
                   {isZh ? "\u8fdb\u5165\u724c\u684c" : "Go To Table UI"}
@@ -466,5 +467,13 @@ export default function WaitingRoomPage() {
         ) : null}
       </section>
     </main>
+  );
+}
+
+export default function WaitingRoomPage() {
+  return (
+    <OnlineAuthGate title="Room Lobby" backHref="/profile">
+      <WaitingRoomPageContent />
+    </OnlineAuthGate>
   );
 }
