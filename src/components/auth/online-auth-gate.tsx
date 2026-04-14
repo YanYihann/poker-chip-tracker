@@ -14,12 +14,62 @@ type OnlineAuthGateProps = {
   backHref?: string;
 };
 
+type AuthCacheState = {
+  checkedAt: number;
+};
+
+const AUTH_CACHE_KEY = "poker_online_auth_ok_at";
+const AUTH_CACHE_TTL_MS = 5 * 60 * 1000;
+let inMemoryAuthCache: AuthCacheState | null = null;
+
+function readAuthCache(): AuthCacheState | null {
+  const now = Date.now();
+  if (inMemoryAuthCache && now - inMemoryAuthCache.checkedAt <= AUTH_CACHE_TTL_MS) {
+    return inMemoryAuthCache;
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(AUTH_CACHE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  const parsedAt = Number(raw);
+  if (!Number.isFinite(parsedAt) || now - parsedAt > AUTH_CACHE_TTL_MS) {
+    window.sessionStorage.removeItem(AUTH_CACHE_KEY);
+    return null;
+  }
+
+  inMemoryAuthCache = {
+    checkedAt: parsedAt
+  };
+  return inMemoryAuthCache;
+}
+
+function writeAuthCache(timestampMs: number): void {
+  inMemoryAuthCache = { checkedAt: timestampMs };
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem(AUTH_CACHE_KEY, String(timestampMs));
+  }
+}
+
+function clearAuthCache(): void {
+  inMemoryAuthCache = null;
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(AUTH_CACHE_KEY);
+  }
+}
+
 export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { isZh } = useLanguage();
-  const [allowed, setAllowed] = useState(false);
-  const [checking, setChecking] = useState(true);
+
+  const [allowed, setAllowed] = useState(() => !!readAuthCache());
+  const [checking, setChecking] = useState(() => !readAuthCache());
 
   const nextPath = useMemo(() => {
     if (typeof window === "undefined") {
@@ -32,19 +82,25 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
 
   useEffect(() => {
     let active = true;
+    const cached = readAuthCache();
 
     const verify = async () => {
-      setChecking(true);
+      if (!cached) {
+        setChecking(true);
+      }
+
       try {
         await fetchCurrentUser();
         if (!active) {
           return;
         }
+        writeAuthCache(Date.now());
         setAllowed(true);
       } catch {
         if (!active) {
           return;
         }
+        clearAuthCache();
         setAllowed(false);
         router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
       } finally {
@@ -78,8 +134,8 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
             </h2>
             <p className="mt-2 text-sm text-stitch-onSurfaceVariant">
               {isZh
-                ? "在线模式需要登录，本地模式可继续免登录使用。"
-                : "Online mode requires sign-in. Local mode can still be used without sign-in."}
+                ? "在线模式与联机房间需要登录；本地离线模式可继续免登录使用。"
+                : "Online mode and synced rooms require sign-in. Offline local mode can still be used without sign-in."}
             </p>
             <Link
               href="/local"

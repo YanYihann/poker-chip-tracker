@@ -1074,12 +1074,26 @@ async function settleCurrentHand(input: {
     throw new Error("HAND_NOT_FOUND");
   }
 
-  if (normalizeHandStatus(hand.status) === "SETTLED") {
+  const handStatus = normalizeHandStatus(hand.status);
+  const roomStreet = normalizeStreet(room.currentStreet ?? hand.street);
+
+  if (handStatus === "SETTLED") {
     throw new Error("HAND_ALREADY_SETTLED");
   }
 
-  if (normalizeHandStatus(hand.status) !== "SHOWDOWN") {
+  if (handStatus !== "SHOWDOWN" && roomStreet !== "SHOWDOWN") {
     throw new Error("HAND_NOT_SHOWDOWN");
+  }
+
+  if (handStatus !== "SHOWDOWN" && roomStreet === "SHOWDOWN") {
+    await tx.hand.update({
+      where: { id: hand.id },
+      data: {
+        status: "SHOWDOWN",
+        street: "SHOWDOWN",
+        activeSeat: null
+      }
+    });
   }
 
   const seatedPlayers = getSeatedActivePlayers(room.roomPlayers);

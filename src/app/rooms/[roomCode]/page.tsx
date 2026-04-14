@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -52,14 +52,22 @@ function WaitingRoomPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [smallBlind, setSmallBlind] = useState(100);
   const [bigBlind, setBigBlind] = useState(200);
-  const [totalAssets, setTotalAssets] = useState(10000);
+  const [totalAssets, setTotalAssets] = useState<number | null>(null);
   const [buyInInput, setBuyInInput] = useState("");
   const [buyInTouched, setBuyInTouched] = useState(false);
+  const autoBuyInAppliedKeyRef = useRef<string | null>(null);
 
   const isHost = roomState?.me?.isHost ?? false;
   const isReady = roomState?.me?.isReady ?? false;
   const roomStatus = roomState?.room.status ?? "waiting";
-  const maxBuyIn = Math.max(0, Math.floor(totalAssets));
+  const mePlayer = useMemo(
+    () =>
+      roomState?.me?.userId
+        ? roomState.players.find((player) => player.userId === roomState.me?.userId) ?? null
+        : null,
+    [roomState]
+  );
+  const maxBuyIn = Math.max(0, Math.floor(totalAssets ?? mePlayer?.stack ?? 0));
 
   const sortedPlayers = useMemo(
     () =>
@@ -92,6 +100,67 @@ function WaitingRoomPageContent() {
   }, [buyInTouched, maxBuyIn]);
 
   useEffect(() => {
+    if (!roomState?.me || !mePlayer) {
+      return;
+    }
+
+    if (roomStatus !== "waiting" || buyInTouched || pendingAction !== null) {
+      return;
+    }
+
+    if (!Number.isFinite(maxBuyIn) || maxBuyIn <= 0) {
+      return;
+    }
+
+    if (mePlayer.stack === maxBuyIn) {
+      return;
+    }
+
+    const autoKey = `${roomCode}:${roomState.me.userId}:${maxBuyIn}`;
+    if (autoBuyInAppliedKeyRef.current === autoKey) {
+      return;
+    }
+
+    autoBuyInAppliedKeyRef.current = autoKey;
+    let active = true;
+
+    const autoSaveBuyIn = async () => {
+      setPendingAction("buyin");
+      setError(null);
+
+      try {
+        const next = await setPlayerBuyIn(roomCode, maxBuyIn);
+        if (!active) {
+          return;
+        }
+        setRoomState(next);
+        setBuyInInput(String(maxBuyIn));
+      } catch (buyInError) {
+        if (!active) {
+          return;
+        }
+        setError(
+          buyInError instanceof Error
+            ? buyInError.message
+            : isZh
+              ? "无法自动设置带入筹码。"
+              : "Unable to auto save buy-in."
+        );
+      } finally {
+        if (active) {
+          setPendingAction(null);
+        }
+      }
+    };
+
+    void autoSaveBuyIn();
+
+    return () => {
+      active = false;
+    };
+  }, [buyInTouched, isZh, maxBuyIn, mePlayer, pendingAction, roomCode, roomState?.me, roomStatus]);
+
+  useEffect(() => {
     let active = true;
     const socket = getRoomSocket();
 
@@ -109,7 +178,11 @@ function WaitingRoomPageContent() {
             const parsedAssets = Number(profile.totalAssets);
             if (Number.isFinite(parsedAssets)) {
               setTotalAssets(Math.max(0, Math.floor(parsedAssets)));
+            } else {
+              setTotalAssets(null);
             }
+          } else {
+            setTotalAssets(null);
           }
         }
       } catch (loadError) {
