@@ -17,41 +17,98 @@ type UtilityActionItem = {
   disabled?: boolean;
 };
 
+type AmountControlModel = {
+  value: string;
+  onValueChange: (next: string) => void;
+  onStep: (delta: number) => void;
+  helperText?: string;
+};
+
 type BottomActionPanelProps = {
   mainActions: MainActionItem[];
   utilityActions: UtilityActionItem[];
   canOpenSettlement: boolean;
   onOpenSettlement: () => void;
+  amountControl?: AmountControlModel | null;
 };
 
 export function BottomActionPanel({
   mainActions,
   utilityActions,
   canOpenSettlement,
-  onOpenSettlement
+  onOpenSettlement,
+  amountControl
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
 
   return (
     <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[28px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-      <div className="flex items-center justify-center gap-2">
-        {utilityActions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            className={cn(
-              "rounded-full border border-stitch-outlineVariant/20 px-3 py-1 text-[11px] font-label text-stitch-onSurfaceVariant transition",
-              action.disabled ? "cursor-not-allowed opacity-40" : "hover:bg-stitch-surfaceBright/50"
-            )}
-            onClick={action.onPress}
-            disabled={action.disabled}
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
+      {utilityActions.length > 0 ? (
+        <div className="flex items-center justify-center gap-2">
+          {utilityActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className={cn(
+                "rounded-full border border-stitch-outlineVariant/20 px-3 py-1 text-[11px] font-label text-stitch-onSurfaceVariant transition",
+                action.disabled ? "cursor-not-allowed opacity-40" : "hover:bg-stitch-surfaceBright/50"
+              )}
+              onClick={action.onPress}
+              disabled={action.disabled}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-      <div className="mt-3 grid grid-cols-4 gap-2">
+      {amountControl ? (
+        <div className="mt-2">
+          <div className="grid grid-cols-[64px_64px_1fr_64px_64px] gap-1 rounded-xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1">
+            <button
+              type="button"
+              className="h-8 rounded-lg bg-stitch-tertiary/20 text-xs font-semibold text-stitch-tertiary transition hover:brightness-110"
+              onClick={() => amountControl.onStep(-100)}
+            >
+              -100
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-lg bg-stitch-tertiary/20 text-xs font-semibold text-stitch-tertiary transition hover:brightness-110"
+              onClick={() => amountControl.onStep(-50)}
+            >
+              -50
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountControl.value}
+              onChange={(event) => amountControl.onValueChange(event.target.value)}
+              className="h-8 rounded-lg border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-2 text-center text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+            />
+            <button
+              type="button"
+              className="h-8 rounded-lg bg-stitch-mint/20 text-xs font-semibold text-stitch-mint transition hover:brightness-110"
+              onClick={() => amountControl.onStep(50)}
+            >
+              +50
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-lg bg-stitch-mint/20 text-xs font-semibold text-stitch-mint transition hover:brightness-110"
+              onClick={() => amountControl.onStep(100)}
+            >
+              +100
+            </button>
+          </div>
+
+          {amountControl.helperText ? (
+            <p className="mt-1 px-1 text-[10px] text-stitch-onSurfaceVariant">{amountControl.helperText}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-2 grid grid-cols-4 gap-2">
         {mainActions.length > 0 ? (
           mainActions.map((action) => (
             <button
@@ -75,7 +132,7 @@ export function BottomActionPanel({
           ))
         ) : (
           <div className="col-span-4 rounded-2xl border border-stitch-outlineVariant/25 bg-stitch-surfaceContainerHigh p-3 text-center text-xs text-stitch-onSurfaceVariant">
-            {isZh ? "当前阶段无可执行下注动作" : "No available betting actions in this phase."}
+            {isZh ? "\u5f53\u524d\u65e0\u53ef\u6267\u884c\u64cd\u4f5c" : "No available betting actions in this phase."}
           </div>
         )}
       </div>
@@ -86,7 +143,7 @@ export function BottomActionPanel({
           className="mt-3 w-full rounded-2xl bg-stitch-primary px-4 py-3 text-sm font-label font-semibold uppercase tracking-[0.14em] text-stitch-onPrimary transition hover:brightness-105"
           onClick={onOpenSettlement}
         >
-          {isZh ? "打开结算面板" : "Open Settlement"}
+          {isZh ? "\u6253\u5f00\u7ed3\u7b97\u9762\u677f" : "Open Settlement"}
         </button>
       ) : null}
     </section>
