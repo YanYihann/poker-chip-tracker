@@ -363,15 +363,16 @@ export function useOnlineRoomTableModeAdapter(
             ? "操作提交中..."
             : "Submitting action..."
           : null,
-    supplementaryContent: (
-      <OnlineTablePlaceholders
-        mode={variant}
-        game={game}
-        roomStatus={roomState?.room.status ?? null}
-        myHoleCards={game?.myHoleCards ?? []}
-        boardCards={game?.boardCards ?? []}
-      />
-    ),
+    supplementaryContent:
+      variant === "online" ? (
+        <OnlineTablePlaceholders
+          mode={variant}
+          game={game}
+          roomStatus={roomState?.room.status ?? null}
+          myHoleCards={game?.myHoleCards ?? []}
+          boardCards={game?.boardCards ?? []}
+        />
+      ) : null,
     showActionPanel
   };
 }
