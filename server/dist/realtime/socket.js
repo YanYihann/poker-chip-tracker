@@ -7,15 +7,16 @@ import { applyPlayerActionByRoomCode, getRoomStateByCode, setPlayerConnectionByR
 import { resolveSession } from "../modules/auth/session.service.js";
 import { broadcastRoomState, roomChannel, setRealtimeServer } from "./room-broadcast.js";
 const subscribePayloadSchema = z.object({
-    roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/)
+    roomCode: z.string().trim().regex(/^\d{4}$/)
 });
 const setReadyPayloadSchema = z.object({
-    roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
+    roomCode: z.string().trim().regex(/^\d{4}$/),
     isReady: z.boolean()
 });
 const actionPayloadSchema = z.object({
-    roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
-    actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"])
+    roomCode: z.string().trim().regex(/^\d{4}$/),
+    actionType: z.enum(["fold", "check", "call", "bet", "raise", "all-in"]),
+    amount: z.number().int().positive().optional()
 });
 export function setupSocketServer(httpServer) {
     const io = new Server(httpServer, {
@@ -127,7 +128,8 @@ export function setupSocketServer(httpServer) {
                 await applyPlayerActionByRoomCode({
                     roomCode: payload.roomCode,
                     userId: auth.userId,
-                    actionType: payload.actionType
+                    actionType: payload.actionType,
+                    amount: payload.amount
                 });
                 await broadcastRoomState(payload.roomCode);
             }
