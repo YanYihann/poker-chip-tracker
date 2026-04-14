@@ -3,6 +3,7 @@ import type { Server as SocketServer } from "socket.io";
 
 import { recordPerfSample } from "../lib/perf-metrics.js";
 import { getRoomStatesByCodeForUsers } from "../modules/rooms/room.service.js";
+import type { RoomActionPatch } from "./room-patch.js";
 
 let ioRef: SocketServer | null = null;
 const BROADCAST_COALESCE_MS = 20;
@@ -91,4 +92,12 @@ export function scheduleBroadcastRoomState(roomCode: string): void {
   }, BROADCAST_COALESCE_MS);
 
   pendingBroadcastTimers.set(normalizedRoomCode, timer);
+}
+
+export function emitRoomActionPatch(roomCode: string, patch: RoomActionPatch): void {
+  if (!ioRef) {
+    return;
+  }
+
+  ioRef.to(roomChannel(roomCode)).emit("room:patch", patch);
 }

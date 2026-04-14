@@ -84,6 +84,37 @@ export type RoomState = {
   } | null;
 };
 
+export type RoomActionPatch = {
+  type: "action-applied";
+  roomCode: string;
+  roomStatus: RoomState["room"]["status"];
+  game: {
+    handId: string | null;
+    handNumber: number;
+    street: NonNullable<RoomState["game"]>["street"];
+    status: NonNullable<RoomState["game"]>["status"];
+    potTotal: number;
+    currentBet: number;
+    activeSeat: number | null;
+    activePlayerUserId: string | null;
+    dealerSeat: number | null;
+    sbSeat: number | null;
+    bbSeat: number | null;
+    minBet: number;
+    minRaiseDelta: number;
+    boardCards: string[];
+  } | null;
+  players: Array<{
+    userId: string;
+    seatIndex: number | null;
+    stack: number;
+    currentBet: number;
+    status: RoomState["players"][number]["status"];
+    isReady: boolean;
+    isConnected: boolean;
+  }>;
+};
+
 type ApiError = {
   message?: string;
 };

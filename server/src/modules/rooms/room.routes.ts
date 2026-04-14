@@ -26,7 +26,8 @@ import {
   startRoomByHost,
   updateRoomBlindsByCode
 } from "./room.service.js";
-import { scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
+import { emitRoomActionPatch, scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
+import { buildRoomActionPatch } from "../../realtime/room-patch.js";
 
 function sendValidationError(error: ZodError, res: Response): void {
   res.status(400).json({
@@ -292,7 +293,7 @@ export function createRoomRouter() {
       });
 
       res.status(200).json({ room: roomState });
-      scheduleBroadcastRoomState(roomCode);
+      emitRoomActionPatch(roomCode, buildRoomActionPatch(roomState));
     } catch (error) {
       if (error instanceof ZodError) {
         sendValidationError(error, res);

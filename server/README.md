@@ -45,6 +45,7 @@ Server expects authenticated cookie session.
 - client -> `room:start` `{ roomCode }`
 - server -> `socket:ready`
 - server -> `room:state` (shared room snapshot)
+- server -> `room:patch` (minimal post-action state patch)
 - server -> `room:error` `{ message }`
 
 ## Railway

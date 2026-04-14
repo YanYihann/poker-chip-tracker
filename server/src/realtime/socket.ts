@@ -14,7 +14,8 @@ import {
   startRoomByHost
 } from "../modules/rooms/room.service.js";
 import { resolveSession } from "../modules/auth/session.service.js";
-import { roomChannel, scheduleBroadcastRoomState, setRealtimeServer } from "./room-broadcast.js";
+import { roomChannel, emitRoomActionPatch, scheduleBroadcastRoomState, setRealtimeServer } from "./room-broadcast.js";
+import { buildRoomActionPatch } from "./room-patch.js";
 
 const subscribePayloadSchema = z.object({
   roomCode: z.string().trim().regex(/^\d{4}$/)
@@ -155,13 +156,13 @@ export function setupSocketServer(httpServer: HttpServer): Server {
     socket.on("room:action", async (rawPayload: unknown) => {
       try {
         const payload = actionPayloadSchema.parse(rawPayload);
-        await applyPlayerActionByRoomCode({
+        const roomState = await applyPlayerActionByRoomCode({
           roomCode: payload.roomCode,
           userId: auth.userId,
           actionType: payload.actionType,
           amount: payload.amount
         });
-        scheduleBroadcastRoomState(payload.roomCode);
+        emitRoomActionPatch(payload.roomCode, buildRoomActionPatch(roomState));
       } catch {
         socket.emit("room:error", { message: "Unable to apply action." });
       }

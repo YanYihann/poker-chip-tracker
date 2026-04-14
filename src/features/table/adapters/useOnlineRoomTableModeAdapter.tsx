@@ -8,6 +8,7 @@ import { OnlineTablePlaceholders } from "@/components/table/online-table-placeho
 import {
   decideNextHand,
   getRoom,
+  type RoomActionPatch,
   settleHand,
   submitRoomAction,
   type RoomState
@@ -132,6 +133,113 @@ function toSeatPlayers(roomState: RoomState | null, locale: AppLocale, isZh: boo
   });
 }
 
+function deriveGameForCurrentUser(roomState: RoomState | null): RoomState["game"] {
+  const game = roomState?.game ?? null;
+  if (!roomState || !game) {
+    return game;
+  }
+
+  const meUserId = roomState.me?.userId ?? null;
+  const mePlayer = meUserId
+    ? roomState.players.find((player) => player.userId === meUserId) ?? null
+    : null;
+
+  const isMyTurn =
+    game.status === "in-progress" &&
+    !!meUserId &&
+    game.activePlayerUserId === meUserId;
+  const canAct =
+    isMyTurn &&
+    !!mePlayer &&
+    mePlayer.status !== "folded" &&
+    mePlayer.status !== "all-in" &&
+    mePlayer.stack > 0;
+  const toCall = mePlayer ? Math.max(0, game.currentBet - mePlayer.currentBet) : 0;
+
+  const legalActions: NonNullable<RoomState["game"]>["legalActions"] = canAct
+    ? toCall === 0
+      ? ["fold", "check", "bet", "all-in"]
+      : ["fold", "call", "raise", "all-in"]
+    : [];
+
+  return {
+    ...game,
+    isMyTurn: canAct,
+    toCall,
+    legalActions
+  };
+}
+
+function applyRoomActionPatch(prev: RoomState | null, patch: RoomActionPatch): RoomState | null {
+  if (!prev || prev.room.code !== patch.roomCode) {
+    return prev;
+  }
+
+  const patchPlayersByUserId = new Map(patch.players.map((player) => [player.userId, player]));
+  const nextPlayers = prev.players.map((player) => {
+    const next = patchPlayersByUserId.get(player.userId);
+    if (!next) {
+      return player;
+    }
+
+    return {
+      ...player,
+      seatIndex: next.seatIndex,
+      stack: next.stack,
+      currentBet: next.currentBet,
+      status: next.status,
+      isReady: next.isReady,
+      isConnected: next.isConnected
+    };
+  });
+
+  const previousGame = prev.game;
+  const nextGame =
+    patch.game === null
+      ? null
+      : {
+          handId: patch.game.handId,
+          handNumber: patch.game.handNumber,
+          street: patch.game.street,
+          status: patch.game.status,
+          potTotal: patch.game.potTotal,
+          currentBet: patch.game.currentBet,
+          activeSeat: patch.game.activeSeat,
+          activePlayerUserId: patch.game.activePlayerUserId,
+          dealerSeat: patch.game.dealerSeat,
+          sbSeat: patch.game.sbSeat,
+          bbSeat: patch.game.bbSeat,
+          isMyTurn: previousGame?.isMyTurn ?? false,
+          legalActions: previousGame?.legalActions ?? [],
+          toCall: previousGame?.toCall ?? 0,
+          minBet: patch.game.minBet,
+          minRaiseDelta: patch.game.minRaiseDelta,
+          canSettle: previousGame?.canSettle ?? false,
+          canDecideNextHand: previousGame?.canDecideNextHand ?? false,
+          myHoleCards: previousGame?.myHoleCards ?? [],
+          boardCards: patch.game.boardCards,
+          eligibleWinnerUserIds: nextPlayers
+            .filter((player) => player.status !== "folded")
+            .map((player) => player.userId),
+          lastSettlement:
+            patch.game.status === "settled"
+              ? previousGame?.lastSettlement ?? null
+              : null
+        };
+
+  return {
+    ...prev,
+    room: {
+      ...prev.room,
+      status: patch.roomStatus,
+      currentHandNumber: patch.game?.handNumber ?? prev.room.currentHandNumber,
+      dealerSeat: patch.game?.dealerSeat ?? prev.room.dealerSeat
+    },
+    players: nextPlayers,
+    game: nextGame
+  };
+}
+
 export function useOnlineRoomTableModeAdapter(
   roomCode: string,
   options?: { variant?: SyncedVariant }
@@ -145,15 +253,15 @@ export function useOnlineRoomTableModeAdapter(
   const [actionAmountInput, setActionAmountInput] = useState("");
   const [settlementOpen, setSettlementOpen] = useState(false);
 
-  const game = roomState?.game ?? null;
+  const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
   const actionCopy = ACTION_COPY[locale];
   const canSettle =
     variant === "local" &&
-    Boolean(game?.status === "showdown" && game.canSettle && isHost);
+    Boolean(game?.status === "showdown" && isHost);
   const canStartNextHand =
     variant === "local" &&
-    Boolean(game?.status === "settled" && game.canDecideNextHand && isHost);
+    Boolean(game?.status === "settled" && isHost);
 
   useEffect(() => {
     if (!roomCode) {
@@ -207,8 +315,17 @@ export function useOnlineRoomTableModeAdapter(
       setError(payload.message ?? (isZh ? "实时同步异常。" : "Realtime synchronization error."));
     };
 
+    const onRoomPatch = (patch: RoomActionPatch) => {
+      if (!active || patch.roomCode !== roomCode) {
+        return;
+      }
+
+      setRoomState((prev) => applyRoomActionPatch(prev, patch));
+    };
+
     void loadRoom();
     socket.on("room:state", onRoomState);
+    socket.on("room:patch", onRoomPatch);
     socket.on("room:error", onRoomError);
     socket.emit("room:subscribe", { roomCode });
 
@@ -216,6 +333,7 @@ export function useOnlineRoomTableModeAdapter(
       active = false;
       socket.emit("room:unsubscribe", { roomCode });
       socket.off("room:state", onRoomState);
+      socket.off("room:patch", onRoomPatch);
       socket.off("room:error", onRoomError);
     };
   }, [isZh, roomCode]);
