@@ -1273,7 +1273,7 @@ export async function createRoom(input: {
   const startingStack = BigInt(input.startingStack ?? 10000);
   const smallBlind = BigInt(input.smallBlind ?? 100);
   const bigBlind = BigInt(input.bigBlind ?? 200);
-  const gameMode = input.mode === "local" ? "LOCAL" : "ONLINE";
+  const gameMode = input.mode === "local" ? "local" : "online";
   const displayName = await resolveDisplayName(input.hostUserId);
 
   await prisma.gameRoom.create({

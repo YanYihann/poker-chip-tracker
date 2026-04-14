@@ -40,7 +40,23 @@ function sendValidationError(error: ZodError, res: Response): void {
 
 function sendRoomError(error: unknown, res: Response): void {
   if (!(error instanceof Error)) {
+    console.error("[rooms] unexpected non-error thrown", error);
     res.status(500).json({ message: "Unexpected room error." });
+    return;
+  }
+
+  const message = error.message ?? "";
+  const looksLikeDbSchemaMismatch =
+    message.includes("P2021") ||
+    message.includes("P2022") ||
+    message.includes("type \"public.GameMode\" does not exist") ||
+    message.includes("column") && message.includes("does not exist");
+
+  if (looksLikeDbSchemaMismatch) {
+    console.error("[rooms] database schema mismatch", error);
+    res.status(503).json({
+      message: "Database schema is not ready. Please run backend migrations and redeploy."
+    });
     return;
   }
 
@@ -106,6 +122,7 @@ function sendRoomError(error: unknown, res: Response): void {
       res.status(409).json({ message: "Illegal action for current state." });
       return;
     default:
+      console.error("[rooms] unhandled room error", error);
       res.status(500).json({ message: "Room operation failed." });
   }
 }

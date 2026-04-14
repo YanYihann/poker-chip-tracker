@@ -50,7 +50,7 @@ Server expects authenticated cookie session.
 ## Railway
 
 - Build command: `npm install && npm run build`
-- Start command: `npm run start`
+- Start command: `npm run start` (includes `prisma migrate deploy` before boot)
 - Required env vars: `DATABASE_URL`, `DATABASE_URL_DIRECT`, `PORT`, `NODE_ENV`, `CLIENT_ORIGIN`
 
 ## Neon Connection Pooling

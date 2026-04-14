@@ -20,7 +20,7 @@ Create a Railway service from GitHub:
 
 - Root Directory: `server`
 - Build Command: `npm install && npm run prisma:generate && npm run build`
-- Start Command: `npm run prisma:migrate:deploy && npm run start`
+- Start Command: `npm run start`
 - Healthcheck Path: `/health`
 
 Set backend environment variables:

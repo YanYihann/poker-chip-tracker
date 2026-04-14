@@ -15,11 +15,6 @@ enum RoomStatus {
   CANCELLED @map("cancelled")
 }
 
-enum GameMode {
-  LOCAL  @map("local")
-  ONLINE @map("online")
-}
-
 enum Street {
   PREFLOP  @map("preflop")
   FLOP     @map("flop")
@@ -113,7 +108,7 @@ model GameRoom {
   id                  String              @id @default(uuid()) @db.Uuid
   roomCode            String              @unique @map("room_code")
   hostUserId          String              @map("host_user_id") @db.Uuid
-  gameMode            GameMode            @default(ONLINE) @map("game_mode")
+  gameMode            String              @default("online") @map("game_mode")
   status              RoomStatus
   maxPlayers          Int                 @map("max_players")
   startingStack       BigInt              @map("starting_stack")
