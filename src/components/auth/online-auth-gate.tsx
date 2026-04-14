@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
@@ -17,15 +17,18 @@ type OnlineAuthGateProps = {
 export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { isZh } = useLanguage();
   const [allowed, setAllowed] = useState(false);
   const [checking, setChecking] = useState(true);
 
   const nextPath = useMemo(() => {
-    const query = searchParams.toString();
-    return query ? `${pathname}?${query}` : pathname;
-  }, [pathname, searchParams]);
+    if (typeof window === "undefined") {
+      return pathname;
+    }
+
+    const query = window.location.search;
+    return query ? `${pathname}${query}` : pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let active = true;
