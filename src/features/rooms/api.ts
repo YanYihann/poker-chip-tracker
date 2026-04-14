@@ -12,7 +12,18 @@ type RoomPlayer = {
   stack: number;
   currentBet: number;
   status: "waiting" | "acting" | "folded" | "all-in";
-  positionLabel: "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO" | null;
+  positionLabel:
+    | "BTN"
+    | "SB"
+    | "BB"
+    | "UTG"
+    | "UTG+1"
+    | "MP"
+    | "LJ"
+    | "HJ"
+    | "CO"
+    | "BTN/SB"
+    | null;
   joinedAtIso: string;
 };
 

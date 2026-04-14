@@ -15,10 +15,13 @@ type PlayerSeatProps = {
 
 const POSITION_LABEL_ZH_MAP: Record<string, string> = {
   BTN: "\u5e84",
+  "BTN/SB": "\u5e84/\u5c0f\u76f2",
   SB: "\u5c0f\u76f2",
   BB: "\u5927\u76f2",
   UTG: "\u67aa\u53e3",
+  "UTG+1": "\u67aa\u53e3+1",
   MP: "\u4e2d\u4f4d",
+  LJ: "\u4f4e\u52ab\u4f4d",
   HJ: "\u52ab\u4f4d",
   CO: "\u5173\u715e"
 };
