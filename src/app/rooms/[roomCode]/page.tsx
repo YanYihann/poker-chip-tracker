@@ -486,7 +486,7 @@ function WaitingRoomPageContent() {
                         : "Mark Ready"}
                 </button>
 
-                {isHost ? (
+                {isHost && roomState.room.mode === "online" ? (
                   <button
                     type="button"
                     disabled={pendingAction !== null || !roomState.canStart}
@@ -520,6 +520,22 @@ function WaitingRoomPageContent() {
                 ) : null}
               </div>
             </article>
+
+            {roomStatus === "waiting" && roomState.room.mode === "local" ? (
+              <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">
+                <p className="text-sm text-stitch-primary">
+                  {isZh
+                    ? "本地同步模式请先进入牌桌进行选座。所有玩家选座并就绪后，由房主在牌桌内确认开始。"
+                    : "For local synced mode, enter the table for seat selection first. Once everyone is seated and ready, host confirms start at the table."}
+                </p>
+                <Link
+                  href={`/local?room=${roomState.room.code}`}
+                  className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
+                >
+                  {isZh ? "进入本地同步牌桌选座" : "Enter Local Synced Table"}
+                </Link>
+              </article>
+            ) : null}
 
             {roomStatus === "active" ? (
               <article className="rounded-2xl border border-stitch-primary/35 bg-stitch-primary/10 p-4">

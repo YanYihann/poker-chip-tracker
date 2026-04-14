@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
@@ -11,6 +11,9 @@ import {
   getRoom,
   type RoomActionPatch,
   settleHand,
+  setPlayerSeat,
+  setReady,
+  startRoom,
   submitRoomAction,
   type RoomState
 } from "@/features/rooms/api";
@@ -22,6 +25,7 @@ type OnlineActionType = NonNullable<RoomState["game"]>["legalActions"][number];
 type OnlineGameStatus = NonNullable<RoomState["game"]>["status"];
 type OnlineStreet = NonNullable<RoomState["game"]>["street"];
 type SyncedVariant = "online" | "local";
+type RoomPlayer = RoomState["players"][number];
 
 const STREET_LABELS: Record<AppLocale, Record<OnlineStreet, string>> = {
   zh: {
@@ -165,6 +169,60 @@ function toSeatPlayers(roomState: RoomState | null, locale: AppLocale, isZh: boo
   });
 }
 
+function toLocalSyncedSeatSelectionPlayers(input: {
+  roomState: RoomState;
+  locale: AppLocale;
+  isZh: boolean;
+  onSelectSeat: (seatIndex: number) => void;
+}): TableSeatPlayer[] {
+  const seatCount = Math.max(2, Math.min(10, input.roomState.room.maxPlayers));
+  const playerBySeat = new Map<number, RoomPlayer>();
+
+  input.roomState.players.forEach((player) => {
+    if (
+      player.seatIndex !== null &&
+      player.seatIndex >= 0 &&
+      player.seatIndex < seatCount &&
+      !playerBySeat.has(player.seatIndex)
+    ) {
+      playerBySeat.set(player.seatIndex, player);
+    }
+  });
+
+  return Array.from({ length: seatCount }, (_, seatIndex) => {
+    const seatedPlayer = playerBySeat.get(seatIndex);
+    if (!seatedPlayer) {
+      return {
+        id: `local-synced-seat-${seatIndex + 1}`,
+        name: `S${seatIndex + 1}`,
+        stackLabel: "",
+        isPlaceholder: true,
+        placeholderLabel: "+",
+        placeholderSelected: false,
+        onPress: () => input.onSelectSeat(seatIndex),
+        status: "waiting"
+      } satisfies TableSeatPlayer;
+    }
+
+    const stackLabel = formatCurrency(seatedPlayer.stack, input.locale);
+    const currentBetLabel =
+      seatedPlayer.currentBet > 0
+        ? `${input.isZh ? "注额" : "Bet"} ${formatCurrency(seatedPlayer.currentBet, input.locale)}`
+        : null;
+
+    return {
+      id: seatedPlayer.userId,
+      name: seatedPlayer.displayName,
+      avatarUrl: seatedPlayer.avatarUrl,
+      stackLabel: currentBetLabel ? `${stackLabel} · ${currentBetLabel}` : stackLabel,
+      positionLabel: `S${seatIndex + 1}`,
+      isHero: input.roomState.me?.userId === seatedPlayer.userId,
+      isActive: false,
+      status: seatedPlayer.status
+    } satisfies TableSeatPlayer;
+  });
+}
+
 function deriveGameForCurrentUser(roomState: RoomState | null): RoomState["game"] {
   const game = roomState?.game ?? null;
   if (!roomState || !game) {
@@ -302,6 +360,11 @@ export function useOnlineRoomTableModeAdapter(
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
   const usesAutoEvaluator = variant === "online";
+  const isLocalSeatSelectionPhase = variant === "local" && roomState?.room.status === "waiting";
+  const mySeatIndex = roomState?.me?.seatIndex ?? null;
+  const allPlayersSeated = Boolean(
+    roomState && roomState.players.length > 0 && roomState.players.every((player) => player.seatIndex !== null)
+  );
   const actionCopy = ACTION_COPY[locale];
   const canSettle = Boolean(game?.status === "showdown" && isHost && !usesAutoEvaluator);
   const canOpenManualSettlement = canSettle;
@@ -503,7 +566,73 @@ export function useOnlineRoomTableModeAdapter(
     [settlementEntries]
   );
 
+  const selectLocalSeat = useCallback(
+    async (seatIndex: number) => {
+      if (!roomCode || !roomState || variant !== "local" || roomState.room.status !== "waiting" || pendingAction) {
+        return;
+      }
+
+      setPendingAction(true);
+      setError(null);
+
+      try {
+        const seatUpdated = await setPlayerSeat(roomCode, seatIndex);
+        const nextReady = seatUpdated.me?.seatIndex !== null;
+        const readyUpdated = await setReady(roomCode, nextReady);
+        setRoomState(readyUpdated);
+      } catch (seatError) {
+        setError(
+          seatError instanceof Error
+            ? seatError.message
+            : isZh
+              ? "无法设置座位。"
+              : "Unable to set seat."
+        );
+      } finally {
+        setPendingAction(false);
+      }
+    },
+    [isZh, pendingAction, roomCode, roomState, variant]
+  );
+
+  const clearLocalSeat = useCallback(async () => {
+    if (!roomCode || !roomState || variant !== "local" || roomState.room.status !== "waiting" || pendingAction) {
+      return;
+    }
+
+    setPendingAction(true);
+    setError(null);
+
+    try {
+      const seatUpdated = await setPlayerSeat(roomCode, null);
+      const nextReady = seatUpdated.me?.seatIndex !== null;
+      const readyUpdated = await setReady(roomCode, nextReady);
+      setRoomState(readyUpdated);
+    } catch (seatError) {
+      setError(
+        seatError instanceof Error
+          ? seatError.message
+          : isZh
+            ? "无法取消座位。"
+            : "Unable to clear seat."
+      );
+    } finally {
+      setPendingAction(false);
+    }
+  }, [isZh, pendingAction, roomCode, roomState, variant]);
+
   const tablePlayers = useMemo(() => {
+    if (isLocalSeatSelectionPhase && roomState) {
+      return toLocalSyncedSeatSelectionPlayers({
+        roomState,
+        locale,
+        isZh,
+        onSelectSeat: (seatIndex) => {
+          void selectLocalSeat(seatIndex);
+        }
+      });
+    }
+
     const basePlayers = toSeatPlayers(roomState, locale, isZh);
 
     if (variant !== "online" || game?.status !== "settled") {
@@ -522,14 +651,69 @@ export function useOnlineRoomTableModeAdapter(
         resultDeltaLabel: formatSignedCurrency(settledEntry.netChange, locale)
       };
     });
-  }, [game?.status, isZh, locale, roomState, settlementEntryByUserId, variant]);
+  }, [
+    game?.status,
+    isLocalSeatSelectionPhase,
+    isZh,
+    locale,
+    roomState,
+    selectLocalSeat,
+    settlementEntryByUserId,
+    variant
+  ]);
 
   const utilityActions = useMemo(() => {
     const actions: Array<{
       id: string;
       label: string;
       onPress: () => Promise<void>;
+      disabled?: boolean;
     }> = [];
+
+    if (isLocalSeatSelectionPhase) {
+      if (mySeatIndex !== null) {
+        actions.push({
+          id: "leave-seat",
+          label: isZh ? "取消我的座位" : "Leave Seat",
+          onPress: async () => {
+            await clearLocalSeat();
+          }
+        });
+      }
+
+      if (isHost) {
+        actions.push({
+          id: "confirm-seats-start",
+          label: isZh ? "确认座位并开始" : "Confirm Seats & Start",
+          disabled: pendingAction || !roomState?.canStart || !allPlayersSeated,
+          onPress: async () => {
+            if (!roomCode || pendingAction || !roomState?.canStart || !allPlayersSeated) {
+              return;
+            }
+
+            setPendingAction(true);
+            setError(null);
+
+            try {
+              const next = await startRoom(roomCode);
+              setRoomState(next);
+            } catch (startError) {
+              setError(
+                startError instanceof Error
+                  ? startError.message
+                  : isZh
+                    ? "无法开始游戏。"
+                    : "Unable to start game."
+              );
+            } finally {
+              setPendingAction(false);
+            }
+          }
+        });
+      }
+
+      return actions;
+    }
 
     if (canStartNextHand) {
       actions.push(
@@ -591,7 +775,18 @@ export function useOnlineRoomTableModeAdapter(
     }
 
     return actions;
-  }, [canStartNextHand, isZh, pendingAction, roomCode]);
+  }, [
+    allPlayersSeated,
+    canStartNextHand,
+    clearLocalSeat,
+    isHost,
+    isLocalSeatSelectionPhase,
+    isZh,
+    mySeatIndex,
+    pendingAction,
+    roomCode,
+    roomState?.canStart
+  ]);
 
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
   const hasRaiseActions = legalActions.includes("bet") || legalActions.includes("raise");
@@ -706,6 +901,22 @@ export function useOnlineRoomTableModeAdapter(
         ? isZh
           ? "操作提交中..."
           : "Submitting action..."
+        : isLocalSeatSelectionPhase
+          ? mySeatIndex === null
+            ? isZh
+              ? "请在牌桌点击 + 选择你的现实座位。"
+              : "Tap + on the table to pick your real seat."
+            : isHost
+              ? roomState?.canStart && allPlayersSeated
+                ? isZh
+                  ? "所有玩家已选座并就绪，房主可确认开始。"
+                  : "All players are seated and ready. Host can confirm start."
+                : isZh
+                  ? "等待所有玩家完成选座并就绪后，由房主确认开始。"
+                  : "Waiting for everyone to seat and ready up before host confirms start."
+              : isZh
+                ? "你已选座，等待房主确认开始。"
+                : "Seat selected. Waiting for host confirmation."
         : canSettle
           ? isZh
             ? "本手已进入待结算，房主可打开结算面板。"
