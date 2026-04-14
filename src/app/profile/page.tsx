@@ -26,6 +26,64 @@ function formatMoney(value: string, locale: AppLocale): string {
   return amount < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("FILE_READ_FAILED"));
+      }
+    };
+    reader.onerror = () => reject(new Error("FILE_READ_FAILED"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("IMAGE_DECODE_FAILED"));
+    img.src = src;
+  });
+}
+
+async function buildAvatarDataUrl(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("INVALID_FILE_TYPE");
+  }
+
+  const source = await readFileAsDataUrl(file);
+  const image = await loadImage(source);
+
+  const maxSide = 512;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("CANVAS_NOT_SUPPORTED");
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  let quality = 0.9;
+  let output = canvas.toDataURL("image/webp", quality);
+  while (output.length > 350_000 && quality > 0.4) {
+    quality -= 0.1;
+    output = canvas.toDataURL("image/webp", quality);
+  }
+
+  return output;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { isZh, localeTag, locale, setLocale } = useLanguage();
@@ -36,10 +94,12 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarDirty, setAvatarDirty] = useState(false);
   const [sessions, setSessions] = useState<RecentSession[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [totalAssets, setTotalAssets] = useState("10000");
   const [totals, setTotals] = useState({
     sessions: 0,
     hands: 0,
@@ -61,6 +121,8 @@ export default function ProfilePage() {
         setEmail(me.email);
         setUsername(profile.username);
         setAvatarUrl(profile.avatarUrl ?? "");
+        setAvatarDirty(false);
+        setTotalAssets(profile.totalAssets);
         setTotals(profile.totals);
         setSessions(recent);
       } catch (loadError) {
@@ -165,38 +227,30 @@ export default function ProfilePage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                    {isZh ? "\u5934\u50cf\u6587\u4ef6" : "Avatar File"}
+                    {isZh ? "\u5934\u50cf\u56fe\u5e93\u4e0a\u4f20" : "Avatar Upload"}
                   </span>
                   <input
                     type="file"
                     accept="image/*"
                     className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface file:mr-3 file:rounded-lg file:border-0 file:bg-stitch-primary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-stitch-onPrimary"
-                    onChange={(event) => {
+                    onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) {
                         return;
                       }
 
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        if (typeof reader.result === "string") {
-                          setAvatarUrl(reader.result);
-                        }
-                      };
-                      reader.readAsDataURL(file);
+                      try {
+                        const compactAvatar = await buildAvatarDataUrl(file);
+                        setAvatarUrl(compactAvatar);
+                        setAvatarDirty(true);
+                      } catch {
+                        setError(
+                          isZh
+                            ? "\u5934\u50cf\u5904\u7406\u5931\u8d25\uff0c\u8bf7\u9009\u62e9\u5c0f\u4e00\u4e9b\u7684\u56fe\u7247\u3002"
+                            : "Avatar processing failed. Please choose a smaller image."
+                        );
+                      }
                     }}
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                    {isZh ? "\u6216\u4f7f\u7528\u5934\u50cf URL" : "Or Avatar URL"}
-                  </span>
-                  <input
-                    value={avatarUrl}
-                    onChange={(event) => setAvatarUrl(event.target.value)}
-                    placeholder="https://..."
-                    className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
                   />
                 </label>
 
@@ -210,10 +264,11 @@ export default function ProfilePage() {
                     try {
                       const profile = await updateProfile({
                         username: username.trim(),
-                        avatarUrl: avatarUrl.trim() ? avatarUrl.trim() : null
+                        avatarUrl: avatarDirty ? (avatarUrl.trim() ? avatarUrl.trim() : null) : undefined
                       });
                       setUsername(profile.username);
                       setAvatarUrl(profile.avatarUrl ?? "");
+                      setAvatarDirty(false);
                     } catch (saveError) {
                       setError(
                         saveError instanceof Error
@@ -233,44 +288,17 @@ export default function ProfilePage() {
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u754c\u9762\u8bed\u8a00" : "Language"}</h2>
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u603b\u8d44\u4ea7" : "Total Assets"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh
-                  ? "\u4e2d\u82f1\u6587\u5207\u6362\u8bbe\u7f6e\u4fdd\u5b58\u5728\u5f53\u524d\u6d4f\u89c8\u5668\u3002"
-                  : "Language preference is saved in this browser."}
+                {isZh ? "\u521d\u59cb\u8d44\u4ea7 $10,000\uff0c\u4f1a\u968f\u724c\u5c40\u76c8\u4e8f\u53d8\u5316\u3002" : "Starts at $10,000 and changes with your session results."}
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLocale("zh")}
-                  className={[
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    locale === "zh"
-                      ? "bg-stitch-primary text-stitch-onPrimary"
-                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
-                  ].join(" ")}
-                >
-                  {"\u7b80\u4f53\u4e2d\u6587"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLocale("en")}
-                  className={[
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    locale === "en"
-                      ? "bg-stitch-primary text-stitch-onPrimary"
-                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
-                  ].join(" ")}
-                >
-                  English
-                </button>
-              </div>
+              <p className="mt-3 text-3xl font-bold text-stitch-mint">{formatMoney(totalAssets, locale)}</p>
             </article>
 
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u724c\u5c40\u603b\u89c8" : "Session Totals"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are now server-synced."}
+                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are synced from server."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
@@ -326,7 +354,7 @@ export default function ProfilePage() {
                         {formatMoney(session.endStack, locale)}
                       </p>
                       <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} · {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
+                        {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} | {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
                         {formatMoney(session.profitLoss, locale)}
                       </p>
                     </Link>
@@ -355,6 +383,41 @@ export default function ProfilePage() {
                 >
                   {isZh ? "\u52a0\u5165\u623f\u95f4" : "Join Room"}
                 </Link>
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u754c\u9762\u8bed\u8a00" : "Language"}</h2>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh
+                  ? "\u4e2d\u82f1\u6587\u5207\u6362\u8bbe\u7f6e\u4fdd\u5b58\u5728\u5f53\u524d\u6d4f\u89c8\u5668\u3002"
+                  : "Language preference is saved in this browser."}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocale("zh")}
+                  className={[
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    locale === "zh"
+                      ? "bg-stitch-primary text-stitch-onPrimary"
+                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+                  ].join(" ")}
+                >
+                  {"\u7b80\u4f53\u4e2d\u6587"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocale("en")}
+                  className={[
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    locale === "en"
+                      ? "bg-stitch-primary text-stitch-onPrimary"
+                      : "bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+                  ].join(" ")}
+                >
+                  English
+                </button>
               </div>
             </article>
           </>

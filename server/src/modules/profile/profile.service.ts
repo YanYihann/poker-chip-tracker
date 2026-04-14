@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 export async function getProfile(userId: string): Promise<{
   username: string;
   avatarUrl: string | null;
+  totalAssets: string;
   totals: {
     sessions: number;
     hands: number;
@@ -26,9 +27,12 @@ export async function getProfile(userId: string): Promise<{
     throw new Error("PROFILE_NOT_FOUND");
   }
 
+  const totalAssets = BigInt(10000) + profile.totalProfit - profile.totalLoss;
+
   return {
     username: profile.username,
     avatarUrl: profile.avatarUrl,
+    totalAssets: totalAssets.toString(),
     totals: {
       sessions: profile.totalSessions,
       hands: profile.totalHands,

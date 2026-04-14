@@ -2,8 +2,8 @@
 
 import type { Prisma } from "@prisma/client";
 
-const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const ROOM_CODE_LENGTH = 6;
+const ROOM_CODE_ALPHABET = "0123456789";
+const ROOM_CODE_LENGTH = 4;
 
 type StreetCode = "PREFLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN";
 type PublicStreet = "preflop" | "flop" | "turn" | "river" | "showdown";

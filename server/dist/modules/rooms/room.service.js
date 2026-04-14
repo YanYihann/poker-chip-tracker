@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
-const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const ROOM_CODE_LENGTH = 6;
+const ROOM_CODE_ALPHABET = "0123456789";
+const ROOM_CODE_LENGTH = 4;
 function toNumber(value) {
     if (value === null || value === undefined) {
         return 0;

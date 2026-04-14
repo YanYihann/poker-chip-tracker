@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const roomCodePattern = /^[A-Z0-9]{6}$/;
+const roomCodePattern = /^\d{4}$/;
 
 export const createRoomSchema = z.object({
   maxPlayers: z.number().int().min(2).max(10).optional(),

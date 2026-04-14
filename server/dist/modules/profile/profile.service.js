@@ -14,9 +14,11 @@ export async function getProfile(userId) {
     if (!profile) {
         throw new Error("PROFILE_NOT_FOUND");
     }
+    const totalAssets = BigInt(10000) + profile.totalProfit - profile.totalLoss;
     return {
         username: profile.username,
         avatarUrl: profile.avatarUrl,
+        totalAssets: totalAssets.toString(),
         totals: {
             sessions: profile.totalSessions,
             hands: profile.totalHands,

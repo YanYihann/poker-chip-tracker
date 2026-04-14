@@ -19,6 +19,7 @@ export type AuthUser = {
 export type ProfilePayload = {
   username: string;
   avatarUrl: string | null;
+  totalAssets: string;
   totals: {
     sessions: number;
     hands: number;

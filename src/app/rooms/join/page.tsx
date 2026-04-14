@@ -35,10 +35,10 @@ export default function JoinRoomPage() {
             <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "房间码" : "Room Code"}</span>
             <input
               type="text"
-              maxLength={6}
+              maxLength={4}
               value={roomCode}
-              onChange={(event) => setRoomCode(event.target.value.toUpperCase())}
-              placeholder="ABC123"
+              onChange={(event) => setRoomCode(event.target.value.replace(/[^\d]/g, ""))}
+              placeholder="1234"
               className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm uppercase tracking-[0.12em] text-stitch-onSurface outline-none focus:border-stitch-primary/50"
             />
           </label>
@@ -65,7 +65,7 @@ export default function JoinRoomPage() {
 
           <button
             type="button"
-            disabled={loading || normalizedCode.length !== 6}
+            disabled={loading || normalizedCode.length !== 4}
             className="mt-4 w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
             onClick={async () => {
               setLoading(true);
