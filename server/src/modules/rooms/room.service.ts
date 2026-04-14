@@ -25,6 +25,16 @@ type RoomMode = "local" | "online";
 type HandStatusCode = "ACTIVE" | "SHOWDOWN" | "SETTLED" | "CANCELLED";
 type StoredPositionCode = "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO";
 type PositionCode = StoredPositionCode | "BTN/SB" | "UTG+1" | "LJ";
+type HandRankCode =
+  | "high-card"
+  | "one-pair"
+  | "two-pair"
+  | "three-of-a-kind"
+  | "straight"
+  | "flush"
+  | "full-house"
+  | "four-of-a-kind"
+  | "straight-flush";
 
 type RoomPlayerRecord = {
   id: string;
@@ -214,6 +224,8 @@ export type RoomState = {
         displayName: string;
         amountWon: number;
         netChange: number;
+        handRankCode: HandRankCode | null;
+        bestFiveCards: string[];
       }>;
     } | null;
   } | null;
@@ -317,6 +329,34 @@ function toPublicStreet(street: StreetCode): PublicStreet {
     default:
       return "preflop";
   }
+}
+
+function handRankCodeFromCategory(category: number): HandRankCode {
+  if (category === 8) {
+    return "straight-flush";
+  }
+  if (category === 7) {
+    return "four-of-a-kind";
+  }
+  if (category === 6) {
+    return "full-house";
+  }
+  if (category === 5) {
+    return "flush";
+  }
+  if (category === 4) {
+    return "straight";
+  }
+  if (category === 3) {
+    return "three-of-a-kind";
+  }
+  if (category === 2) {
+    return "two-pair";
+  }
+  if (category === 1) {
+    return "one-pair";
+  }
+  return "high-card";
 }
 
 function toPublicRoomStatus(status: string): RoomState["room"]["status"] {
@@ -774,13 +814,45 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   const toCall = mePlayer ? Math.max(0, currentBet - toNumber(mePlayer.currentBet)) : 0;
   const contenders = sortedPlayers.filter((player) => !player.hasFolded && player.seatIndex !== null);
   const playerNameMap = new Map(players.map((player) => [player.userId, player.displayName]));
+  const showdownEvaluationByUserId =
+    roomMode === "online"
+      ? (() => {
+          const board = normalizeCardList(latestHand?.boardCards ?? []);
+          if (board.length < 5) {
+            return new Map<string, { handRankCode: HandRankCode; bestFiveCards: string[] }>();
+          }
+
+          const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
+          const map = new Map<string, { handRankCode: HandRankCode; bestFiveCards: string[] }>();
+
+          for (const player of contenders) {
+            const holeCards = holeCardsByUser[player.userId] ?? [];
+            if (holeCards.length < 2) {
+              continue;
+            }
+
+            const evaluated = evaluateBestHoldemHand([...holeCards.slice(0, 2), ...board.slice(0, 5)]);
+            map.set(player.userId, {
+              handRankCode: handRankCodeFromCategory(evaluated.category),
+              bestFiveCards: [...evaluated.bestFiveCards]
+            });
+          }
+
+          return map;
+        })()
+      : new Map<string, { handRankCode: HandRankCode; bestFiveCards: string[] }>();
   const settlementEntries = (latestHand?.results ?? [])
-    .map((result) => ({
-      userId: result.userId,
-      displayName: playerNameMap.get(result.userId) ?? result.userId,
-      amountWon: toNumber(result.amountWon),
-      netChange: toNumber(result.netChange)
-    }))
+    .map((result) => {
+      const showdownEvaluation = showdownEvaluationByUserId.get(result.userId);
+      return {
+        userId: result.userId,
+        displayName: playerNameMap.get(result.userId) ?? result.userId,
+        amountWon: toNumber(result.amountWon),
+        netChange: toNumber(result.netChange),
+        handRankCode: showdownEvaluation?.handRankCode ?? null,
+        bestFiveCards: showdownEvaluation?.bestFiveCards ?? []
+      };
+    })
     .sort((a, b) => b.netChange - a.netChange);
   const reservedBoardCards =
     roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];

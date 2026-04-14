@@ -88,6 +88,18 @@ export type RoomState = {
         displayName: string;
         amountWon: number;
         netChange: number;
+        handRankCode:
+          | "high-card"
+          | "one-pair"
+          | "two-pair"
+          | "three-of-a-kind"
+          | "straight"
+          | "flush"
+          | "full-house"
+          | "four-of-a-kind"
+          | "straight-flush"
+          | null;
+        bestFiveCards: string[];
       }>;
     } | null;
   } | null;

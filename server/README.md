@@ -42,6 +42,7 @@ Backend foundation for Railway + Neon.
 - Online mode uses **server-side automatic hand evaluation** at showdown.
 - Local synced mode keeps **host-manual winner confirmation on server**.
 - Single winner, split pot, and contribution-layer side-pot payout are supported.
+- Settled room state includes per-player `handRankCode` and `bestFiveCards` for UI rendering.
 
 ## WebSocket events
 

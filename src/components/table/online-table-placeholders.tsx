@@ -9,9 +9,37 @@ type OnlineTablePlaceholdersProps = {
   mode: "online" | "local";
   game: RoomState["game"] | null;
   roomStatus: RoomState["room"]["status"] | null;
+  meUserId?: string | null;
   myHoleCards: string[];
   boardCards: string[];
 };
+
+type SettlementEntry = NonNullable<NonNullable<RoomState["game"]>["lastSettlement"]>["entries"][number];
+
+const HAND_RANK_LABELS = {
+  zh: {
+    "high-card": "高牌",
+    "one-pair": "一对",
+    "two-pair": "两对",
+    "three-of-a-kind": "三条",
+    straight: "顺子",
+    flush: "同花",
+    "full-house": "葫芦",
+    "four-of-a-kind": "四条",
+    "straight-flush": "同花顺"
+  },
+  en: {
+    "high-card": "High Card",
+    "one-pair": "One Pair",
+    "two-pair": "Two Pair",
+    "three-of-a-kind": "Trips",
+    straight: "Straight",
+    flush: "Flush",
+    "full-house": "Full House",
+    "four-of-a-kind": "Quads",
+    "straight-flush": "Straight Flush"
+  }
+} as const;
 
 function getBoardRevealCount(game: RoomState["game"] | null, boardCards: string[]): number {
   if (boardCards.length > 0) {
@@ -41,6 +69,7 @@ export function OnlineTablePlaceholders({
   mode,
   game,
   roomStatus,
+  meUserId = null,
   myHoleCards,
   boardCards
 }: OnlineTablePlaceholdersProps) {
@@ -57,8 +86,12 @@ export function OnlineTablePlaceholders({
 
     if (game.status === "showdown") {
       return isZh
-        ? "摊牌阶段中，等待房主结算。"
-        : "In showdown phase, waiting for host settlement.";
+        ? mode === "online"
+          ? "摊牌阶段中，等待房主执行自动牌力结算。"
+          : "摊牌阶段中，等待房主结算。"
+        : mode === "online"
+          ? "In showdown phase, waiting for host auto settlement."
+          : "In showdown phase, waiting for host settlement.";
     }
 
     if (game.status === "settled") {
@@ -69,6 +102,20 @@ export function OnlineTablePlaceholders({
 
     return isZh ? "当前未进入摊牌。" : "Showdown has not started for this hand.";
   }, [game, isZh]);
+
+  const settlementEntries = game?.lastSettlement?.entries ?? [];
+  const mySettlementEntry = useMemo<SettlementEntry | null>(() => {
+    if (!meUserId || settlementEntries.length === 0) {
+      return null;
+    }
+
+    return settlementEntries.find((entry) => entry.userId === meUserId) ?? null;
+  }, [meUserId, settlementEntries]);
+
+  const myBestFiveCardSet = useMemo(
+    () => new Set((mySettlementEntry?.bestFiveCards ?? []).map((card) => card.toUpperCase())),
+    [mySettlementEntry?.bestFiveCards]
+  );
 
   return (
     <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
@@ -102,8 +149,10 @@ export function OnlineTablePlaceholders({
                   key={`hole-card-${index + 1}`}
                   className={[
                     "grid h-11 w-8 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
-                    card
-                      ? "border-stitch-mint/45 bg-stitch-mint/15 text-stitch-mint"
+                    card && myBestFiveCardSet.has(card.toUpperCase())
+                      ? "border-stitch-secondary/60 bg-stitch-secondary/20 text-stitch-secondary"
+                      : card
+                        ? "border-stitch-mint/45 bg-stitch-mint/15 text-stitch-mint"
                       : "border-stitch-outlineVariant/40 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
                   ].join(" ")}
                 >
@@ -143,8 +192,10 @@ export function OnlineTablePlaceholders({
                   key={`board-card-${index + 1}`}
                   className={[
                     "grid h-10 w-7 place-items-center rounded-md border text-[10px] font-semibold tracking-[0.03em]",
-                    isRevealed
-                      ? "border-stitch-primary/40 bg-stitch-primary/10 text-stitch-primary"
+                    isRevealed && card && myBestFiveCardSet.has(card.toUpperCase())
+                      ? "border-stitch-secondary/60 bg-stitch-secondary/20 text-stitch-secondary"
+                      : isRevealed
+                        ? "border-stitch-primary/40 bg-stitch-primary/10 text-stitch-primary"
                       : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHighest/80 text-stitch-onSurfaceVariant"
                   ].join(" ")}
                 >
@@ -175,6 +226,58 @@ export function OnlineTablePlaceholders({
             </p>
           ) : null}
         </section>
+
+        {mode === "online" && game?.status === "settled" && settlementEntries.length > 0 ? (
+          <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
+            <p className="text-xs font-semibold text-stitch-onSurface">
+              {isZh ? "自动牌力结算结果" : "Auto Evaluated Showdown"}
+            </p>
+            <div className="mt-2 space-y-2">
+              {settlementEntries.map((entry) => {
+                const handLabel = entry.handRankCode
+                  ? HAND_RANK_LABELS[isZh ? "zh" : "en"][entry.handRankCode]
+                  : isZh
+                    ? "未摊牌"
+                    : "No Showdown Hand";
+
+                return (
+                  <article
+                    key={`settlement-${entry.userId}`}
+                    className="rounded-lg border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHighest/70 p-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold text-stitch-onSurface">
+                        {entry.displayName}
+                      </p>
+                      <p
+                        className={[
+                          "text-[11px] font-semibold",
+                          entry.netChange >= 0 ? "text-stitch-mint" : "text-stitch-tertiary"
+                        ].join(" ")}
+                      >
+                        {entry.netChange >= 0 ? "+" : ""}
+                        {entry.netChange}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-[11px] text-stitch-onSurfaceVariant">{handLabel}</p>
+                    {entry.bestFiveCards.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {entry.bestFiveCards.map((card) => (
+                          <span
+                            key={`${entry.userId}-${card}`}
+                            className="rounded-md border border-stitch-secondary/45 bg-stitch-secondary/15 px-1.5 py-0.5 text-[10px] font-semibold text-stitch-secondary"
+                          >
+                            {card}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </div>
     </article>
   );

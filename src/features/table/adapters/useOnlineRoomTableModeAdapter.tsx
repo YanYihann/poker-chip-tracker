@@ -704,6 +704,7 @@ export function useOnlineRoomTableModeAdapter(
           mode={variant}
           game={game}
           roomStatus={roomState?.room.status ?? null}
+          meUserId={roomState?.me?.userId ?? null}
           myHoleCards={game?.myHoleCards ?? []}
           boardCards={game?.boardCards ?? []}
         />
