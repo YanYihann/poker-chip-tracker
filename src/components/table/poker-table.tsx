@@ -13,9 +13,11 @@ type PokerTableProps = {
   potLabel: string;
   streetLabel: string;
   statusLabel: string;
+  street: "preflop" | "flop" | "turn" | "river" | "showdown";
+  handKey: string;
 };
 
-export function PokerTable({ players, potLabel, streetLabel, statusLabel }: PokerTableProps) {
+export function PokerTable({ players, potLabel, streetLabel, statusLabel, street, handKey }: PokerTableProps) {
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const seatCoordinates = getSeatCoordinates(players.length);
@@ -69,6 +71,8 @@ export function PokerTable({ players, potLabel, streetLabel, statusLabel }: Poke
           amountLabel={potLabel}
           streetLabel={streetLabel}
           statusLabel={statusLabel}
+          street={street}
+          handKey={handKey}
         />
 
         <TableMotionLayer

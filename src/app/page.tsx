@@ -372,6 +372,8 @@ function HomePageContent() {
               potLabel={formatCurrency(game.potTotal, locale)}
               streetLabel={streetLabels[game.street]}
               statusLabel={statusLabels[game.status]}
+              street={game.street}
+              handKey={game.handId ?? `h-${game.handNumber}`}
             />
 
             {game.status === "showdown" ? (
