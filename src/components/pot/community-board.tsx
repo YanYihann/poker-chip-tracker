@@ -11,6 +11,44 @@ type CommunityBoardProps = {
   boardCards?: string[] | null;
 };
 
+const SUIT_META = {
+  S: { symbol: "♠", isRed: false },
+  H: { symbol: "♥", isRed: true },
+  D: { symbol: "♦", isRed: true },
+  C: { symbol: "♣", isRed: false }
+} as const;
+
+type SuitCode = keyof typeof SUIT_META;
+
+type ParsedCard = {
+  displayRank: string;
+  symbol: string;
+  isRed: boolean;
+};
+
+function parseCardCode(card: string | null): ParsedCard | null {
+  if (!card) {
+    return null;
+  }
+
+  const normalized = card.toUpperCase().trim();
+  const matched = /^([2-9TJQKA])([SHDC])$/.exec(normalized);
+
+  if (!matched) {
+    return null;
+  }
+
+  const rankCode = matched[1] as "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "T" | "J" | "Q" | "K" | "A";
+  const suitCode = matched[2] as SuitCode;
+  const suit = SUIT_META[suitCode];
+
+  return {
+    displayRank: rankCode === "T" ? "10" : rankCode,
+    symbol: suit.symbol,
+    isRed: suit.isRed
+  };
+}
+
 function toRevealCount(street: StreetStage, boardCards?: string[] | null): number {
   if (boardCards && boardCards.length > 0) {
     return Math.max(0, Math.min(5, boardCards.length));
@@ -57,6 +95,8 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
         const isRevealed = index < revealCount;
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;
         const cardLabel = isRevealed ? (boardCards?.[index] ?? "") : "";
+        const parsed = isRevealed ? parseCardCode(cardLabel) : null;
+        const toneClass = parsed?.isRed ? "text-[#bf1f2f]" : "text-[#1a1c21]";
 
         return (
           <div
@@ -96,11 +136,34 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0)_44%)]" />
                 <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_2px_2px,rgba(78,51,27,0.11)_1.1px,transparent_1.2px)] [background-size:5px_5px]" />
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(to_top,rgba(84,48,16,0.24),transparent)]" />
-                {cardLabel ? (
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-semibold tracking-[0.04em] text-[#5a3b1f] sm:text-[10px]">
+                {parsed ? (
+                  <>
+                    <div className={["absolute left-[4px] top-[3px] flex flex-col items-center leading-none", toneClass].join(" ")}>
+                      <span className="text-[7px] font-extrabold tracking-[-0.02em] sm:text-[8px]">{parsed.displayRank}</span>
+                      <span className="mt-px text-[8px] font-black sm:text-[9px]">{parsed.symbol}</span>
+                    </div>
+                    <div className={["absolute right-[4px] bottom-[3px] flex rotate-180 flex-col items-center leading-none", toneClass].join(" ")}>
+                      <span className="text-[7px] font-extrabold tracking-[-0.02em] sm:text-[8px]">{parsed.displayRank}</span>
+                      <span className="mt-px text-[8px] font-black sm:text-[9px]">{parsed.symbol}</span>
+                    </div>
+                    <span
+                      className={[
+                        "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[18px] font-black sm:text-[20px]",
+                        toneClass
+                      ].join(" ")}
+                    >
+                      {parsed.symbol}
+                    </span>
+                  </>
+                ) : cardLabel ? (
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.04em] text-[#5a3b1f] sm:text-[11px]">
                     {cardLabel}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-semibold text-[#5a3b1f]/75 sm:text-[11px]">
+                    ?
+                  </span>
+                )}
               </motion.div>
             ) : (
               <div className="absolute inset-0 overflow-hidden rounded-[7px] border border-[#8d5f27] bg-[radial-gradient(circle_at_52%_26%,#b91f24_0%,#7f1017_38%,#4e090d_84%,#370507_100%)] sm:rounded-[8px]">
