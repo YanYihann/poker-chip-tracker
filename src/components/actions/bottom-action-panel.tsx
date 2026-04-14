@@ -126,8 +126,10 @@ export function BottomActionPanel({
               )}
               onClick={action.onPress}
             >
-              <span className="font-label text-[9px] uppercase tracking-[0.2em] opacity-80">{action.topLabel}</span>
-              <span className="mt-1 font-headline text-base font-bold italic">{action.mainLabel}</span>
+              {!isZh ? (
+                <span className="font-label text-[9px] uppercase tracking-[0.2em] opacity-80">{action.topLabel}</span>
+              ) : null}
+              <span className={cn("font-headline text-base font-bold italic", !isZh ? "mt-1" : "")}>{action.mainLabel}</span>
             </button>
           ))
         ) : (

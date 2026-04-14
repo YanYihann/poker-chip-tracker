@@ -13,6 +13,24 @@ type PlayerSeatProps = {
   compact?: boolean;
 };
 
+const POSITION_LABEL_ZH_MAP: Record<string, string> = {
+  BTN: "\u5e84",
+  SB: "\u5c0f\u76f2",
+  BB: "\u5927\u76f2",
+  UTG: "\u67aa\u53e3",
+  MP: "\u4e2d\u4f4d",
+  HJ: "\u52ab\u4f4d",
+  CO: "\u5173\u715e"
+};
+
+function localizePositionLabel(label: string, isZh: boolean): string {
+  if (!isZh) {
+    return label;
+  }
+
+  return POSITION_LABEL_ZH_MAP[label] ?? label;
+}
+
 export function PlayerSeat({ player, xPercent, yPercent, compact = false }: PlayerSeatProps) {
   const { isZh } = useLanguage();
   const avatarSize = compact ? "h-9 w-9" : "h-11 w-11";
@@ -23,7 +41,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
     <article
       className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
       style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
-      aria-label={`${player.name}${isZh ? "座位" : " seat"}`}
+      aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
     >
       <div className="flex flex-col items-center gap-1.5">
         <div
@@ -52,7 +70,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
             variant={heroOrActive ? "mint" : "neutral"}
             className={folded ? "opacity-45" : ""}
           >
-            {player.positionLabel}
+            {localizePositionLabel(player.positionLabel, isZh)}
           </Badge>
         ) : null}
 
