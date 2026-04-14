@@ -3,10 +3,10 @@
 import { cn } from "@/lib/cn";
 
 const SUIT_META = {
-  S: { symbol: "♠", isRed: false, zh: "黑桃", en: "Spades" },
-  H: { symbol: "♥", isRed: true, zh: "红桃", en: "Hearts" },
-  D: { symbol: "♦", isRed: true, zh: "方片", en: "Diamonds" },
-  C: { symbol: "♣", isRed: false, zh: "梅花", en: "Clubs" }
+  S: { symbol: "\u2660", isRed: false, zh: "\u9ed1\u6843", en: "Spades" },
+  H: { symbol: "\u2665", isRed: true, zh: "\u7ea2\u6843", en: "Hearts" },
+  D: { symbol: "\u2666", isRed: true, zh: "\u65b9\u5757", en: "Diamonds" },
+  C: { symbol: "\u2663", isRed: false, zh: "\u6885\u82b1", en: "Clubs" }
 } as const;
 
 type SuitCode = keyof typeof SUIT_META;
@@ -21,25 +21,19 @@ export type ParsedCard = {
 
 const SIZE_CLASS = {
   xs: {
-    frame: "h-10 w-7 rounded-[8px]",
-    inner: "rounded-[7px]",
-    cornerRank: "text-[7px]",
-    cornerSuit: "text-[8px]",
-    centerSuit: "text-[17px]"
+    frame: "h-10 w-7 rounded-md",
+    rank: "text-[8px] sm:text-[9px]",
+    center: "text-sm sm:text-base"
   },
   sm: {
-    frame: "h-12 w-8 rounded-[9px]",
-    inner: "rounded-[8px]",
-    cornerRank: "text-[8px]",
-    cornerSuit: "text-[9px]",
-    centerSuit: "text-[19px]"
+    frame: "h-12 w-8 rounded-md",
+    rank: "text-[9px] sm:text-[10px]",
+    center: "text-base sm:text-lg"
   },
   md: {
-    frame: "h-14 w-10 rounded-[10px]",
-    inner: "rounded-[9px]",
-    cornerRank: "text-[10px]",
-    cornerSuit: "text-[11px]",
-    centerSuit: "text-[22px]"
+    frame: "h-14 w-10 rounded-md",
+    rank: "text-[10px] sm:text-[11px]",
+    center: "text-lg sm:text-xl"
   }
 } as const;
 
@@ -84,57 +78,54 @@ export function SimPokerCard({
   isZh = true
 }: SimPokerCardProps) {
   const parsed = parseCardCode(card);
-  const toneClass = parsed?.isRed ? "text-[#be2430]" : "text-[#1a1f27]";
+  const toneClass = parsed?.isRed ? "text-[#bf1f2f]" : "text-[#1a1c21]";
   const sizeClass = SIZE_CLASS[size];
-  const ariaLabel = hidden
+  const showBack = hidden || !parsed;
+  const ariaLabel = showBack
     ? isZh
-      ? "未翻开扑克牌"
+      ? "\u672a\u7ffb\u5f00\u6251\u514b\u724c"
       : "Hidden poker card"
-    : parsed
-      ? isZh
-        ? `${parsed.suitNameZh}${parsed.displayRank}`
-        : `${parsed.displayRank} of ${parsed.suitNameEn}`
-      : isZh
-        ? "未知牌面"
-        : "Unknown card";
+    : isZh
+      ? `${parsed.suitNameZh}${parsed.displayRank}`
+      : `${parsed.displayRank} of ${parsed.suitNameEn}`;
 
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden border border-black/45 shadow-[0_5px_12px_rgba(0,0,0,0.45)]",
+        "relative shrink-0 overflow-hidden border shadow-[0_5px_12px_rgba(2,6,23,0.32)]",
         sizeClass.frame,
+        showBack
+          ? "border-sky-300/45 bg-[linear-gradient(135deg,#0f766e_0%,#075985_100%)]"
+          : "border-white/80 bg-gradient-to-b from-white to-slate-100",
         className
       )}
       aria-label={ariaLabel}
     >
-      {hidden || !parsed ? (
-        <div className={cn("absolute inset-0 border border-[#8d5f27] bg-[radial-gradient(circle_at_52%_26%,#b91f24_0%,#7f1017_38%,#4e090d_84%,#370507_100%)]", sizeClass.inner)}>
-          <div className="absolute inset-[2px] rounded-[5px] border border-[#f0c267]/78" />
-          <div className="absolute inset-[4px] rounded-[4px] border border-[#6e130f] bg-[repeating-linear-gradient(45deg,rgba(255,209,123,0.13)_0px,rgba(255,209,123,0.13)_2px,rgba(90,8,10,0.08)_2px,rgba(90,8,10,0.08)_8px)]" />
-          <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border border-[#e7b85d]/85 bg-[radial-gradient(circle,#7d0f15_15%,#5f0a10_100%)] shadow-[0_0_0_1px_rgba(43,4,6,0.55)]" />
-          <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#e7b85d]/80 bg-[#6e0f14]" />
-          <div className="absolute inset-0 opacity-35 [background:radial-gradient(circle_at_1px_1px,rgba(15,7,1,0.3)_1px,transparent_1.2px)] [background-size:5px_5px]" />
+      {showBack ? (
+        <div className="grid h-full w-full place-items-center text-[10px] font-black text-white/90">
+          {"\u2605"}
         </div>
       ) : (
-        <div
-          className={cn(
-            "absolute inset-0 border border-white/80 bg-[linear-gradient(to_bottom,#fffdf8_0%,#f3f4f7_84%)]",
-            sizeClass.inner
-          )}
-        >
-          <div className="absolute inset-[2px] rounded-[5px] border border-black/8" />
-          <div className={cn("absolute left-[4px] top-[3px] flex flex-col items-center leading-none", toneClass)}>
-            <span className={cn("font-extrabold tracking-[-0.02em]", sizeClass.cornerRank)}>{parsed.displayRank}</span>
-            <span className={cn("mt-px font-black", sizeClass.cornerSuit)}>{parsed.symbol}</span>
-          </div>
-          <div className={cn("absolute bottom-[3px] right-[4px] flex rotate-180 flex-col items-center leading-none", toneClass)}>
-            <span className={cn("font-extrabold tracking-[-0.02em]", sizeClass.cornerRank)}>{parsed.displayRank}</span>
-            <span className={cn("mt-px font-black", sizeClass.cornerSuit)}>{parsed.symbol}</span>
-          </div>
-          <span className={cn("absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black", toneClass, sizeClass.centerSuit)}>
+        <>
+          <span
+            className={cn(
+              "absolute left-1 top-0.5 font-bold leading-none",
+              sizeClass.rank,
+              toneClass
+            )}
+          >
+            {parsed.displayRank}
+          </span>
+          <span
+            className={cn(
+              "grid h-full w-full place-items-center font-black",
+              sizeClass.center,
+              toneClass
+            )}
+          >
             {parsed.symbol}
           </span>
-        </div>
+        </>
       )}
     </div>
   );

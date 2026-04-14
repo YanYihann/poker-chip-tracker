@@ -40,6 +40,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
   const avatarSize = compact ? "h-9 w-9" : "h-11 w-11";
   const folded = player.status === "folded";
   const heroOrActive = player.isHero || player.isActive;
+  const hasRevealedHoleCards = Boolean(player.revealedCards && player.revealedCards.length > 0);
 
   if (player.isPlaceholder) {
     return (
@@ -76,23 +77,37 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
       aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
     >
       <div className="flex flex-col items-center gap-1.5">
-        <div
-          className={cn(
-            avatarSize,
-            "grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
-            heroOrActive
-              ? "border-stitch-mint/70 shadow-[0_0_18px_rgba(36,255,205,0.3)]"
-              : "border-stitch-outlineVariant/60",
-            folded ? "opacity-45 grayscale" : ""
-          )}
-        >
-          {player.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={player.avatarUrl} alt={`${player.name} avatar`} className="h-full w-full object-cover" />
-          ) : (
-            player.name.slice(0, 1).toUpperCase()
-          )}
-        </div>
+        {hasRevealedHoleCards ? (
+          <div className={cn("flex items-center gap-1", folded ? "opacity-45 grayscale" : "")}>
+            {Array.from({ length: 2 }, (_, index) => (
+              <SimPokerCard
+                key={`${player.id}-avatar-hole-${index}`}
+                card={player.revealedCards?.[index] ?? null}
+                size="xs"
+                hidden={!player.revealedCards?.[index]}
+                isZh={isZh}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              avatarSize,
+              "grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
+              heroOrActive
+                ? "border-stitch-mint/70 shadow-[0_0_18px_rgba(36,255,205,0.3)]"
+                : "border-stitch-outlineVariant/60",
+              folded ? "opacity-45 grayscale" : ""
+            )}
+          >
+            {player.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={player.avatarUrl} alt={`${player.name} avatar`} className="h-full w-full object-cover" />
+            ) : (
+              player.name.slice(0, 1).toUpperCase()
+            )}
+          </div>
+        )}
 
         <div className="min-w-[64px] rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]">
           {!compact || player.isHero ? (
@@ -112,20 +127,6 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
             </p>
           ) : null}
         </div>
-
-        {player.revealedCards && player.revealedCards.length > 0 ? (
-          <div className="flex items-center gap-1">
-            {Array.from({ length: 2 }, (_, index) => (
-              <SimPokerCard
-                key={`${player.id}-revealed-${index}`}
-                card={player.revealedCards?.[index] ?? null}
-                size="xs"
-                hidden={!player.revealedCards?.[index]}
-                isZh={isZh}
-              />
-            ))}
-          </div>
-        ) : null}
 
         {player.positionLabel ? (
           <Badge
