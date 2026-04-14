@@ -2,7 +2,7 @@
 
 import { performance } from "node:perf_hooks";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { recordPerfSample } from "../../lib/perf-metrics.js";
 import {
@@ -19,6 +19,7 @@ const ROOM_CODE_ALPHABET = "0123456789";
 const ROOM_CODE_LENGTH = 4;
 
 type PublicStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
+type RoomMode = "local" | "online";
 type HandStatusCode = "ACTIVE" | "SHOWDOWN" | "SETTLED" | "CANCELLED";
 type StoredPositionCode = "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO";
 type PositionCode = StoredPositionCode | "BTN/SB" | "UTG+1" | "LJ";
@@ -77,6 +78,7 @@ type RoomRecord = {
   id: string;
   roomCode: string;
   hostUserId: string;
+  gameMode: string;
   status: string;
   maxPlayers: number;
   allowJoinAfterStart: boolean;
@@ -100,6 +102,7 @@ export type RoomState = {
   room: {
     id: string;
     code: string;
+    mode: RoomMode;
     status: "waiting" | "active" | "finished" | "cancelled";
     hostUserId: string;
     maxPlayers: number;
@@ -279,6 +282,14 @@ function toPublicRoomStatus(status: string): RoomState["room"]["status"] {
     return "cancelled";
   }
   return "waiting";
+}
+
+function toPublicRoomMode(mode: string | null | undefined): RoomMode {
+  if (mode?.toUpperCase() === "LOCAL") {
+    return "local";
+  }
+
+  return "online";
 }
 
 function normalizeRoomCode(roomCode: string): string {
@@ -505,6 +516,7 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
 function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomState {
   const activeSeat = room.activeSeat;
   const roomStatus = toPublicRoomStatus(room.status);
+  const roomMode = toPublicRoomMode(room.gameMode);
   const latestHand = room.hands[0] ?? null;
   const handStatus = normalizeHandStatus(latestHand?.status);
   const streetCode = normalizeStreet(room.currentStreet ?? latestHand?.street);
@@ -597,15 +609,18 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
       netChange: toNumber(result.netChange)
     }))
     .sort((a, b) => b.netChange - a.netChange);
-  const reservedBoardCards = normalizeCardList(latestHand?.boardCards ?? []);
-  const boardCards = revealedBoardCardsByStreet(reservedBoardCards, streetCode);
+  const reservedBoardCards =
+    roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];
+  const boardCards = roomMode === "online" ? revealedBoardCardsByStreet(reservedBoardCards, streetCode) : [];
   const holeCardsByUser = normalizeHoleCardsByUser(latestHand?.holeCardsByUser);
-  const myHoleCards = currentUserId ? holeCardsByUser[currentUserId] ?? [] : [];
+  const myHoleCards =
+    roomMode === "online" && currentUserId ? holeCardsByUser[currentUserId] ?? [] : [];
 
   return {
     room: {
       id: room.id,
       code: room.roomCode,
+      mode: roomMode,
       status: roomStatus,
       hostUserId: room.hostUserId,
       maxPlayers: room.maxPlayers,
@@ -931,6 +946,8 @@ async function startNextHand(input: {
     throw new Error("ROOM_NOT_FOUND");
   }
 
+  const roomMode = toPublicRoomMode(room.gameMode);
+
   const seatedPlayers = getSeatedActivePlayers(room.roomPlayers);
   const eligiblePlayers = seatedPlayers.filter((player) => toNumber(player.stack) > 0);
 
@@ -949,18 +966,26 @@ async function startNextHand(input: {
     ? getNextSeat(eligiblePlayers, dealerSeat, () => true)
     : getNextSeat(eligiblePlayers, sbSeat ?? dealerSeat, () => true);
   const labelBySeat = computePositionLabelBySeat(eligiblePlayers, dealerSeat, sbSeat, bbSeat);
-  const dealStartSeat =
-    sbSeat ??
-    getNextSeat(eligiblePlayers, dealerSeat, () => true) ??
-    (eligiblePlayers[0]?.seatIndex ?? dealerSeat);
-  const dealingOrderPlayers = getClockwisePlayersFromSeat(eligiblePlayers, dealStartSeat);
-  const shuffledDeck = shuffleDeck(createStandardDeck());
-  const { holeCardsByUser, boardCards } = dealCards({
-    shuffledDeck,
-    dealingOrderUserIds: dealingOrderPlayers.map((player) => player.userId),
-    holeCardsPerPlayer: 2,
-    boardCardCount: 5
-  });
+  let shuffledDeck: CardCode[] = [];
+  let holeCardsByUser: Record<string, CardCode[]> = {};
+  let boardCards: CardCode[] = [];
+
+  if (roomMode === "online") {
+    const dealStartSeat =
+      sbSeat ??
+      getNextSeat(eligiblePlayers, dealerSeat, () => true) ??
+      (eligiblePlayers[0]?.seatIndex ?? dealerSeat);
+    const dealingOrderPlayers = getClockwisePlayersFromSeat(eligiblePlayers, dealStartSeat);
+    shuffledDeck = shuffleDeck(createStandardDeck());
+    const dealt = dealCards({
+      shuffledDeck,
+      dealingOrderUserIds: dealingOrderPlayers.map((player) => player.userId),
+      holeCardsPerPlayer: 2,
+      boardCardCount: 5
+    });
+    holeCardsByUser = dealt.holeCardsByUser;
+    boardCards = dealt.boardCards;
+  }
 
   await Promise.all(
     seatedPlayers.map((player) => {
@@ -1075,7 +1100,10 @@ async function startNextHand(input: {
       sidePotTotal: BigInt(0),
       deckShuffled: shuffledDeck,
       boardCards,
-      holeCardsByUser: holeCardsByUser as Prisma.InputJsonValue
+      holeCardsByUser:
+        roomMode === "online"
+          ? (holeCardsByUser as Prisma.InputJsonValue)
+          : Prisma.JsonNull
     }
   });
 
@@ -1234,6 +1262,7 @@ async function finalizeRoomAndArchive(input: {
 
 export async function createRoom(input: {
   hostUserId: string;
+  mode?: RoomMode;
   maxPlayers?: number;
   startingStack?: number;
   smallBlind?: number;
@@ -1244,12 +1273,14 @@ export async function createRoom(input: {
   const startingStack = BigInt(input.startingStack ?? 10000);
   const smallBlind = BigInt(input.smallBlind ?? 100);
   const bigBlind = BigInt(input.bigBlind ?? 200);
+  const gameMode = input.mode === "local" ? "LOCAL" : "ONLINE";
   const displayName = await resolveDisplayName(input.hostUserId);
 
   await prisma.gameRoom.create({
     data: {
       roomCode,
       hostUserId: input.hostUserId,
+      gameMode,
       status: "WAITING",
       maxPlayers,
       startingStack,

@@ -6,6 +6,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import type { RoomState } from "@/features/rooms/api";
 
 type OnlineTablePlaceholdersProps = {
+  mode: "online" | "local";
   game: RoomState["game"] | null;
   roomStatus: RoomState["room"]["status"] | null;
   myHoleCards: string[];
@@ -37,6 +38,7 @@ function getBoardRevealCount(game: RoomState["game"] | null, boardCards: string[
 }
 
 export function OnlineTablePlaceholders({
+  mode,
   game,
   roomStatus,
   myHoleCards,
@@ -71,13 +73,25 @@ export function OnlineTablePlaceholders({
   return (
     <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
       <p className="text-[11px] uppercase tracking-[0.14em] text-stitch-onSurfaceVariant">
-        {isZh ? "在线发牌状态" : "Online Dealing State"}
+        {mode === "local"
+          ? isZh
+            ? "本地同步模式状态"
+            : "Local Synced Mode State"
+          : isZh
+            ? "在线发牌状态"
+            : "Online Dealing State"}
       </p>
 
       <div className="mt-3 grid gap-3">
         <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
           <p className="text-xs font-semibold text-stitch-onSurface">
-            {isZh ? "我的底牌（仅自己可见）" : "My Hole Cards (Private)"}
+            {mode === "local"
+              ? isZh
+                ? "底牌（本地同步模式不发牌）"
+                : "Hole Cards (No Dealing in Local Synced Mode)"
+              : isZh
+                ? "我的底牌（仅自己可见）"
+                : "My Hole Cards (Private)"}
           </p>
           <div className="mt-2 flex gap-2">
             {Array.from({ length: 2 }, (_, index) => {
@@ -100,14 +114,24 @@ export function OnlineTablePlaceholders({
           </div>
           <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
             {isZh
-              ? "服务端仅向当前用户返回自己的两张底牌。"
-              : "Server only returns your own two private hole cards."}
+              ? mode === "local"
+                ? "本地同步模式不发牌，仅记录筹码动作与位置轮换。"
+                : "服务端仅向当前用户返回自己的两张底牌。"
+              : mode === "local"
+                ? "Local synced mode skips dealing and only tracks chips/actions/positions."
+                : "Server only returns your own two private hole cards."}
           </p>
         </section>
 
         <section className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
           <p className="text-xs font-semibold text-stitch-onSurface">
-            {isZh ? "公共牌（按街道公开）" : "Board Cards (Street-Revealed)"}
+            {mode === "local"
+              ? isZh
+                ? "公共牌（本地同步模式不翻牌）"
+                : "Board Cards (No Board Reveal in Local Synced Mode)"
+              : isZh
+                ? "公共牌（按街道公开）"
+                : "Board Cards (Street-Revealed)"}
           </p>
           <div className="mt-2 flex gap-1.5">
             {Array.from({ length: 5 }, (_, index) => {
@@ -131,8 +155,12 @@ export function OnlineTablePlaceholders({
           </div>
           <p className="mt-2 text-[11px] text-stitch-onSurfaceVariant">
             {isZh
-              ? "翻牌前 0 张、翻牌 3 张、转牌 4 张、河牌 5 张。"
-              : "Preflop 0, flop 3, turn 4, river 5 public cards."}
+              ? mode === "local"
+                ? "本地同步模式保持不发牌，只同步下注流程。"
+                : "翻牌前 0 张、翻牌 3 张、转牌 4 张、河牌 5 张。"
+              : mode === "local"
+                ? "Local synced mode keeps board hidden and only syncs betting flow."
+                : "Preflop 0, flop 3, turn 4, river 5 public cards."}
           </p>
         </section>
 

@@ -456,10 +456,16 @@ function WaitingRoomPageContent() {
                     : "Game is active. Enter the table UI."}
                 </p>
                 <Link
-                  href={`/online?room=${roomState.room.code}`}
+                  href={`/${roomState.room.mode === "local" ? "local" : "online"}?room=${roomState.room.code}`}
                   className="mt-2 inline-block rounded-lg bg-stitch-primary px-3 py-1.5 text-xs font-semibold text-stitch-onPrimary"
                 >
-                  {isZh ? "\u8fdb\u5165\u724c\u684c" : "Go To Table UI"}
+                  {isZh
+                    ? roomState.room.mode === "local"
+                      ? "\u8fdb\u5165\u672c\u5730\u540c\u6b65\u724c\u684c"
+                      : "\u8fdb\u5165\u7ebf\u4e0a\u724c\u684c"
+                    : roomState.room.mode === "local"
+                      ? "Go To Local Synced Table"
+                      : "Go To Online Table"}
                 </Link>
               </article>
             ) : null}

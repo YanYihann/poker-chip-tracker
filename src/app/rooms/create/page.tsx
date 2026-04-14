@@ -36,8 +36,8 @@ function CreateRoomPageContent() {
           </h2>
           <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
             {isZh
-              ? "本地模式用于线下真实发牌，只记录筹码与流程；线上模式会创建可联网同步的房间。"
-              : "Local mode is for offline real dealing with chip flow tracking; online mode creates a networked room."}
+              ? "本地模式也通过房间同步（仅记分、不发牌）；线上模式为完整在线发牌对战。"
+              : "Local mode now also uses synced rooms (chip flow only, no dealing); online mode is full server-dealt play."}
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -53,7 +53,7 @@ function CreateRoomPageContent() {
             >
               <p className="text-sm font-semibold">{isZh ? "本地模式" : "Local Mode"}</p>
               <p className="mt-1 text-[11px] opacity-80">
-                {isZh ? "线下发牌，线上仅记分" : "Offline dealing, in-app chip tracking"}
+                {isZh ? "房间同步记分（不发牌）" : "Synced room scoring (no dealing)"}
               </p>
             </button>
 
@@ -102,18 +102,24 @@ function CreateRoomPageContent() {
               setLoading(true);
               setError(null);
 
-              if (mode === "local") {
-                router.push(`/local?players=${safePlayers}`);
-                return;
-              }
-
               try {
                 const room = await createRoom({
+                  mode,
                   maxPlayers: safePlayers
                 });
                 router.push(`/rooms/${room.room.code}`);
               } catch (createError) {
-                setError(createError instanceof Error ? createError.message : isZh ? "无法创建线上房间。" : "Unable to create online room.");
+                setError(
+                  createError instanceof Error
+                    ? createError.message
+                    : isZh
+                      ? mode === "local"
+                        ? "无法创建本地同步房间。"
+                        : "无法创建线上房间。"
+                      : mode === "local"
+                        ? "Unable to create local synced room."
+                        : "Unable to create online room."
+                );
               } finally {
                 setLoading(false);
               }
@@ -122,32 +128,32 @@ function CreateRoomPageContent() {
             {loading
               ? isZh
                 ? mode === "local"
-                  ? "进入中..."
+                  ? "创建中..."
                   : "创建中..."
                 : mode === "local"
-                  ? "Entering..."
+                  ? "Creating..."
                   : "Creating..."
               : isZh
                 ? mode === "local"
-                  ? "进入本地牌桌"
+                  ? "创建本地房间"
                   : "创建线上房间"
                 : mode === "local"
-                  ? "Enter Local Table"
+                  ? "Create Local Room"
                   : "Create Online Room"}
           </button>
         </article>
 
         <Link
-          href={mode === "online" ? "/rooms/join" : "/local"}
+          href="/rooms/join"
           className="block rounded-xl bg-stitch-surfaceContainerHigh px-4 py-3 text-center text-sm text-stitch-onSurfaceVariant"
         >
           {isZh
             ? mode === "online"
               ? "已有房间码？去加入线上房间"
-              : "直接进入本地模式"
+              : "已有房间码？去加入本地同步房间"
             : mode === "online"
               ? "Have a code? Join an online room"
-              : "Go directly to local mode"}
+              : "Have a code? Join a local synced room"}
         </Link>
       </section>
     </main>

@@ -3,6 +3,7 @@ import { z } from "zod";
 const roomCodePattern = /^\d{4}$/;
 
 export const createRoomSchema = z.object({
+  mode: z.enum(["local", "online"]).optional(),
   maxPlayers: z.number().int().min(2).max(10).optional(),
   startingStack: z.number().int().positive().optional(),
   smallBlind: z.number().int().positive().optional(),

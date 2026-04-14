@@ -31,6 +31,7 @@ export type RoomState = {
   room: {
     id: string;
     code: string;
+    mode: "local" | "online";
     status: "waiting" | "active" | "finished" | "cancelled";
     hostUserId: string;
     maxPlayers: number;
@@ -113,6 +114,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export async function createRoom(input?: {
+  mode?: "local" | "online";
   maxPlayers?: number;
   startingStack?: number;
   smallBlind?: number;

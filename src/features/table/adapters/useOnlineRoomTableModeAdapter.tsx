@@ -1,18 +1,19 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { OnlineTablePlaceholders } from "@/components/table/online-table-placeholders";
-import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { getRoom, submitRoomAction, type RoomState } from "@/features/rooms/api";
-import { getRoomSocket } from "@/features/rooms/realtime";
 import type { TableModeAdapter } from "@/features/table/mode/types";
+import { getRoomSocket } from "@/features/rooms/realtime";
 import { buildPlaceholderPlayers } from "@/lib/table-layout";
 
 type OnlineActionType = NonNullable<RoomState["game"]>["legalActions"][number];
 type OnlineGameStatus = NonNullable<RoomState["game"]>["status"];
 type OnlineStreet = NonNullable<RoomState["game"]>["street"];
+type SyncedVariant = "online" | "local";
 
 const STREET_LABELS: Record<AppLocale, Record<OnlineStreet, string>> = {
   zh: {
@@ -125,7 +126,11 @@ function toSeatPlayers(roomState: RoomState | null, locale: AppLocale, isZh: boo
   });
 }
 
-export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapter {
+export function useOnlineRoomTableModeAdapter(
+  roomCode: string,
+  options?: { variant?: SyncedVariant }
+): TableModeAdapter {
+  const variant = options?.variant ?? "online";
   const { locale, isZh } = useLanguage();
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [loading, setLoading] = useState(Boolean(roomCode));
@@ -161,8 +166,8 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
             loadError instanceof Error
               ? loadError.message
               : isZh
-                ? "无法加载在线牌桌状态。"
-                : "Unable to load online table state."
+                ? "无法加载牌桌状态。"
+                : "Unable to load table state."
           );
         }
       } finally {
@@ -237,9 +242,7 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
             Number.isFinite(parsedAmount) && parsedAmount > 0 ? Math.floor(parsedAmount) : 0;
 
           if (actionType === "bet" && normalizedAmount < game.minBet) {
-            setError(
-              isZh ? `下注金额至少为 ${game.minBet}` : `Bet amount must be at least ${game.minBet}`
-            );
+            setError(isZh ? `下注金额至少为 ${game.minBet}` : `Bet amount must be at least ${game.minBet}`);
             return;
           }
 
@@ -279,12 +282,28 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
   );
 
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
-  const hasRaiseActions =
-    legalActions.includes("bet") || legalActions.includes("raise");
+  const hasRaiseActions = legalActions.includes("bet") || legalActions.includes("raise");
+
+  const title =
+    variant === "local"
+      ? roomCode
+        ? isZh
+          ? `本地同步牌桌 ${roomCode}`
+          : `Local Synced Table ${roomCode}`
+        : isZh
+          ? "本地同步牌桌"
+          : "Local Synced Table"
+      : roomCode
+        ? isZh
+          ? `在线牌桌 ${roomCode}`
+          : `Online Table ${roomCode}`
+        : isZh
+          ? "在线牌桌"
+          : "Online Table";
 
   return {
-    mode: "online",
-    title: roomCode ? (isZh ? `在线牌桌 ${roomCode}` : `Online Table ${roomCode}`) : isZh ? "在线牌桌" : "Online Table",
+    mode: variant === "local" ? "local" : "online",
+    title,
     backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,
     potLabel: game ? formatCurrency(game.potTotal, locale) : "$0",
@@ -292,7 +311,7 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
     street: game?.street ?? "preflop",
     streetLabel: game ? STREET_LABELS[locale][game.street] : STREET_LABELS[locale].preflop,
     statusLabel: game ? STATUS_LABELS[locale][game.status] : isZh ? "等待中" : "Waiting",
-    handKey: game?.handId ?? `online-${roomCode || "shell"}`,
+    handKey: `${variant}-${game?.handId ?? `room-${roomCode || "shell"}`}`,
     status: toTableStatus(game),
     actingPlayerId: game?.activePlayerUserId ?? null,
     mainActions,
@@ -324,7 +343,14 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
       : loading
         ? {
             tone: "info",
-            message: isZh ? "正在加载服务端牌桌状态..." : "Loading server-authoritative table state..."
+            message:
+              variant === "local"
+                ? isZh
+                  ? "正在加载本地同步牌桌状态..."
+                  : "Loading local synced table state..."
+                : isZh
+                  ? "正在加载服务端在线牌桌状态..."
+                  : "Loading server-authoritative online table state..."
           }
         : null,
     statusHint:
@@ -339,6 +365,7 @@ export function useOnlineRoomTableModeAdapter(roomCode: string): TableModeAdapte
           : null,
     supplementaryContent: (
       <OnlineTablePlaceholders
+        mode={variant}
         game={game}
         roomStatus={roomState?.room.status ?? null}
         myHoleCards={game?.myHoleCards ?? []}
