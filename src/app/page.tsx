@@ -9,7 +9,6 @@ import { useLanguage, type AppLocale } from "@/components/i18n/language-provider
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { PokerTable } from "@/components/table/poker-table";
-import { Badge } from "@/components/ui/badge";
 import { fetchCurrentUser } from "@/features/auth/api";
 import {
   decideNextHand,
@@ -368,27 +367,6 @@ function HomePageContent() {
 
         {roomState && game ? (
           <>
-            <div className="flex items-center justify-between rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="primary">{streetLabels[game.street]}</Badge>
-                <Badge variant="mint">{statusLabels[game.status]}</Badge>
-                <Badge variant={game.isMyTurn ? "mint" : "neutral"}>
-                  {game.isMyTurn ? (isZh ? "\u4f60\u7684\u56de\u5408" : "Your Turn") : isZh ? "\u7b49\u5f85\u4e2d" : "Waiting"}
-                </Badge>
-              </div>
-              <span className="text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5f85\u8ddf\u6ce8" : "To Call"}:{" "}
-                <strong className="text-stitch-mint">{formatCurrency(game.toCall, locale)}</strong>
-              </span>
-            </div>
-
-            <div className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-[11px] text-stitch-onSurfaceVariant">
-              {isZh ? "\u5e84/\u5c0f\u76f2/\u5927\u76f2" : "BTN/SB/BB"}:{" "}
-              {game.dealerSeat !== null ? `S${game.dealerSeat + 1}` : "-"} /{" "}
-              {game.sbSeat !== null ? `S${game.sbSeat + 1}` : "-"} /{" "}
-              {game.bbSeat !== null ? `S${game.bbSeat + 1}` : "-"}
-            </div>
-
             <PokerTable
               players={tablePlayers}
               potLabel={formatCurrency(game.potTotal, locale)}
