@@ -3,6 +3,7 @@
 export type TableSeatPlayer = {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   stackLabel: string;
   positionLabel?: string;
   isHero?: boolean;

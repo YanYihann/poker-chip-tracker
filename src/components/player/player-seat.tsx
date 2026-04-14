@@ -47,14 +47,19 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
         <div
           className={cn(
             avatarSize,
-            "grid place-items-center rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
+            "grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
             heroOrActive
               ? "border-stitch-mint/70 shadow-[0_0_18px_rgba(36,255,205,0.3)]"
               : "border-stitch-outlineVariant/60",
             folded ? "opacity-45 grayscale" : ""
           )}
         >
-          {player.name.slice(0, 1).toUpperCase()}
+          {player.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={player.avatarUrl} alt={`${player.name} avatar`} className="h-full w-full object-cover" />
+          ) : (
+            player.name.slice(0, 1).toUpperCase()
+          )}
         </div>
 
         <div className="min-w-[64px] rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]">

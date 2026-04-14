@@ -250,6 +250,7 @@ function HomePageContent() {
     return ordered.map((player) => ({
       id: player.userId,
       name: player.displayName,
+      avatarUrl: player.avatarUrl,
       stackLabel: formatCurrency(player.stack, locale),
       positionLabel: player.positionLabel ?? (player.seatIndex !== null ? `S${player.seatIndex + 1}` : undefined),
       isHero: roomState.me?.userId === player.userId,

@@ -4,6 +4,7 @@ type RoomPlayer = {
   id: string;
   userId: string;
   displayName: string;
+  avatarUrl: string | null;
   seatIndex: number | null;
   isHost: boolean;
   isReady: boolean;

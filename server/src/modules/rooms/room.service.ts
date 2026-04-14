@@ -28,6 +28,11 @@ type RoomPlayerRecord = {
   positionLabel: PositionCode | null;
   joinedAt: Date;
   leftAt: Date | null;
+  user?: {
+    profile?: {
+      avatarUrl: string | null;
+    } | null;
+  } | null;
 };
 
 type HandResultRecord = {
@@ -94,6 +99,7 @@ export type RoomState = {
     id: string;
     userId: string;
     displayName: string;
+    avatarUrl: string | null;
     seatIndex: number | null;
     isHost: boolean;
     isReady: boolean;
@@ -359,7 +365,19 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
   return (await prisma.gameRoom.findUnique({
     where: { roomCode: normalizeRoomCode(roomCode) },
     include: {
-      roomPlayers: true,
+      roomPlayers: {
+        include: {
+          user: {
+            select: {
+              profile: {
+                select: {
+                  avatarUrl: true
+                }
+              }
+            }
+          }
+        }
+      },
       hands: {
         orderBy: {
           handNumber: "desc"
@@ -428,6 +446,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
       id: player.id,
       userId: player.userId,
       displayName: player.displayName,
+      avatarUrl: player.user?.profile?.avatarUrl ?? null,
       seatIndex: player.seatIndex,
       isHost: player.isHost,
       isReady: player.isReady,
