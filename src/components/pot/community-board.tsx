@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type StreetStage = "preflop" | "flop" | "turn" | "river" | "showdown";
 
@@ -9,16 +9,6 @@ type CommunityBoardProps = {
   street: StreetStage;
   handKey: string;
 };
-
-type Suit = "\u2660" | "\u2665" | "\u2666" | "\u2663";
-
-type CommunityCard = {
-  rank: string;
-  suit: Suit;
-};
-
-const SUITS: Suit[] = ["\u2660", "\u2665", "\u2666", "\u2663"];
-const RANKS = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"];
 
 function toRevealCount(street: StreetStage): number {
   if (street === "flop") {
@@ -33,50 +23,7 @@ function toRevealCount(street: StreetStage): number {
   return 0;
 }
 
-function hashSeed(seed: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function createDeck(): CommunityCard[] {
-  const deck: CommunityCard[] = [];
-  for (const suit of SUITS) {
-    for (const rank of RANKS) {
-      deck.push({ rank, suit });
-    }
-  }
-  return deck;
-}
-
-function generateBoardCards(seed: string): CommunityCard[] {
-  const deck = createDeck();
-  let state = hashSeed(seed || "default-seed");
-
-  const rand = () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 0x100000000;
-  };
-
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    const temp = deck[i];
-    deck[i] = deck[j];
-    deck[j] = temp;
-  }
-
-  return deck.slice(0, 5);
-}
-
-function isRedSuit(suit: Suit): boolean {
-  return suit === "\u2665" || suit === "\u2666";
-}
-
 export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
-  const cards = useMemo(() => generateBoardCards(handKey), [handKey]);
   const revealCount = toRevealCount(street);
   const previousRevealCountRef = useRef(0);
   const previousHandKeyRef = useRef(handKey);
@@ -95,34 +42,34 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
   return (
     <div
       className={[
-        "mt-2 flex items-center gap-1 rounded-xl border px-1.5 py-1.5 backdrop-blur-sm sm:gap-1.5 sm:px-2 sm:py-2",
+        "mt-2.5 flex items-center gap-1 rounded-xl border px-1.5 py-1.5 backdrop-blur-sm sm:mt-3 sm:gap-1.5 sm:px-2 sm:py-2",
         street === "showdown"
-          ? "border-stitch-primary/40 bg-stitch-surfaceContainerHighest/70 shadow-[0_0_20px_rgba(242,202,80,0.24)]"
+          ? "border-stitch-primary/45 bg-stitch-surfaceContainerHighest/72 shadow-[0_0_20px_rgba(242,202,80,0.24)]"
           : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh/70"
       ].join(" ")}
     >
-      {cards.map((card, index) => {
+      {Array.from({ length: 5 }, (_, index) => {
         const isRevealed = index < revealCount;
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;
 
         return (
           <div
             key={`${handKey}-${index}`}
-            className="relative h-10 w-7 shrink-0 rounded-md border border-black/40 shadow-[0_4px_10px_rgba(0,0,0,0.42)] sm:h-12 sm:w-8"
+            className="relative h-12 w-[2.15rem] shrink-0 rounded-[9px] border border-black/45 shadow-[0_5px_14px_rgba(0,0,0,0.5)] sm:h-14 sm:w-10 sm:rounded-[10px]"
           >
             {isRevealed ? (
               <motion.div
                 className={[
-                  "absolute inset-0 rounded-md border bg-gradient-to-b from-[#f6f0de] to-[#e6dcc4]",
-                  "border-[#5d4e33] text-[9px] font-semibold sm:text-[10px]",
-                  isNewlyRevealed ? "shadow-[0_0_12px_rgba(242,202,80,0.55)]" : ""
+                  "absolute inset-0 overflow-hidden rounded-[8px] border border-[#7f6241]/70 sm:rounded-[9px]",
+                  "bg-[radial-gradient(circle_at_30%_20%,rgba(255,245,219,0.62)_0%,rgba(235,214,176,0.7)_36%,rgba(189,151,100,0.54)_100%)]",
+                  isNewlyRevealed ? "shadow-[0_0_12px_rgba(242,202,80,0.48)]" : ""
                 ].join(" ")}
                 initial={
                   isNewlyRevealed
                     ? {
-                        rotateY: -90,
-                        scale: 0.88,
-                        opacity: 0.7
+                        rotateY: -92,
+                        scale: 0.9,
+                        opacity: 0.72
                       }
                     : false
                 }
@@ -132,34 +79,25 @@ export function CommunityBoard({ street, handKey }: CommunityBoardProps) {
                   opacity: 1
                 }}
                 transition={{
-                  duration: 0.32,
+                  duration: 0.34,
                   ease: [0.2, 0.8, 0.2, 1]
                 }}
                 style={{
                   transformStyle: "preserve-3d"
                 }}
               >
-                <span
-                  className={[
-                    "absolute left-0.5 top-0.5 leading-none sm:left-1 sm:top-1",
-                    isRedSuit(card.suit) ? "text-[#b63b2f]" : "text-[#1f1f1f]"
-                  ].join(" ")}
-                >
-                  {card.rank}
-                </span>
-                <span
-                  className={[
-                    "absolute bottom-0.5 right-0.5 text-[10px] leading-none sm:bottom-1 sm:right-1 sm:text-[11px]",
-                    isRedSuit(card.suit) ? "text-[#b63b2f]" : "text-[#1f1f1f]"
-                  ].join(" ")}
-                >
-                  {card.suit}
-                </span>
+                <div className="absolute inset-[3px] rounded-[6px] border border-[#674b31]/45 sm:rounded-[7px]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0)_44%)]" />
+                <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_2px_2px,rgba(78,51,27,0.11)_1.1px,transparent_1.2px)] [background-size:5px_5px]" />
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(to_top,rgba(84,48,16,0.24),transparent)]" />
               </motion.div>
             ) : (
-              <div className="absolute inset-0 rounded-md border border-[#8f6d2a] bg-[radial-gradient(circle_at_28%_22%,rgba(246,208,102,0.22)_0%,rgba(66,22,10,0.85)_58%,rgba(33,12,8,0.95)_100%)]">
-                <div className="absolute inset-1 rounded-[4px] border border-[#d9b14d]/50 bg-[repeating-linear-gradient(45deg,rgba(217,177,77,0.22)_0px,rgba(217,177,77,0.22)_2px,rgba(66,22,10,0.12)_2px,rgba(66,22,10,0.12)_4px)]" />
-                <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9b14d]/60 bg-black/20 sm:h-4 sm:w-4" />
+              <div className="absolute inset-0 overflow-hidden rounded-[8px] border border-[#8d5f27] bg-[radial-gradient(circle_at_52%_26%,#b91f24_0%,#7f1017_38%,#4e090d_84%,#370507_100%)] sm:rounded-[9px]">
+                <div className="absolute inset-[2px] rounded-[6px] border border-[#f0c267]/78 sm:rounded-[7px]" />
+                <div className="absolute inset-[5px] rounded-[5px] border border-[#6e130f] bg-[repeating-linear-gradient(45deg,rgba(255,209,123,0.13)_0px,rgba(255,209,123,0.13)_2px,rgba(90,8,10,0.08)_2px,rgba(90,8,10,0.08)_8px)] sm:rounded-[6px]" />
+                <div className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px] border border-[#e7b85d]/85 bg-[radial-gradient(circle,#7d0f15_15%,#5f0a10_100%)] shadow-[0_0_0_1px_rgba(43,4,6,0.55)] sm:h-6 sm:w-6" />
+                <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#e7b85d]/80 bg-[#6e0f14]" />
+                <div className="absolute inset-0 opacity-35 [background:radial-gradient(circle_at_1px_1px,rgba(15,7,1,0.3)_1px,transparent_1.2px)] [background-size:5px_5px]" />
               </div>
             )}
           </div>
