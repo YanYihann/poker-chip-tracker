@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
+import { performance } from "node:perf_hooks";
+import { recordPerfSample } from "../../lib/perf-metrics.js";
 const ROOM_CODE_ALPHABET = "0123456789";
 const ROOM_CODE_LENGTH = 4;
 function toNumber(value) {
@@ -181,51 +183,60 @@ function computePositionLabelBySeat(orderedPlayers, dealerSeat, sbSeat, bbSeat) 
     return labels;
 }
 async function fetchRoomByCode(roomCode) {
-    return (await prisma.gameRoom.findUnique({
-        where: { roomCode: normalizeRoomCode(roomCode) },
-        include: {
-            roomPlayers: {
-                include: {
-                    user: {
-                        select: {
-                            profile: {
-                                select: {
-                                    avatarUrl: true
+    const startedAt = performance.now();
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    try {
+        return (await prisma.gameRoom.findUnique({
+            where: { roomCode: normalizedRoomCode },
+            include: {
+                roomPlayers: {
+                    include: {
+                        user: {
+                            select: {
+                                profile: {
+                                    select: {
+                                        avatarUrl: true
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            },
-            hands: {
-                orderBy: {
-                    handNumber: "desc"
                 },
-                take: 1,
-                select: {
-                    id: true,
-                    handNumber: true,
-                    street: true,
-                    status: true,
-                    dealerSeat: true,
-                    sbSeat: true,
-                    bbSeat: true,
-                    activeSeat: true,
-                    potTotal: true,
-                    settledAt: true,
-                    results: {
-                        select: {
-                            id: true,
-                            userId: true,
-                            resultType: true,
-                            amountWon: true,
-                            netChange: true
+                hands: {
+                    orderBy: {
+                        handNumber: "desc"
+                    },
+                    take: 1,
+                    select: {
+                        id: true,
+                        handNumber: true,
+                        street: true,
+                        status: true,
+                        dealerSeat: true,
+                        sbSeat: true,
+                        bbSeat: true,
+                        activeSeat: true,
+                        potTotal: true,
+                        settledAt: true,
+                        results: {
+                            select: {
+                                id: true,
+                                userId: true,
+                                resultType: true,
+                                amountWon: true,
+                                netChange: true
+                            }
                         }
                     }
                 }
             }
-        }
-    }));
+        }));
+    }
+    finally {
+        recordPerfSample("rooms.fetchRoomByCode", performance.now() - startedAt, {
+            roomCode: normalizedRoomCode
+        });
+    }
 }
 function buildRoomState(room, currentUserId) {
     const activeSeat = room.activeSeat;
@@ -1049,289 +1060,298 @@ export async function startRoomByHost(input) {
     return buildRoomState(next, input.hostUserId);
 }
 export async function applyPlayerActionByRoomCode(input) {
+    const startedAt = performance.now();
     const roomCode = normalizeRoomCode(input.roomCode);
-    await prisma.$transaction(async (tx) => {
-        const room = (await tx.gameRoom.findUnique({
-            where: { roomCode },
-            include: {
-                roomPlayers: true,
-                hands: {
-                    orderBy: {
-                        handNumber: "desc"
-                    },
-                    take: 1,
-                    select: {
-                        id: true,
-                        handNumber: true,
-                        street: true,
-                        status: true
+    try {
+        await prisma.$transaction(async (tx) => {
+            const room = (await tx.gameRoom.findUnique({
+                where: { roomCode },
+                include: {
+                    roomPlayers: true,
+                    hands: {
+                        orderBy: {
+                            handNumber: "desc"
+                        },
+                        take: 1,
+                        select: {
+                            id: true,
+                            handNumber: true,
+                            street: true,
+                            status: true
+                        }
                     }
                 }
+            }));
+            if (!room) {
+                throw new Error("ROOM_NOT_FOUND");
             }
-        }));
-        if (!room) {
-            throw new Error("ROOM_NOT_FOUND");
-        }
-        if (room.status !== "ACTIVE") {
-            throw new Error("ROOM_NOT_ACTIVE");
-        }
-        const hand = room.hands[0];
-        if (!hand) {
-            throw new Error("HAND_NOT_FOUND");
-        }
-        if (normalizeHandStatus(hand.status) !== "ACTIVE") {
-            throw new Error("HAND_LOCKED");
-        }
-        const street = normalizeStreet(room.currentStreet);
-        const players = getSeatedActivePlayers(room.roomPlayers);
-        const actor = players.find((player) => player.userId === input.userId);
-        if (!actor) {
-            throw new Error("NOT_A_MEMBER");
-        }
-        if (actor.seatIndex === null || room.activeSeat === null || actor.seatIndex !== room.activeSeat) {
-            throw new Error("NOT_YOUR_TURN");
-        }
-        const currentBet = getCurrentBet(players);
-        const legalActions = computeLegalActions(actor, currentBet, true);
-        if (!legalActions.includes(input.actionType)) {
-            throw new Error("ILLEGAL_ACTION");
-        }
-        const actorStack = toNumber(actor.stack);
-        const actorCurrentBet = toNumber(actor.currentBet);
-        const toCall = Math.max(0, currentBet - actorCurrentBet);
-        const bigBlind = Math.max(1, toNumber(room.bigBlind));
-        let contribution = 0;
-        let nextStack = actorStack;
-        let nextCurrentBet = actorCurrentBet;
-        let hasFolded = actor.hasFolded;
-        switch (input.actionType) {
-            case "fold": {
-                hasFolded = true;
-                break;
+            if (room.status !== "ACTIVE") {
+                throw new Error("ROOM_NOT_ACTIVE");
             }
-            case "check": {
-                if (toCall !== 0) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                break;
+            const hand = room.hands[0];
+            if (!hand) {
+                throw new Error("HAND_NOT_FOUND");
             }
-            case "call": {
-                if (toCall <= 0) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                contribution = Math.min(actorStack, toCall);
-                nextStack = actorStack - contribution;
-                nextCurrentBet = actorCurrentBet + contribution;
-                break;
+            if (normalizeHandStatus(hand.status) !== "ACTIVE") {
+                throw new Error("HAND_LOCKED");
             }
-            case "bet": {
-                if (toCall !== 0) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                const requested = input.amount ?? bigBlind;
-                if (requested < bigBlind) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                contribution = Math.min(actorStack, requested);
-                if (contribution <= 0) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                nextStack = actorStack - contribution;
-                nextCurrentBet = actorCurrentBet + contribution;
-                break;
+            const street = normalizeStreet(room.currentStreet);
+            const players = getSeatedActivePlayers(room.roomPlayers);
+            const actor = players.find((player) => player.userId === input.userId);
+            if (!actor) {
+                throw new Error("NOT_A_MEMBER");
             }
-            case "raise": {
-                if (toCall <= 0) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                const minRaiseTo = currentBet + bigBlind;
-                const requestedRaiseTo = input.amount ?? minRaiseTo;
-                if (requestedRaiseTo < minRaiseTo || requestedRaiseTo <= currentBet) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                const requiredContribution = requestedRaiseTo - actorCurrentBet;
-                if (requiredContribution <= toCall || requiredContribution > actorStack) {
-                    throw new Error("ILLEGAL_ACTION");
-                }
-                contribution = requiredContribution;
-                nextStack = actorStack - contribution;
-                nextCurrentBet = actorCurrentBet + contribution;
-                break;
+            if (actor.seatIndex === null || room.activeSeat === null || actor.seatIndex !== room.activeSeat) {
+                throw new Error("NOT_YOUR_TURN");
             }
-            case "all-in": {
-                contribution = actorStack;
-                nextStack = 0;
-                nextCurrentBet = actorCurrentBet + contribution;
-                break;
-            }
-            default:
+            const currentBet = getCurrentBet(players);
+            const legalActions = computeLegalActions(actor, currentBet, true);
+            if (!legalActions.includes(input.actionType)) {
                 throw new Error("ILLEGAL_ACTION");
-        }
-        const finalPotTotal = toNumber(room.potTotal) + contribution;
-        await tx.roomPlayer.update({
-            where: { id: actor.id },
-            data: {
-                stack: BigInt(nextStack),
-                currentBet: BigInt(nextCurrentBet),
-                hasFolded,
-                isAllIn: nextStack <= 0,
-                isEliminated: nextStack <= 0
             }
-        });
-        if (contribution > 0) {
-            await tx.gameRoom.update({
-                where: { id: room.id },
+            const actorStack = toNumber(actor.stack);
+            const actorCurrentBet = toNumber(actor.currentBet);
+            const toCall = Math.max(0, currentBet - actorCurrentBet);
+            const bigBlind = Math.max(1, toNumber(room.bigBlind));
+            let contribution = 0;
+            let nextStack = actorStack;
+            let nextCurrentBet = actorCurrentBet;
+            let hasFolded = actor.hasFolded;
+            switch (input.actionType) {
+                case "fold": {
+                    hasFolded = true;
+                    break;
+                }
+                case "check": {
+                    if (toCall !== 0) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    break;
+                }
+                case "call": {
+                    if (toCall <= 0) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    contribution = Math.min(actorStack, toCall);
+                    nextStack = actorStack - contribution;
+                    nextCurrentBet = actorCurrentBet + contribution;
+                    break;
+                }
+                case "bet": {
+                    if (toCall !== 0) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    const requested = input.amount ?? bigBlind;
+                    if (requested < bigBlind) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    contribution = Math.min(actorStack, requested);
+                    if (contribution <= 0) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    nextStack = actorStack - contribution;
+                    nextCurrentBet = actorCurrentBet + contribution;
+                    break;
+                }
+                case "raise": {
+                    if (toCall <= 0) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    const minRaiseTo = currentBet + bigBlind;
+                    const requestedRaiseTo = input.amount ?? minRaiseTo;
+                    if (requestedRaiseTo < minRaiseTo || requestedRaiseTo <= currentBet) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    const requiredContribution = requestedRaiseTo - actorCurrentBet;
+                    if (requiredContribution <= toCall || requiredContribution > actorStack) {
+                        throw new Error("ILLEGAL_ACTION");
+                    }
+                    contribution = requiredContribution;
+                    nextStack = actorStack - contribution;
+                    nextCurrentBet = actorCurrentBet + contribution;
+                    break;
+                }
+                case "all-in": {
+                    contribution = actorStack;
+                    nextStack = 0;
+                    nextCurrentBet = actorCurrentBet + contribution;
+                    break;
+                }
+                default:
+                    throw new Error("ILLEGAL_ACTION");
+            }
+            const finalPotTotal = toNumber(room.potTotal) + contribution;
+            await tx.roomPlayer.update({
+                where: { id: actor.id },
                 data: {
-                    potTotal: BigInt(finalPotTotal)
+                    stack: BigInt(nextStack),
+                    currentBet: BigInt(nextCurrentBet),
+                    hasFolded,
+                    isAllIn: nextStack <= 0,
+                    isEliminated: nextStack <= 0
                 }
             });
-        }
-        const existingHandActions = await tx.handAction.findMany({
-            where: {
-                handId: hand.id
-            },
-            select: {
-                actionOrder: true,
-                seatIndex: true,
-                street: true
+            if (contribution > 0) {
+                await tx.gameRoom.update({
+                    where: { id: room.id },
+                    data: {
+                        potTotal: BigInt(finalPotTotal)
+                    }
+                });
             }
-        });
-        const nextActionOrder = existingHandActions.reduce((maxOrder, action) => Math.max(maxOrder, action.actionOrder), 0) + 1;
-        await tx.handAction.create({
-            data: {
-                handId: hand.id,
-                roomId: room.id,
-                userId: actor.userId,
-                seatIndex: actor.seatIndex,
-                street,
-                actionType: mapActionTypeToDb(input.actionType),
-                amount: BigInt(contribution),
-                actionOrder: nextActionOrder
-            }
-        });
-        const seatedNextPlayers = players.map((player) => {
-            if (player.id !== actor.id) {
-                return player;
-            }
-            return {
-                ...player,
-                stack: BigInt(nextStack),
-                currentBet: BigInt(nextCurrentBet),
-                hasFolded,
-                isAllIn: nextStack <= 0,
-                isEliminated: nextStack <= 0
-            };
-        });
-        const contenders = getContendingPlayers(seatedNextPlayers);
-        const actionable = getActionablePlayers(seatedNextPlayers);
-        if (contenders.length <= 1 || actionable.length === 0) {
-            await moveHandToShowdown({
-                tx,
-                roomId: room.id,
-                handId: hand.id,
-                finalPotTotal
+            const existingHandActions = await tx.handAction.findMany({
+                where: {
+                    handId: hand.id
+                },
+                select: {
+                    actionOrder: true,
+                    seatIndex: true,
+                    street: true
+                }
             });
-            return;
-        }
-        const nextCurrentBetMax = getCurrentBet(seatedNextPlayers);
-        let roundComplete = false;
-        let nextActiveSeat = null;
-        if (nextCurrentBetMax === 0) {
-            const actedSeats = new Set(existingHandActions
-                .filter((action) => action.street === street)
-                .map((action) => action.seatIndex));
-            actedSeats.add(actor.seatIndex);
-            roundComplete = actionable.every((player) => player.seatIndex !== null ? actedSeats.has(player.seatIndex) : false);
-            if (!roundComplete) {
-                nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) => actionable.some((candidate) => candidate.id === player.id));
+            const nextActionOrder = existingHandActions.reduce((maxOrder, action) => Math.max(maxOrder, action.actionOrder), 0) + 1;
+            await tx.handAction.create({
+                data: {
+                    handId: hand.id,
+                    roomId: room.id,
+                    userId: actor.userId,
+                    seatIndex: actor.seatIndex,
+                    street,
+                    actionType: mapActionTypeToDb(input.actionType),
+                    amount: BigInt(contribution),
+                    actionOrder: nextActionOrder
+                }
+            });
+            const seatedNextPlayers = players.map((player) => {
+                if (player.id !== actor.id) {
+                    return player;
+                }
+                return {
+                    ...player,
+                    stack: BigInt(nextStack),
+                    currentBet: BigInt(nextCurrentBet),
+                    hasFolded,
+                    isAllIn: nextStack <= 0,
+                    isEliminated: nextStack <= 0
+                };
+            });
+            const contenders = getContendingPlayers(seatedNextPlayers);
+            const actionable = getActionablePlayers(seatedNextPlayers);
+            if (contenders.length <= 1 || actionable.length === 0) {
+                await moveHandToShowdown({
+                    tx,
+                    roomId: room.id,
+                    handId: hand.id,
+                    finalPotTotal
+                });
+                return;
             }
-        }
-        else {
-            const needResponse = actionable.filter((player) => toNumber(player.currentBet) < nextCurrentBetMax);
-            roundComplete = needResponse.length === 0;
-            if (!roundComplete) {
-                nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) => needResponse.some((candidate) => candidate.id === player.id));
+            const nextCurrentBetMax = getCurrentBet(seatedNextPlayers);
+            let roundComplete = false;
+            let nextActiveSeat = null;
+            if (nextCurrentBetMax === 0) {
+                const actedSeats = new Set(existingHandActions
+                    .filter((action) => action.street === street)
+                    .map((action) => action.seatIndex));
+                actedSeats.add(actor.seatIndex);
+                roundComplete = actionable.every((player) => player.seatIndex !== null ? actedSeats.has(player.seatIndex) : false);
+                if (!roundComplete) {
+                    nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) => actionable.some((candidate) => candidate.id === player.id));
+                }
             }
-        }
-        if (!roundComplete && nextActiveSeat !== null) {
+            else {
+                const needResponse = actionable.filter((player) => toNumber(player.currentBet) < nextCurrentBetMax);
+                roundComplete = needResponse.length === 0;
+                if (!roundComplete) {
+                    nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) => needResponse.some((candidate) => candidate.id === player.id));
+                }
+            }
+            if (!roundComplete && nextActiveSeat !== null) {
+                await tx.gameRoom.update({
+                    where: { id: room.id },
+                    data: {
+                        activeSeat: nextActiveSeat,
+                        currentStreet: street
+                    }
+                });
+                await tx.hand.update({
+                    where: { id: hand.id },
+                    data: {
+                        activeSeat: nextActiveSeat,
+                        street,
+                        potTotal: BigInt(finalPotTotal)
+                    }
+                });
+                return;
+            }
+            const nextStreet = computeNextStreet(street);
+            if (nextStreet === "SHOWDOWN") {
+                await moveHandToShowdown({
+                    tx,
+                    roomId: room.id,
+                    handId: hand.id,
+                    finalPotTotal
+                });
+                return;
+            }
+            await tx.roomPlayer.updateMany({
+                where: {
+                    roomId: room.id,
+                    leftAt: null
+                },
+                data: {
+                    currentBet: BigInt(0)
+                }
+            });
+            const afterStreetReset = (await tx.roomPlayer.findMany({
+                where: {
+                    roomId: room.id,
+                    leftAt: null
+                }
+            }));
+            const seatedResetPlayers = getSeatedActivePlayers(afterStreetReset);
+            const actionableAfterReset = getActionablePlayers(seatedResetPlayers);
+            const dealerSeat = hand.dealerSeat ?? room.dealerSeat ?? seatedResetPlayers[0]?.seatIndex ?? null;
+            const streetFirstSeat = dealerSeat === null
+                ? actionableAfterReset[0]?.seatIndex ?? null
+                : getNextSeat(seatedResetPlayers, dealerSeat, (player) => actionableAfterReset.some((candidate) => candidate.id === player.id));
+            if (streetFirstSeat === null) {
+                await moveHandToShowdown({
+                    tx,
+                    roomId: room.id,
+                    handId: hand.id,
+                    finalPotTotal
+                });
+                return;
+            }
             await tx.gameRoom.update({
                 where: { id: room.id },
                 data: {
-                    activeSeat: nextActiveSeat,
-                    currentStreet: street
+                    currentStreet: nextStreet,
+                    activeSeat: streetFirstSeat
                 }
             });
             await tx.hand.update({
                 where: { id: hand.id },
                 data: {
-                    activeSeat: nextActiveSeat,
-                    street,
+                    street: nextStreet,
+                    activeSeat: streetFirstSeat,
                     potTotal: BigInt(finalPotTotal)
                 }
             });
-            return;
-        }
-        const nextStreet = computeNextStreet(street);
-        if (nextStreet === "SHOWDOWN") {
-            await moveHandToShowdown({
-                tx,
-                roomId: room.id,
-                handId: hand.id,
-                finalPotTotal
-            });
-            return;
-        }
-        await tx.roomPlayer.updateMany({
-            where: {
-                roomId: room.id,
-                leftAt: null
-            },
-            data: {
-                currentBet: BigInt(0)
-            }
         });
-        const afterStreetReset = (await tx.roomPlayer.findMany({
-            where: {
-                roomId: room.id,
-                leftAt: null
-            }
-        }));
-        const seatedResetPlayers = getSeatedActivePlayers(afterStreetReset);
-        const actionableAfterReset = getActionablePlayers(seatedResetPlayers);
-        const dealerSeat = hand.dealerSeat ?? room.dealerSeat ?? seatedResetPlayers[0]?.seatIndex ?? null;
-        const streetFirstSeat = dealerSeat === null
-            ? actionableAfterReset[0]?.seatIndex ?? null
-            : getNextSeat(seatedResetPlayers, dealerSeat, (player) => actionableAfterReset.some((candidate) => candidate.id === player.id));
-        if (streetFirstSeat === null) {
-            await moveHandToShowdown({
-                tx,
-                roomId: room.id,
-                handId: hand.id,
-                finalPotTotal
-            });
-            return;
+        const next = await fetchRoomByCode(roomCode);
+        if (!next) {
+            throw new Error("ROOM_NOT_FOUND");
         }
-        await tx.gameRoom.update({
-            where: { id: room.id },
-            data: {
-                currentStreet: nextStreet,
-                activeSeat: streetFirstSeat
-            }
-        });
-        await tx.hand.update({
-            where: { id: hand.id },
-            data: {
-                street: nextStreet,
-                activeSeat: streetFirstSeat,
-                potTotal: BigInt(finalPotTotal)
-            }
-        });
-    });
-    const next = await fetchRoomByCode(roomCode);
-    if (!next) {
-        throw new Error("ROOM_NOT_FOUND");
+        return buildRoomState(next, input.userId);
     }
-    return buildRoomState(next, input.userId);
+    finally {
+        recordPerfSample("rooms.applyPlayerActionByRoomCode", performance.now() - startedAt, {
+            roomCode,
+            actionType: input.actionType
+        });
+    }
 }
 export async function settleHandByRoomCode(input) {
     const roomCode = normalizeRoomCode(input.roomCode);

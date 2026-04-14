@@ -1,6 +1,10 @@
 ﻿import { prisma } from "../../lib/prisma.js";
 
+import { performance } from "node:perf_hooks";
+
 import type { Prisma } from "@prisma/client";
+
+import { recordPerfSample } from "../../lib/perf-metrics.js";
 
 const ROOM_CODE_ALPHABET = "0123456789";
 const ROOM_CODE_LENGTH = 4;
@@ -379,51 +383,60 @@ function computePositionLabelBySeat(
 }
 
 async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
-  return (await prisma.gameRoom.findUnique({
-    where: { roomCode: normalizeRoomCode(roomCode) },
-    include: {
-      roomPlayers: {
-        include: {
-          user: {
-            select: {
-              profile: {
-                select: {
-                  avatarUrl: true
+  const startedAt = performance.now();
+  const normalizedRoomCode = normalizeRoomCode(roomCode);
+
+  try {
+    return (await prisma.gameRoom.findUnique({
+      where: { roomCode: normalizedRoomCode },
+      include: {
+        roomPlayers: {
+          include: {
+            user: {
+              select: {
+                profile: {
+                  select: {
+                    avatarUrl: true
+                  }
                 }
               }
             }
           }
-        }
-      },
-      hands: {
-        orderBy: {
-          handNumber: "desc"
         },
-        take: 1,
-        select: {
-          id: true,
-          handNumber: true,
-          street: true,
-          status: true,
-          dealerSeat: true,
-          sbSeat: true,
-          bbSeat: true,
-          activeSeat: true,
-          potTotal: true,
-          settledAt: true,
-          results: {
-            select: {
-              id: true,
-              userId: true,
-              resultType: true,
-              amountWon: true,
-              netChange: true
+        hands: {
+          orderBy: {
+            handNumber: "desc"
+          },
+          take: 1,
+          select: {
+            id: true,
+            handNumber: true,
+            street: true,
+            status: true,
+            dealerSeat: true,
+            sbSeat: true,
+            bbSeat: true,
+            activeSeat: true,
+            potTotal: true,
+            settledAt: true,
+            results: {
+              select: {
+                id: true,
+                userId: true,
+                resultType: true,
+                amountWon: true,
+                netChange: true
+              }
             }
           }
         }
       }
-    }
-  })) as RoomRecord | null;
+    })) as RoomRecord | null;
+  } finally {
+    recordPerfSample("rooms.fetchRoomByCode", performance.now() - startedAt, {
+      roomCode: normalizedRoomCode
+    });
+  }
 }
 
 function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomState {
@@ -1462,9 +1475,11 @@ export async function applyPlayerActionByRoomCode(input: {
   actionType: PlayerActionType;
   amount?: number;
 }): Promise<RoomState> {
+  const startedAt = performance.now();
   const roomCode = normalizeRoomCode(input.roomCode);
 
-  await prisma.$transaction(async (tx) => {
+  try {
+    await prisma.$transaction(async (tx) => {
     const room = (await tx.gameRoom.findUnique({
       where: { roomCode },
       include: {
@@ -1800,15 +1815,21 @@ export async function applyPlayerActionByRoomCode(input: {
         potTotal: BigInt(finalPotTotal)
       }
     });
-  });
+    });
 
-  const next = await fetchRoomByCode(roomCode);
+    const next = await fetchRoomByCode(roomCode);
 
-  if (!next) {
-    throw new Error("ROOM_NOT_FOUND");
+    if (!next) {
+      throw new Error("ROOM_NOT_FOUND");
+    }
+
+    return buildRoomState(next, input.userId);
+  } finally {
+    recordPerfSample("rooms.applyPlayerActionByRoomCode", performance.now() - startedAt, {
+      roomCode,
+      actionType: input.actionType
+    });
   }
-
-  return buildRoomState(next, input.userId);
 }
 
 export async function settleHandByRoomCode(input: {

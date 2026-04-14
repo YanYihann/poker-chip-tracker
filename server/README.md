@@ -52,3 +52,25 @@ Server expects authenticated cookie session.
 - Build command: `npm install && npm run build`
 - Start command: `npm run start`
 - Required env vars: `DATABASE_URL`, `DATABASE_URL_DIRECT`, `PORT`, `NODE_ENV`, `CLIENT_ORIGIN`
+
+## Neon Connection Pooling
+
+- Use Neon pooler endpoint in `DATABASE_URL` for runtime traffic.
+- Add `connection_limit=10` (or a similarly conservative value) to reduce queue jitter under spikes.
+- Keep `DATABASE_URL_DIRECT` on Neon direct endpoint for migrations.
+
+Example runtime URL:
+
+- `postgresql://USER:PASSWORD@ep-xxxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true&connection_limit=10`
+
+Example direct URL:
+
+- `postgresql://USER:PASSWORD@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`
+
+## Performance Metrics
+
+- In-process p50/p95 timing metrics are emitted for:
+- `rooms.fetchRoomByCode`
+- `rooms.applyPlayerActionByRoomCode`
+- `realtime.broadcastRoomState`
+- Metrics log every 50 samples and also warn on slow calls (`>=250ms`).
