@@ -44,6 +44,7 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
@@ -189,6 +190,42 @@ GET /health
 
 - Railway + Neon: [docs/deployment-railway-neon.md](docs/deployment-railway-neon.md)
 - 上线核对清单: [docs/deployment-checklist.md](docs/deployment-checklist.md)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Screenshots
+
+### 牌局模拟动图
+
+<p align="center">
+  <img src="docs/assets/online-table-demo.gif" alt="在线牌桌动图演示" width="360" />
+</p>
+
+### 页面截图
+
+<p align="center">
+  <img src="docs/screenshots/个人资料.png" alt="个人资料" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/创建房间.png" alt="创建房间" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/加入房间.png" alt="加入房间" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/房间准备.png" alt="房间准备" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/在线牌桌.png" alt="在线牌桌" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/牌力结算.png" alt="牌力结算" width="820" />
+</p>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
