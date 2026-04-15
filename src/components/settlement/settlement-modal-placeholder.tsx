@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useLanguage } from "@/components/i18n/language-provider";
 import { Badge } from "@/components/ui/badge";
 import type { HandStatus } from "@/types/domain";
 
@@ -30,15 +31,11 @@ export function SettlementModalPlaceholder({
   isOpen,
   status,
   players,
-  canUndo,
-  canReopen,
   onClose,
   onQuickWin,
-  onQuickSplit,
-  onUndo,
-  onEditHand,
-  onReopenSettlement
+  onQuickSplit
 }: SettlementModalProps) {
+  const { isZh } = useLanguage();
   const defaultSelection = useMemo(() => players.slice(0, 2).map((player) => player.id), [players]);
   const [selectedIds, setSelectedIds] = useState<string[]>(defaultSelection);
 
@@ -66,17 +63,10 @@ export function SettlementModalPlaceholder({
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-stitch-onSurfaceVariant">Settlement</p>
-            <h2 className="mt-1 font-headline text-2xl text-stitch-onSurface">结算工具</h2>
+            <h2 className="mt-1 font-headline text-2xl text-stitch-onSurface">{isZh ? "结算工具" : "Settlement Tool"}</h2>
           </div>
           <Badge variant="primary">{status}</Badge>
         </div>
-
-        <p className="mt-2 text-sm text-stitch-onSurfaceVariant">
-          选择赢家后可执行 Quick Win / Quick Split，所有变更可通过 Undo 回滚。
-        </p>
-        <p className="mt-2 text-xs text-stitch-tertiary">
-          本地同步模式：由房主在服务端手动确认赢家；线上模式已接入自动牌力评估。
-        </p>
 
         <div className="mt-4 max-h-44 space-y-2 overflow-y-auto pr-1">
           {players.map((player) => {
@@ -105,7 +95,7 @@ export function SettlementModalPlaceholder({
                   <p className="text-xs text-stitch-onSurfaceVariant">{player.stackLabel}</p>
                 </div>
                 <Badge variant={selected ? "mint" : "neutral"} size="sm">
-                  {selected ? "Selected" : player.status}
+                  {selected ? (isZh ? "已选中" : "Selected") : player.status}
                 </Badge>
               </button>
             );
@@ -115,45 +105,25 @@ export function SettlementModalPlaceholder({
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             type="button"
-            className="rounded-xl bg-stitch-primary px-3 py-2 text-sm font-label font-semibold uppercase tracking-[0.14em] text-stitch-onPrimary disabled:cursor-not-allowed disabled:opacity-45"
+            className={[
+              "rounded-xl bg-stitch-primary px-3 py-2 text-sm font-label font-semibold text-stitch-onPrimary disabled:cursor-not-allowed disabled:opacity-45",
+              isZh ? "" : "uppercase tracking-[0.14em]"
+            ].join(" ")}
             disabled={!canQuickWin}
             onClick={() => onQuickWin(selectedIds[0])}
           >
-            Quick Win
+            {isZh ? "胜出" : "Win"}
           </button>
           <button
             type="button"
-            className="rounded-xl bg-stitch-mint/20 px-3 py-2 text-sm font-label font-semibold uppercase tracking-[0.14em] text-stitch-mint disabled:cursor-not-allowed disabled:opacity-45"
+            className={[
+              "rounded-xl bg-stitch-mint/20 px-3 py-2 text-sm font-label font-semibold text-stitch-mint disabled:cursor-not-allowed disabled:opacity-45",
+              isZh ? "" : "uppercase tracking-[0.14em]"
+            ].join(" ")}
             disabled={!canQuickSplit}
             onClick={() => onQuickSplit(selectedIds)}
           >
-            Quick Split
-          </button>
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurface disabled:cursor-not-allowed disabled:opacity-40"
-            disabled={!canUndo}
-            onClick={onUndo}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurface"
-            onClick={onEditHand}
-          >
-            Edit Hand
-          </button>
-          <button
-            type="button"
-            className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurface disabled:cursor-not-allowed disabled:opacity-40"
-            disabled={!canReopen}
-            onClick={onReopenSettlement}
-          >
-            Reopen
+            {isZh ? "平分" : "Split"}
           </button>
         </div>
 
@@ -162,7 +132,7 @@ export function SettlementModalPlaceholder({
           className="mt-3 w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-4 py-2 text-sm text-stitch-onSurface"
           onClick={onClose}
         >
-          关闭
+          {isZh ? "关闭" : "Close"}
         </button>
       </section>
     </div>
