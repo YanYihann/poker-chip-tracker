@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const usernamePattern = /^[a-zA-Z0-9_]{2,24}$/;
+const usernamePattern = /^[\p{L}\p{N}_]+$/u;
 
 export const registerSchema = z.object({
   email: z.string().email(),
@@ -9,7 +9,7 @@ export const registerSchema = z.object({
     .string()
     .min(2)
     .max(24)
-    .regex(usernamePattern, "Username must be 2-24 chars: letters, numbers, underscore.")
+    .regex(usernamePattern, "Username must be 2-24 chars: letters (including Chinese), numbers, underscore.")
 });
 
 export const loginSchema = z.object({
