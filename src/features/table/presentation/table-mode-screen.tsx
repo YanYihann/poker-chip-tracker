@@ -115,6 +115,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
           onOpenSettlement={adapter.onOpenSettlement}
           amountControl={adapter.amountControl}
           previousActionHint={adapter.topActionHint}
+          street={adapter.street}
         />
       ) : null}
 

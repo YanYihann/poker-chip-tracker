@@ -31,6 +31,7 @@ type BottomActionPanelProps = {
   onOpenSettlement: () => void;
   amountControl?: AmountControlModel | null;
   previousActionHint?: string | null;
+  street?: "preflop" | "flop" | "turn" | "river" | "showdown";
 };
 
 export function BottomActionPanel({
@@ -39,10 +40,12 @@ export function BottomActionPanel({
   canOpenSettlement,
   onOpenSettlement,
   amountControl,
-  previousActionHint
+  previousActionHint,
+  street
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
   const shouldShowEmptyMainActions = mainActions.length === 0 && utilityActions.length === 0 && !canOpenSettlement;
+  const shouldShowFlopHint = street === "flop";
 
   return (
     <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[22px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-2 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:rounded-t-[28px] sm:px-4 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-3">
@@ -66,8 +69,13 @@ export function BottomActionPanel({
       ) : null}
 
       {previousActionHint ? (
-        <article className="mt-1.5 rounded-lg border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh/90 px-2.5 py-1.5 text-[11px] font-medium text-stitch-onSurface sm:mt-2">
+        <article className="mt-1.5 rounded-lg border border-[#39ff14]/45 bg-[#39ff14]/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#8dff72] shadow-[0_0_10px_rgba(57,255,20,0.28)] sm:mt-2">
           {previousActionHint}
+        </article>
+      ) : null}
+      {shouldShowFlopHint ? (
+        <article className="mt-1 rounded-lg border border-[#39ff14]/45 bg-[#39ff14]/8 px-2.5 py-1.5 text-[11px] font-semibold text-[#94ff78] shadow-[0_0_8px_rgba(57,255,20,0.2)]">
+          {isZh ? "翻牌提示：请翻开3张公共牌" : "Flop Tip: reveal 3 board cards."}
         </article>
       ) : null}
 
