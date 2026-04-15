@@ -820,7 +820,7 @@ export function useOnlineRoomTableModeAdapter(
   const isSettledOnlineView =
     variant === "online" && game?.status === "settled" && settlementEntries.length > 0;
   const topActionHint = useMemo(() => {
-    if (variant !== "online" || !roomState || roomState.room.status !== "active") {
+    if (!roomState || roomState.room.status !== "active") {
       return null;
     }
 
@@ -836,7 +836,7 @@ export function useOnlineRoomTableModeAdapter(
     }
 
     return `Previous action: ${game.lastAction.displayName} ${actionLabel}${amountText}`;
-  }, [game?.lastAction, isZh, locale, roomState, variant]);
+  }, [game?.lastAction, isZh, locale, roomState]);
   const settledPotTotal = useMemo(
     () =>
       settlementEntries.reduce((sum, entry) => sum + Math.max(0, Math.trunc(entry.amountWon ?? 0)), 0),
