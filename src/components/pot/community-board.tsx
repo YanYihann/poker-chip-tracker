@@ -10,6 +10,7 @@ type CommunityBoardProps = {
   street: StreetStage;
   handKey: string;
   boardCards?: string[] | null;
+  cardSize?: "xs" | "sm" | "md";
 };
 
 const FLIP_DURATION_SECONDS = 0.88;
@@ -32,7 +33,7 @@ function toRevealCount(street: StreetStage, boardCards?: string[] | null): numbe
   return 0;
 }
 
-export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardProps) {
+export function CommunityBoard({ street, handKey, boardCards, cardSize = "xs" }: CommunityBoardProps) {
   const revealCount = toRevealCount(street, boardCards);
   const previousRevealCountRef = useRef(0);
   const previousHandKeyRef = useRef(handKey);
@@ -92,7 +93,7 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
           >
             <SimPokerCard
               card={cardLabel}
-              size="xs"
+              size={cardSize}
               hidden={!isRevealed}
               faceBlank={isRevealed && !cardLabel}
               className={isNewlyRevealed ? "shadow-[0_0_12px_rgba(56,189,248,0.45)]" : ""}

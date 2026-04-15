@@ -92,6 +92,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
               boardCards={adapter.boardCards}
               streetLabel={adapter.streetLabel}
               statusLabel={adapter.statusLabel}
+              showCenterStatusBadges={adapter.showCenterStatusBadges}
               street={adapter.street}
               handKey={adapter.handKey}
             />

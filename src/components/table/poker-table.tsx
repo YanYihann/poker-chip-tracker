@@ -14,6 +14,7 @@ type PokerTableProps = {
   boardCards?: string[] | null;
   streetLabel: string;
   statusLabel: string;
+  showCenterStatusBadges?: boolean;
   street: "preflop" | "flop" | "turn" | "river" | "showdown";
   handKey: string;
 };
@@ -24,6 +25,7 @@ export function PokerTable({
   boardCards,
   streetLabel,
   statusLabel,
+  showCenterStatusBadges,
   street,
   handKey
 }: PokerTableProps) {
@@ -81,6 +83,7 @@ export function PokerTable({
           boardCards={boardCards}
           streetLabel={streetLabel}
           statusLabel={statusLabel}
+          showStatusBadges={showCenterStatusBadges}
           street={street}
           handKey={handKey}
         />

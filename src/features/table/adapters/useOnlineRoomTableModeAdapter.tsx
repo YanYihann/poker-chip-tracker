@@ -864,6 +864,7 @@ export function useOnlineRoomTableModeAdapter(
     : game
       ? formatCurrency(game.potTotal, locale)
       : "$0";
+  const isInitialOnlineLoading = variant === "online" && loading && !roomState;
 
   return {
     mode: variant === "local" ? "local" : "online",
@@ -875,6 +876,7 @@ export function useOnlineRoomTableModeAdapter(
     street: game?.street ?? "preflop",
     streetLabel: game ? STREET_LABELS[locale][game.street] : STREET_LABELS[locale].preflop,
     statusLabel: game ? STATUS_LABELS[locale][game.status] : isZh ? "等待中" : "Waiting",
+    showCenterStatusBadges: false,
     handKey: `${variant}-${game?.handId ?? `room-${roomCode || "shell"}`}`,
     status: toTableStatus(game),
     actingPlayerId: game?.activePlayerUserId ?? null,
@@ -1026,16 +1028,21 @@ export function useOnlineRoomTableModeAdapter(
       onEditHand: () => undefined,
       onReopenSettlement: () => undefined
     },
-    mainContent:
-      isSettledOnlineView && game ? (
-        <OnlineHandSettlementView
-          players={tablePlayers}
-          potLabel={potLabel}
-          boardCards={game.boardCards}
-          handKey={`${variant}-settled-${game.handId ?? "unknown-hand"}`}
-          settlementEntries={settlementEntries}
-        />
-      ) : undefined,
+    mainContent: isInitialOnlineLoading ? (
+      <section className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/40 px-4 py-8 text-center">
+        <p className="text-sm font-semibold text-stitch-onSurfaceVariant">
+          {isZh ? "正在同步牌桌..." : "Syncing table state..."}
+        </p>
+      </section>
+    ) : isSettledOnlineView && game ? (
+      <OnlineHandSettlementView
+        players={tablePlayers}
+        potLabel={potLabel}
+        boardCards={game.boardCards}
+        handKey={`${variant}-settled-${game.handId ?? "unknown-hand"}`}
+        settlementEntries={settlementEntries}
+      />
+    ) : undefined,
     supplementaryContent:
       variant === "online" && !isSettledOnlineView ? (
         <OnlineMyHoleCards cards={game?.myHoleCards ?? []} />
