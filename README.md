@@ -203,29 +203,32 @@ GET /health
 
 ### 页面截图
 
-<p align="center">
-  <img src="docs/screenshots/个人资料.png" alt="个人资料" width="820" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/创建房间.png" alt="创建房间" width="820" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/加入房间.png" alt="加入房间" width="820" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/房间准备.png" alt="房间准备" width="820" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/在线牌桌.png" alt="在线牌桌" width="820" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/牌力结算.png" alt="牌力结算" width="820" />
-</p>
+<table align="center" cellpadding="10">
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/个人资料.png" alt="个人资料" width="100%" />
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/创建房间.png" alt="创建房间" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/加入房间.png" alt="加入房间" width="100%" />
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/房间准备.png" alt="房间准备" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/在线牌桌.png" alt="在线牌桌" width="100%" />
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/牌力结算.png" alt="牌力结算" width="100%" />
+    </td>
+  </tr>
+</table>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
