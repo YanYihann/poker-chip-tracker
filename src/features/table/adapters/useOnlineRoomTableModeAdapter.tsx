@@ -877,6 +877,7 @@ export function useOnlineRoomTableModeAdapter(
     streetLabel: game ? STREET_LABELS[locale][game.street] : STREET_LABELS[locale].preflop,
     statusLabel: game ? STATUS_LABELS[locale][game.status] : isZh ? "等待中" : "Waiting",
     showCenterStatusBadges: false,
+    showStreetRevealPrompt: true,
     handKey: `${variant}-${game?.handId ?? `room-${roomCode || "shell"}`}`,
     status: toTableStatus(game),
     actingPlayerId: game?.activePlayerUserId ?? null,

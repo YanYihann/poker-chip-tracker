@@ -71,6 +71,7 @@ export type TableModeAdapter = {
   streetLabel: string;
   statusLabel: string;
   showCenterStatusBadges?: boolean;
+  showStreetRevealPrompt?: boolean;
   handKey: string;
   status: HandStatus;
   actingPlayerId: string | null;

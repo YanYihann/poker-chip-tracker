@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import { BottomActionPanel } from "@/components/actions/bottom-action-panel";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
@@ -20,8 +22,45 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
   const { isZh, localeTag } = useLanguage();
   const showActionPanel = adapter.showActionPanel !== false;
   const resume = adapter.resume;
+  const prevStreetStateRef = useRef<{ handKey: string; street: TableModeAdapter["street"] } | null>(null);
+  const [streetRevealPrompt, setStreetRevealPrompt] = useState<"flop" | "turn" | "river" | null>(null);
   const savedAtLabel =
     resume?.savedAtIso ? new Date(resume.savedAtIso).toLocaleString(localeTag) : null;
+
+  useEffect(() => {
+    const prev = prevStreetStateRef.current;
+    const isRevealStreet =
+      adapter.street === "flop" || adapter.street === "turn" || adapter.street === "river";
+    const shouldPrompt =
+      adapter.showStreetRevealPrompt &&
+      !!prev &&
+      prev.handKey === adapter.handKey &&
+      prev.street !== adapter.street &&
+      isRevealStreet;
+
+    if (
+      shouldPrompt &&
+      (adapter.street === "flop" || adapter.street === "turn" || adapter.street === "river")
+    ) {
+      setStreetRevealPrompt(adapter.street);
+    }
+
+    prevStreetStateRef.current = { handKey: adapter.handKey, street: adapter.street };
+  }, [adapter.handKey, adapter.showStreetRevealPrompt, adapter.street]);
+
+  useEffect(() => {
+    if (!streetRevealPrompt) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setStreetRevealPrompt(null);
+    }, 2600);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [streetRevealPrompt]);
 
   return (
     <main
@@ -104,6 +143,21 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
                 {adapter.statusHint}
               </article>
             ) : null}
+            {streetRevealPrompt ? (
+              <article className="rounded-xl border border-[#39ff14]/50 bg-[#39ff14]/10 px-3 py-2 text-xs font-semibold text-[#8dff72] shadow-[0_0_12px_rgba(57,255,20,0.28)]">
+                {streetRevealPrompt === "flop"
+                  ? isZh
+                    ? "翻牌提示：请翻开3张公共牌"
+                    : "Flop Tip: reveal 3 board cards."
+                  : streetRevealPrompt === "turn"
+                    ? isZh
+                      ? "转牌提示：请翻开第4张公共牌"
+                      : "Turn Tip: reveal the 4th board card."
+                    : isZh
+                      ? "河牌提示：请翻开第5张公共牌"
+                      : "River Tip: reveal the 5th board card."}
+              </article>
+            ) : null}
           </>
         )}
       </section>
@@ -116,7 +170,6 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
           onOpenSettlement={adapter.onOpenSettlement}
           amountControl={adapter.amountControl}
           previousActionHint={adapter.topActionHint}
-          street={adapter.street}
         />
       ) : null}
 
