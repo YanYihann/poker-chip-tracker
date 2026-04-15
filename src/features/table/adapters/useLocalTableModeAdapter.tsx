@@ -13,7 +13,7 @@ import { useHandStore } from "@/store/useHandStore";
 import { useMotionStore } from "@/store/useMotionStore";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useSettlementStore } from "@/store/useSettlementStore";
-import type { Player } from "@/types/domain";
+import type { Player, TableActionType } from "@/types/domain";
 
 const STREET_LABELS: Record<AppLocale, Record<TableModeAdapter["street"], string>> = {
   zh: {
@@ -42,6 +42,39 @@ const STATUS_LABELS: Record<AppLocale, Record<TableModeAdapter["status"], string
     "in-progress": "In Progress",
     "pre-settlement": "Awaiting Settlement",
     "settlement-confirmed": "Settled"
+  }
+};
+
+const LAST_ACTION_LABELS: Record<AppLocale, Record<TableActionType, string>> = {
+  zh: {
+    fold: "弃牌",
+    check: "过牌",
+    call: "跟注",
+    bet: "下注",
+    raise: "加注",
+    "all-in": "全下",
+    "quick-win": "快速判赢",
+    "quick-split": "快速平分",
+    "settle-pot": "结算底池",
+    "undo-last-action": "撤销操作",
+    "edit-hand": "编辑本手",
+    "reopen-settlement": "重开结算",
+    "end-hand": "结束本手"
+  },
+  en: {
+    fold: "folded",
+    check: "checked",
+    call: "called",
+    bet: "bet",
+    raise: "raised",
+    "all-in": "went all-in",
+    "quick-win": "quick-won",
+    "quick-split": "quick-split",
+    "settle-pot": "settled pot",
+    "undo-last-action": "undid action",
+    "edit-hand": "edited hand",
+    "reopen-settlement": "reopened settlement",
+    "end-hand": "ended hand"
   }
 };
 
@@ -220,6 +253,26 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
       </article>
     );
 
+  const topActionHint = useMemo(() => {
+    if (seatSelectionMode) {
+      return null;
+    }
+
+    const actionType = controller.lastActionType;
+    if (!actionType) {
+      return isZh ? "上一位操作：等待首个动作" : "Previous action: waiting for first move";
+    }
+
+    const actionLabel = LAST_ACTION_LABELS[locale][actionType];
+    const actorName = controller.lastActionPlayerName ?? (isZh ? "系统" : "System");
+
+    if (isZh) {
+      return `上一位操作：${actorName} ${actionLabel}`;
+    }
+
+    return `Previous action: ${actorName} ${actionLabel}`;
+  }, [controller.lastActionPlayerName, controller.lastActionType, isZh, locale, seatSelectionMode]);
+
   return {
     mode: "local",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
@@ -278,6 +331,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           ? "\u5f53\u524d\u6ca1\u6709\u53ef\u884c\u52a8\u73a9\u5bb6\u3002"
           : "No actionable player at the moment."
         : null,
+    topActionHint,
     supplementaryContent: seatSelectionContent,
     showActionPanel: !seatSelectionMode
   };

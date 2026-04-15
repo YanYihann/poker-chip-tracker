@@ -74,6 +74,8 @@ type TableStateModel = {
   settlementPlayers: SettlementPlayerModel[];
   canSettlementUndo: boolean;
   canReopenSettlement: boolean;
+  lastActionType?: TableActionType;
+  lastActionPlayerName: string | null;
   autosaveReady: boolean;
   resumeAvailable: boolean;
   resumeSavedAtIso: string | null;
@@ -743,6 +745,8 @@ export function useTableController(): TableStateModel {
   const street = useHandStore((state) => state.street);
   const status = useHandStore((state) => state.status);
   const historyDepth = useHandStore((state) => state.historyStack.length);
+  const historyStack = useHandStore((state) => state.historyStack);
+  const lastActionType = useHandStore((state) => state.lastActionType);
   const pot = useBettingStore((state) => state.pot);
   const currentBet = useBettingStore((state) => state.currentBet);
   const settlementOpen = useSettlementStore((state) => state.isDialogOpen);
@@ -889,6 +893,20 @@ export function useTableController(): TableStateModel {
     [players]
   );
 
+  const lastActionPlayerName = useMemo(() => {
+    if (!lastActionType || historyStack.length === 0) {
+      return null;
+    }
+
+    const lastSnapshot = historyStack[historyStack.length - 1];
+    const lastActorId = lastSnapshot?.hand.actingPlayerId ?? null;
+    if (!lastActorId) {
+      return null;
+    }
+
+    return players.find((player) => player.id === lastActorId)?.name ?? null;
+  }, [historyStack, lastActionType, players]);
+
   return {
     sessionName,
     playerCount: players.length,
@@ -905,6 +923,8 @@ export function useTableController(): TableStateModel {
     settlementPlayers,
     canSettlementUndo: historyDepth > 0,
     canReopenSettlement: status === "settlement-confirmed",
+    lastActionType,
+    lastActionPlayerName,
     autosaveReady,
     resumeAvailable,
     resumeSavedAtIso,
