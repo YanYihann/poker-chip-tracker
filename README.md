@@ -275,7 +275,7 @@ Contributions are what make the open source community such an amazing place to l
 
 ## License
 
-当前仓库暂未提供明确 `LICENSE` 文件；如计划开源，建议补充许可证后再对外发布。
+Distributed under the MIT License. See `LICENSE` for details.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
