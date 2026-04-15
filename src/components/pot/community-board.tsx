@@ -12,6 +12,9 @@ type CommunityBoardProps = {
   boardCards?: string[] | null;
 };
 
+const FLIP_DURATION_SECONDS = 0.62;
+const FLIP_STAGGER_SECONDS = 0.2;
+
 function toRevealCount(street: StreetStage, boardCards?: string[] | null): number {
   if (boardCards && boardCards.length > 0) {
     return Math.max(0, Math.min(5, boardCards.length));
@@ -57,6 +60,7 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
       {Array.from({ length: 5 }, (_, index) => {
         const isRevealed = index < revealCount;
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;
+        const revealOrder = Math.max(0, index - previousRevealCount);
         const cardLabel = isRevealed ? (boardCards?.[index] ?? null) : null;
 
         return (
@@ -77,8 +81,9 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
               opacity: 1
             }}
             transition={{
-              duration: 0.34,
-              ease: [0.2, 0.8, 0.2, 1]
+              duration: FLIP_DURATION_SECONDS,
+              delay: isNewlyRevealed ? revealOrder * FLIP_STAGGER_SECONDS : 0,
+              ease: [0.16, 0.84, 0.24, 1]
             }}
             style={{
               transformStyle: "preserve-3d"
