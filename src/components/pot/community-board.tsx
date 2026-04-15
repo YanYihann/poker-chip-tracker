@@ -88,6 +88,7 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
               card={cardLabel}
               size="xs"
               hidden={!isRevealed}
+              faceBlank={isRevealed && !cardLabel}
               className={isNewlyRevealed ? "shadow-[0_0_12px_rgba(56,189,248,0.45)]" : ""}
             />
           </motion.div>

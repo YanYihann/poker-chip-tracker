@@ -41,6 +41,7 @@ type SimPokerCardProps = {
   card: string | null | undefined;
   size?: keyof typeof SIZE_CLASS;
   hidden?: boolean;
+  faceBlank?: boolean;
   className?: string;
   isZh?: boolean;
 };
@@ -74,20 +75,30 @@ export function SimPokerCard({
   card,
   size = "sm",
   hidden = false,
+  faceBlank = false,
   className,
   isZh = true
 }: SimPokerCardProps) {
   const parsed = parseCardCode(card);
   const toneClass = parsed?.isRed ? "text-[#bf1f2f]" : "text-[#1a1c21]";
   const sizeClass = SIZE_CLASS[size];
-  const showBack = hidden || !parsed;
+  const showBlankFace = !hidden && faceBlank;
+  const showBack = hidden || (!parsed && !showBlankFace);
   const ariaLabel = showBack
     ? isZh
       ? "\u672a\u7ffb\u5f00\u6251\u514b\u724c"
       : "Hidden poker card"
-    : isZh
-      ? `${parsed.suitNameZh}${parsed.displayRank}`
-      : `${parsed.displayRank} of ${parsed.suitNameEn}`;
+    : showBlankFace
+      ? isZh
+        ? "\u7a7a\u767d\u6251\u514b\u724c\u9762"
+        : "Blank poker card face"
+      : parsed
+        ? isZh
+          ? `${parsed.suitNameZh}${parsed.displayRank}`
+          : `${parsed.displayRank} of ${parsed.suitNameEn}`
+        : isZh
+          ? "\u7a7a\u767d\u6251\u514b\u724c\u9762"
+          : "Blank poker card face";
 
   return (
     <div
@@ -105,7 +116,7 @@ export function SimPokerCard({
         <div className="grid h-full w-full place-items-center text-[10px] font-black text-white/90">
           {"\u2605"}
         </div>
-      ) : (
+      ) : showBlankFace || !parsed ? null : (
         <>
           <span
             className={cn(
