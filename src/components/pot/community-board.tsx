@@ -12,8 +12,8 @@ type CommunityBoardProps = {
   boardCards?: string[] | null;
 };
 
-const FLIP_DURATION_SECONDS = 0.62;
-const FLIP_STAGGER_SECONDS = 0.2;
+const FLIP_DURATION_SECONDS = 0.88;
+const FLIP_STAGGER_SECONDS = 0.28;
 
 function toRevealCount(street: StreetStage, boardCards?: string[] | null): number {
   if (boardCards && boardCards.length > 0) {
@@ -62,10 +62,11 @@ export function CommunityBoard({ street, handKey, boardCards }: CommunityBoardPr
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;
         const revealOrder = Math.max(0, index - previousRevealCount);
         const cardLabel = isRevealed ? (boardCards?.[index] ?? null) : null;
+        const revealToken = isRevealed ? "revealed" : "hidden";
 
         return (
           <motion.div
-            key={`${handKey}-${index}`}
+            key={`${handKey}-${index}-${revealToken}`}
             initial={
               isNewlyRevealed
                 ? {
