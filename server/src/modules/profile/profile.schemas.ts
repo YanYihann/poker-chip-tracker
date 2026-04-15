@@ -1,15 +1,18 @@
 import { z } from "zod";
 
-const usernamePattern = /^[\p{L}\p{N}_]+$/u;
+const usernamePattern = /^[\p{L}\p{N}_.]+$/u;
 const avatarDataUrlPattern = /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/;
 
 export const updateProfileSchema = z
   .object({
     username: z
       .string()
-      .min(2)
+      .min(1)
       .max(24)
-      .regex(usernamePattern, "Username must be 2-24 chars: letters (including Chinese), numbers, underscore.")
+      .regex(
+        usernamePattern,
+        "Username must be 1-24 chars: letters (including Chinese), numbers, underscore, dot."
+      )
       .optional(),
     avatarUrl: z
       .string()

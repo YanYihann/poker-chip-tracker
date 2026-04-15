@@ -31,7 +31,7 @@ function AuthPageContent() {
   const canSubmit =
     email.trim().length > 3 &&
     password.trim().length >= 8 &&
-    (mode === "login" || username.trim().length >= 2);
+    (mode === "login" || username.trim().length >= 1);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
