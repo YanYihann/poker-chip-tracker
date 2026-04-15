@@ -30,6 +30,7 @@ type BottomActionPanelProps = {
   canOpenSettlement: boolean;
   onOpenSettlement: () => void;
   amountControl?: AmountControlModel | null;
+  previousActionHint?: string | null;
 };
 
 export function BottomActionPanel({
@@ -37,7 +38,8 @@ export function BottomActionPanel({
   utilityActions,
   canOpenSettlement,
   onOpenSettlement,
-  amountControl
+  amountControl,
+  previousActionHint
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
   const shouldShowEmptyMainActions = mainActions.length === 0 && utilityActions.length === 0 && !canOpenSettlement;
@@ -61,6 +63,12 @@ export function BottomActionPanel({
             </button>
           ))}
         </div>
+      ) : null}
+
+      {previousActionHint ? (
+        <article className="mt-1.5 rounded-lg border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh/90 px-2.5 py-1.5 text-[11px] font-medium text-stitch-onSurface sm:mt-2">
+          {previousActionHint}
+        </article>
       ) : null}
 
       {amountControl ? (
