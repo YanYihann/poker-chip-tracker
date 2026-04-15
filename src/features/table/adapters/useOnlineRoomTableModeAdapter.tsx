@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
@@ -347,6 +348,7 @@ export function useOnlineRoomTableModeAdapter(
   roomCode: string,
   options?: { variant?: SyncedVariant }
 ): TableModeAdapter {
+  const router = useRouter();
   const variant = options?.variant ?? "online";
   const { locale, isZh } = useLanguage();
   const [roomState, setRoomState] = useState<RoomState | null>(null);
@@ -356,6 +358,7 @@ export function useOnlineRoomTableModeAdapter(
   const [actionAmountInput, setActionAmountInput] = useState("");
   const [settlementOpen, setSettlementOpen] = useState(false);
   const settledSyncHandRef = useRef<string | null>(null);
+  const roomFinishedRedirectedRef = useRef(false);
 
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
@@ -480,6 +483,28 @@ export function useOnlineRoomTableModeAdapter(
       setSettlementOpen(false);
     }
   }, [game?.status]);
+
+  useEffect(() => {
+    if (!roomCode) {
+      roomFinishedRedirectedRef.current = false;
+      return;
+    }
+
+    const roomStatus = roomState?.room.status;
+    const shouldRedirect = roomStatus === "finished" || roomStatus === "cancelled";
+
+    if (!shouldRedirect) {
+      roomFinishedRedirectedRef.current = false;
+      return;
+    }
+
+    if (roomFinishedRedirectedRef.current) {
+      return;
+    }
+
+    roomFinishedRedirectedRef.current = true;
+    router.replace("/rooms/join");
+  }, [roomCode, roomState?.room.status, router]);
 
   const legalActions = useMemo<OnlineActionType[]>(
     () => (game?.isMyTurn && game.status === "in-progress" ? game.legalActions : []),
