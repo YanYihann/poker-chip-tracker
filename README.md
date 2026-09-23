@@ -247,6 +247,12 @@ poker-chip-tracker/
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Operational Notes
+
+- PokerChip Ledger is a scorekeeping tool for private home games; it does not provide wagering, payments, or real-money gaming.
+- The server is authoritative in online rooms. Clients should not be trusted to settle balances or mutate another player's state.
+- Use secure cookies, strong secrets, TLS, database backups, and explicit data-retention rules before exposing a deployment publicly.
+
 ## Roadmap
 
 - [x] 账号注册/登录与会话鉴权
