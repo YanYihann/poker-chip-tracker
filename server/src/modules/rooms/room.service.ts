@@ -25,7 +25,7 @@ type PublicStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
 type RoomMode = "local" | "online";
 type HandStatusCode = "ACTIVE" | "SHOWDOWN" | "SETTLED" | "CANCELLED";
 type StoredPositionCode = "BTN" | "SB" | "BB" | "UTG" | "MP" | "HJ" | "CO";
-type PositionCode = StoredPositionCode | "BTN/SB" | "UTG+1" | "LJ";
+type PositionCode = StoredPositionCode | "BTN/SB" | "UTG+1" | "UTG+2" | "LJ";
 type HandRankCode =
   | "high-card"
   | "one-pair"
@@ -526,14 +526,15 @@ const POSITION_SEQUENCE_BY_PLAYER_COUNT: Record<number, PositionCode[]> = {
   6: ["BTN", "SB", "BB", "UTG", "HJ", "CO"],
   7: ["BTN", "SB", "BB", "UTG", "MP", "HJ", "CO"],
   8: ["BTN", "SB", "BB", "UTG", "UTG+1", "MP", "HJ", "CO"],
-  9: ["BTN", "SB", "BB", "UTG", "UTG+1", "MP", "LJ", "HJ", "CO"]
+  9: ["BTN", "SB", "BB", "UTG", "UTG+1", "MP", "LJ", "HJ", "CO"],
+  10: ["BTN", "SB", "BB", "UTG", "UTG+1", "UTG+2", "MP", "LJ", "HJ", "CO"]
 };
 
 function toStoredPositionCode(label: PositionCode): StoredPositionCode {
   if (label === "BTN/SB") {
     return "BTN";
   }
-  if (label === "UTG+1") {
+  if (label === "UTG+1" || label === "UTG+2") {
     return "MP";
   }
   if (label === "LJ") {

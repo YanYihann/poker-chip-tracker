@@ -18,6 +18,7 @@ type RoomPlayer = {
     | "BB"
     | "UTG"
     | "UTG+1"
+    | "UTG+2"
     | "MP"
     | "LJ"
     | "HJ"
