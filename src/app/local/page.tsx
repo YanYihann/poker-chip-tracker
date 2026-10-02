@@ -10,6 +10,7 @@ import { TableModeScreen } from "@/features/table/presentation/table-mode-screen
 
 function parsePlayerCountFromQuery(search: URLSearchParams): number | null {
   const value = search.get("players");
+  if (!value) return null;
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
@@ -21,7 +22,7 @@ function parsePlayerCountFromQuery(search: URLSearchParams): number | null {
 
 function LocalModePageContent() {
   const searchParams = useSearchParams();
-  const roomCode = (searchParams.get("room") ?? "").toUpperCase();
+  const roomCode = (searchParams?.get("room") ?? "").toUpperCase();
 
   const localAdapter = useLocalTableModeAdapter();
   const syncedAdapter = useOnlineRoomTableModeAdapter(roomCode, { variant: "local" });
@@ -38,7 +39,7 @@ function LocalModePageContent() {
 
     initializedRef.current = true;
 
-    const count = parsePlayerCountFromQuery(searchParams);
+    const count = parsePlayerCountFromQuery(searchParams ?? new URLSearchParams());
     if (count !== null) {
       localAdapter.onPlayerCountChange?.(count);
     }
@@ -57,7 +58,7 @@ function LocalModePageContent() {
 
 export default function LocalModePage() {
   return (
-    <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
+    <Suspense fallback={<main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8" />}>
       <LocalModePageContent />
     </Suspense>
   );

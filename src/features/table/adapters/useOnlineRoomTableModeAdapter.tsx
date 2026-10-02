@@ -161,7 +161,8 @@ function toSeatPlayers(roomState: RoomState | null, locale: AppLocale, isZh: boo
       id: player.userId,
       name: player.displayName,
       avatarUrl: player.avatarUrl,
-      stackLabel: currentBetLabel ? `${stackLabel} · ${currentBetLabel}` : stackLabel,
+      stackLabel,
+      betLabel: currentBetLabel || undefined,
       positionLabel: player.positionLabel ?? (player.seatIndex !== null ? `S${player.seatIndex + 1}` : undefined),
       isHero: roomState.me?.userId === player.userId,
       isActive: roomState.game?.activePlayerUserId === player.userId,
@@ -215,7 +216,8 @@ function toLocalSyncedSeatSelectionPlayers(input: {
       id: seatedPlayer.userId,
       name: seatedPlayer.displayName,
       avatarUrl: seatedPlayer.avatarUrl,
-      stackLabel: currentBetLabel ? `${stackLabel} · ${currentBetLabel}` : stackLabel,
+      stackLabel,
+      betLabel: currentBetLabel || undefined,
       positionLabel: `S${seatIndex + 1}`,
       isHero: input.roomState.me?.userId === seatedPlayer.userId,
       isActive: false,
@@ -247,11 +249,8 @@ function deriveGameForCurrentUser(roomState: RoomState | null): RoomState["game"
     mePlayer.stack > 0;
   const toCall = mePlayer ? Math.max(0, game.currentBet - mePlayer.currentBet) : 0;
 
-  const legalActions: NonNullable<RoomState["game"]>["legalActions"] = canAct
-    ? toCall === 0
-      ? ["fold", "check", "bet", "all-in"]
-      : ["fold", "call", "raise", "all-in"]
-    : [];
+  // The API owns legality, including BB options and short-all-in reopening rights.
+  const legalActions = canAct ? game.legalActions : [];
 
   return {
     ...game,
@@ -432,6 +431,8 @@ export function useOnlineRoomTableModeAdapter(
       }
 
       setRoomState((prev) => applyRoomActionPatch(prev, patch));
+      // Patches are public. Reload personalized legal actions from the authority.
+      void getRoom(roomCode).then((next) => { if (active) setRoomState(next); }).catch(() => undefined);
 
       if (patch.game?.status === "settled" && patch.game.handId) {
         const settledHandKey = `${patch.roomCode}:${patch.game.handId}`;
@@ -515,6 +516,7 @@ export function useOnlineRoomTableModeAdapter(
     () =>
       legalActions.map((actionType) => ({
         id: actionType,
+        disabled: pendingAction,
         topLabel: actionCopy[actionType].topLabel,
         mainLabel: actionCopy[actionType].mainLabel,
         onPress: async () => {
@@ -531,7 +533,7 @@ export function useOnlineRoomTableModeAdapter(
             return;
           }
 
-          if (actionType === "raise" && normalizedAmount < game.currentBet + game.minRaiseDelta) {
+          if (actionType === "raise" && normalizedAmount < (game.currentBet < game.minBet ? game.minBet : game.currentBet + game.minRaiseDelta)) {
             setError(
               isZh
                 ? `加注到至少 ${game.currentBet + game.minRaiseDelta}`

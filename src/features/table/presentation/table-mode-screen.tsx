@@ -65,8 +65,8 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
   return (
     <main
       className={[
-        "mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-stitch-background",
-        showActionPanel ? "pb-44" : "pb-8"
+        "table-workspace mx-auto min-h-dvh w-full bg-stitch-background",
+        showActionPanel ? "has-actions" : "pb-8"
       ].join(" ")}
     >
       <AppTopBar
@@ -76,7 +76,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         backHref={adapter.backHref}
       />
 
-      <section className="flex-1 space-y-3 px-4 pb-4 pt-4">
+      <section className="table-body space-y-4 px-4 pb-4 pt-4">
         {adapter.banner ? (
           <article
             className={[
@@ -139,12 +139,12 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
             {adapter.supplementaryContent ? adapter.supplementaryContent : null}
 
             {adapter.statusHint ? (
-              <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
+              <article role="status" className="turn-status rounded-xl bg-stitch-surfaceContainerHigh px-3 py-3 text-sm text-stitch-onSurfaceVariant">
                 {adapter.statusHint}
               </article>
             ) : null}
             {streetRevealPrompt ? (
-              <article className="rounded-xl border border-[#39ff14]/50 bg-[#39ff14]/10 px-3 py-2 text-xs font-semibold text-[#8dff72] shadow-[0_0_12px_rgba(57,255,20,0.28)]">
+              <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-3 text-sm font-semibold text-stitch-onSurface">
                 {streetRevealPrompt === "flop"
                   ? isZh
                     ? "翻牌提示：请翻开3张公共牌"
@@ -177,6 +177,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         <SettlementModalPlaceholder
           isOpen={adapter.settlement.isOpen}
           status={adapter.status}
+          potLabel={adapter.settlement.potLabel}
           players={adapter.settlement.players}
           canUndo={adapter.settlement.canUndo}
           canReopen={adapter.settlement.canReopen}

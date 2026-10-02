@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/normalize-utf8.mjs",
-    "build": "next build",
+    "build": "npm run prisma:generate --workspace server && node scripts/migrate-vercel.mjs && npm run build --workspace server && next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "framer-motion": "^12.10.0",
@@ -30,6 +31,10 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.58.1"
-  }
+    "typescript-eslint": "^8.58.1",
+    "tsx": "^4.19.3"
+  },
+  "workspaces": [
+    "server"
+  ]
 }

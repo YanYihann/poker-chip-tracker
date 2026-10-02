@@ -58,30 +58,30 @@ export function AppTopBar({
   }, [username]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/5 bg-[color:var(--panel)]/95 px-4 pb-3 pt-4 backdrop-blur">
+    <header className="app-top-bar sticky top-0 z-30 border-b border-white/5 bg-[color:var(--panel)]/95 px-4 pb-3 pt-4 backdrop-blur">
       <div className="flex items-center justify-between gap-2">
         {backHref ? (
           <Link
             href={backHref}
-            className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
           >
             {isZh ? "\u8fd4\u56de" : "Back"}
           </Link>
         ) : (
           <Link
             href="/profile"
-            className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-[color:var(--text)]"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-[color:var(--text)]"
           >
             {isZh ? "\u8d26\u6237" : "Account"}
           </Link>
         )}
 
-        <h1 className="truncate px-1 font-display text-lg tracking-[0.08em] text-[color:var(--text)]">{title}</h1>
+        <h1 className="min-w-0 truncate px-1 text-lg font-semibold text-[color:var(--text)]">{title}</h1>
 
         <Link
           href="/profile"
           aria-label={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"}
-          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/20 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:brightness-110"
+          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/20 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:brightness-110"
         >
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -92,11 +92,13 @@ export function AppTopBar({
         </Link>
       </div>
 
+      {title.includes("本地") || title.includes("Local") ? <Link href="/online" className="mt-2 inline-flex min-h-11 items-center text-sm text-stitch-onSurfaceVariant hover:text-stitch-primary">{isZh ? "进入联机房间 →" : "Online rooms →"}</Link> : null}
+
       {hasPlayerControl ? (
         <div className="mt-3 flex items-center justify-center gap-2">
           <button
             type="button"
-            className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
+            className="h-11 w-11 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.max(MIN_PLAYERS, playerCount - 1))}
             aria-label={isZh ? "\u51cf\u5c11\u4eba\u6570" : "Decrease players"}
           >
@@ -107,7 +109,7 @@ export function AppTopBar({
           </div>
           <button
             type="button"
-            className="h-8 w-8 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
+            className="h-11 w-11 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
             onClick={() => onPlayerCountChange(Math.min(MAX_PLAYERS, playerCount + 1))}
             aria-label={isZh ? "\u589e\u52a0\u4eba\u6570" : "Increase players"}
           >

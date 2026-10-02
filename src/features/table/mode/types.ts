@@ -15,6 +15,7 @@ export type TableModeMainAction = {
   topLabel: string;
   mainLabel: string;
   onPress: () => void;
+  disabled?: boolean;
 };
 
 export type TableModeUtilityAction = {
@@ -40,6 +41,7 @@ export type TableModeSettlementPlayer = {
 
 export type TableModeSettlementModel = {
   isOpen: boolean;
+  potLabel?: string;
   players: TableModeSettlementPlayer[];
   canUndo: boolean;
   canReopen: boolean;

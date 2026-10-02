@@ -22,11 +22,12 @@ export const useBettingStore = create<BettingStore>((set) => ({
   ...INITIAL_BETTING,
   setPot: (pot) => set({ pot }),
   setCurrentBet: (currentBet) => set({ currentBet }),
-  setLastAggressiveAmount: (amount) => set({ lastAggressiveAmount: amount }),
+  setLastAggressiveAmount: (amount) => set({ lastAggressiveAmount: amount, minRaiseDelta: amount }),
   resetForNewHand: () => {
     set({
       pot: 0,
       currentBet: 0,
+      minRaiseDelta: INITIAL_BETTING.minRaiseDelta,
       lastAggressiveAmount: INITIAL_BETTING.lastAggressiveAmount
     });
   },

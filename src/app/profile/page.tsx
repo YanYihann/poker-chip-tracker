@@ -155,7 +155,7 @@ function ProfilePageContent() {
   const isAuthError = error?.toLowerCase().includes("auth") || error?.toLowerCase().includes("not");
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
       <AppTopBar title={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"} backHref="/" />
 
       <section className="space-y-4 px-4 pt-4">

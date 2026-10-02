@@ -43,7 +43,7 @@ function HistoryPageContent() {
   }, [isZh]);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
       <AppTopBar title={isZh ? "牌局历史" : "Session History"} backHref="/" />
 
       <section className="space-y-4 px-4 pt-4">

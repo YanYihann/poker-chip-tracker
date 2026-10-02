@@ -4,29 +4,14 @@ import { assignPositions } from "@/features/table/rules";
 import { clampPlayerCount, MAX_PLAYERS, MIN_PLAYERS } from "@/lib/table-layout";
 import type { Player, SessionSlice } from "@/types/domain";
 
-const PLAYER_NAME_POOL = [
-  "You",
-  "Alex",
-  "Maya",
-  "Chen",
-  "Riley",
-  "Jordan",
-  "Nora",
-  "Ethan",
-  "Liam",
-  "Sofia"
-];
-
-const STACK_POOL = [12450, 8900, 6300, 10200, 7750, 15100, 9850, 11450, 5600, 13000];
-
 function buildMockPlayers(playerCount: number): Player[] {
   const safeCount = clampPlayerCount(playerCount);
 
   const basePlayers = Array.from({ length: safeCount }, (_, index) => ({
     id: `player-${index + 1}`,
-    name: PLAYER_NAME_POOL[index],
+    name: `玩家 ${index+1}`,
     seatIndex: index,
-    stack: STACK_POOL[index],
+    stack: 2000,
     currentBet: 0,
     totalInvestedThisHand: 0,
     status: index === 0 ? "acting" : "waiting",
@@ -38,8 +23,8 @@ function buildMockPlayers(playerCount: number): Player[] {
 
 function createInitialSessionSlice(playerCount = 6): SessionSlice {
   return {
-    sessionId: "mock-session-001",
-    sessionName: "Evening Table",
+    sessionId: `local-${Date.now()}`,
+    sessionName: "Local Table",
     startedAtIso: new Date().toISOString(),
     dealerSeatIndex: 0,
     players: buildMockPlayers(playerCount)
@@ -63,8 +48,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ sessionName: name });
   },
   setPlayers: (players) => {
-    const { dealerSeatIndex } = get();
-    set({ players: assignPositions(players, dealerSeatIndex) });
+    set({ players });
   },
   setPlayerCount: (playerCount) => {
     const safeCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, playerCount));
@@ -78,7 +62,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   rotateDealer: () => {
     const { players, dealerSeatIndex } = get();
     const sorted = [...players].sort((a, b) => a.seatIndex - b.seatIndex);
-    const nextDealer = sorted[(dealerSeatIndex + 1) % sorted.length]?.seatIndex ?? 0;
+    const funded = sorted.filter((p) => p.stack > 0);
+    const nextDealer = funded.find((p) => p.seatIndex > dealerSeatIndex)?.seatIndex ?? funded[0]?.seatIndex ?? 0;
 
     set({
       dealerSeatIndex: nextDealer,

@@ -73,11 +73,11 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
 
   const nextPath = useMemo(() => {
     if (typeof window === "undefined") {
-      return pathname;
+      return pathname ?? "/";
     }
 
     const query = window.location.search;
-    return query ? `${pathname}${query}` : pathname;
+    return query ? `${pathname}${query}` : pathname ?? "/";
   }, [pathname]);
 
   useEffect(() => {

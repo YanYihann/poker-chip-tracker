@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { buildActionOrder, assignPositions } from "@/features/table/rules";
-import { useTableController } from "@/features/table/useTableController";
+import { startLocalHand, useTableController } from "@/features/table/useTableController";
 import type { TableModeAdapter } from "@/features/table/mode/types";
 import { MAX_PLAYERS } from "@/lib/table-layout";
 import { useBettingStore } from "@/store/useBettingStore";
@@ -80,8 +80,6 @@ const LAST_ACTION_LABELS: Record<AppLocale, Record<TableActionType, string>> = {
 
 function formatCurrency(amount: number, locale: AppLocale): string {
   return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    style: "currency",
-    currency: "USD",
     maximumFractionDigits: 0
   }).format(amount);
 }
@@ -145,6 +143,7 @@ function applyLocalSeatSelection(seatOrder: number[]): boolean {
   bettingStore.resetForNewHand();
   settlementStore.resetForNewHand();
   useMotionStore.getState().clearAll();
+  startLocalHand();
 
   return true;
 }
@@ -154,11 +153,16 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
   const { locale, isZh } = useLanguage();
   const [seatSelectionMode, setSeatSelectionMode] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [amountInput, setAmountInput] = useState("400");
+  const actingPlayer = controller.players.find((p) => p.id === controller.actingPlayerId);
+  const maxWager = (actingPlayer?.stack ?? 0) + (actingPlayer?.currentBet ?? 0);
+  const amountValid = amountInput !== "" && Number.isSafeInteger(Number(amountInput)) && Number(amountInput) >= controller.minRaiseTo && Number(amountInput) <= maxWager;
 
   useEffect(() => {
-    setSeatSelectionMode(true);
-    setSelectedSeats([]);
-  }, [controller.playerCount]);
+    const amount = String(controller.minRaiseTo);
+    setAmountInput(amount);
+    controller.setActionAmount(Number(amount));
+  }, [controller.minRaiseTo, controller.actingPlayerId]);
 
   const players = useMemo<TableSeatPlayer[]>(() => {
     if (seatSelectionMode) {
@@ -194,6 +198,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
       name: player.name,
       avatarUrl: player.avatar ?? null,
       stackLabel: formatCurrency(player.stack, locale),
+      betLabel: player.currentBet > 0 ? `${isZh ? "注" : "Bet"} ${formatCurrency(player.currentBet, locale)}` : undefined,
       positionLabel: player.position,
       isHero: player.isHero,
       isActive: player.id === controller.actingPlayerId,
@@ -212,11 +217,22 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
             ? `\u5728\u724c\u684c\u4e0a\u70b9\u51fb + \u9009\u62e9\u73b0\u5b9e\u5ea7\u4f4d\uff0c\u5df2\u9009 ${selectedSeats.length}/${controller.playerCount}`
             : `Tap + on table seats to match real positions. Selected ${selectedSeats.length}/${controller.playerCount}`}
         </p>
+        <div className="mt-4 space-y-2">
+          <p className="text-xs text-stitch-onSurfaceVariant">{isZh ? "玩家姓名 / 起始筹码（盲注 100 / 200）" : "Player / Starting chips (blinds 100 / 200)"}</p>
+          {controller.players.map((player) => <div key={player.id} className="grid grid-cols-2 gap-2">
+            <input aria-label={`${isZh ? "姓名" : "Name"} ${player.id}`} value={player.name} maxLength={24}
+              onChange={(event) => useSessionStore.getState().setPlayers(useSessionStore.getState().players.map((p) => p.id === player.id ? {...p,name:event.target.value} : p))}
+              className="h-11 min-w-0 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 text-sm" />
+            <input aria-label={`${isZh ? "起始筹码" : "Starting chips"} ${player.id}`} type="number" inputMode="numeric" min={1} max={100000000} value={player.stack}
+              onChange={(event) => { const stack = Number(event.target.value); if (Number.isSafeInteger(stack) && stack >= 0 && stack <= 100000000) useSessionStore.getState().setPlayers(useSessionStore.getState().players.map((p) => p.id === player.id ? {...p,stack} : p)); }}
+              className="h-11 min-w-0 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 text-sm" />
+          </div>)}
+        </div>
         <div className="mt-3 flex gap-2">
           <button
             type="button"
             className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
-            disabled={selectedSeats.length !== controller.playerCount}
+            disabled={controller.resumeAvailable || selectedSeats.length !== controller.playerCount || controller.players.some((p) => !p.name.trim() || p.stack < 1)}
             onClick={() => {
               if (selectedSeats.length !== controller.playerCount) {
                 return;
@@ -243,6 +259,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
         <button
           type="button"
           className="font-semibold text-stitch-primary"
+          disabled={controller.status !== "settlement-confirmed"}
           onClick={() => {
             setSeatSelectionMode(true);
             setSelectedSeats([]);
@@ -276,9 +293,9 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
   return {
     mode: "local",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
-    backHref: "/",
+    backHref: "/online",
     playerCount: controller.playerCount,
-    onPlayerCountChange: controller.setPlayerCount,
+    onPlayerCountChange: seatSelectionMode && !controller.resumeAvailable ? (count) => {setSelectedSeats([]); controller.setPlayerCount(count);} : undefined,
     players,
     potLabel: formatCurrency(controller.pot, locale),
     boardCards: null,
@@ -288,15 +305,27 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     handKey: `local-${controller.playerCount}-${controller.sessionName}`,
     status: controller.status,
     actingPlayerId: seatSelectionMode ? null : controller.actingPlayerId,
-    mainActions: seatSelectionMode ? [] : controller.mainActions,
+    mainActions: seatSelectionMode ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
     utilityActions: seatSelectionMode ? [] : controller.utilityActions,
     canOpenSettlement: seatSelectionMode ? false : controller.canOpenSettlement,
     onOpenSettlement: seatSelectionMode ? () => undefined : controller.openSettlement,
-    amountControl: null,
+    amountControl: !seatSelectionMode && controller.mainActions.some((a) => a.id === "bet" || a.id === "raise") ? {
+      value: amountInput,
+      onValueChange: (value) => {
+        const cleaned = value.replace(/[^\d]/g, "");
+        setAmountInput(cleaned); controller.setActionAmount(Number(cleaned));
+      },
+      onStep: (delta) => {
+        const value = Math.min(maxWager, Math.max(controller.minRaiseTo, Number(amountInput || controller.minRaiseTo) + delta));
+        setAmountInput(String(value)); controller.setActionAmount(value);
+      },
+      helperText: `${isZh ? "本轮下注总额" : "Total wager this round"} ${controller.minRaiseTo}–${maxWager}${amountValid ? "" : isZh ? " · 请输入范围内的整数" : " · Enter a whole number in range"}`
+    } : null,
     settlement: seatSelectionMode
       ? null
       : {
           isOpen: controller.settlementOpen,
+          potLabel: controller.settlementPotLabel,
           players: controller.settlementPlayers,
           canUndo: controller.canSettlementUndo,
           canReopen: controller.canReopenSettlement,
@@ -310,7 +339,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     resume: {
       available: controller.resumeAvailable,
       savedAtIso: controller.resumeSavedAtIso,
-      onResume: controller.resumeSession,
+      onResume: () => {controller.resumeSession(); setSeatSelectionMode(false);},
       onDiscard: controller.discardResumeSnapshot
     },
     banner:
@@ -322,7 +351,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
               : "A local snapshot was found. Resume or discard to continue autosave."
           }
         : null,
-    statusHint: seatSelectionMode
+    statusHint: !seatSelectionMode && controller.actingPlayerId ? `${isZh ? "轮到" : "Action on"} ${controller.players.find((p) => p.id === controller.actingPlayerId)?.name} · ${isZh ? "需跟注" : "To call"} ${controller.toCall}` : seatSelectionMode
       ? isZh
         ? "\u8bf7\u5148\u5728\u724c\u684c\u4e0a\u786e\u8ba4\u5ea7\u4f4d\uff0c\u518d\u8fdb\u5165\u64cd\u4f5c\u9636\u6bb5\u3002"
         : "Confirm seats on the table before actions."

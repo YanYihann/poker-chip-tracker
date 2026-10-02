@@ -21,7 +21,7 @@ function formatMoney(value: string, locale: AppLocale): string {
 
 function SessionDetailPageContent() {
   const params = useParams<{ sessionId: string }>();
-  const sessionId = params.sessionId ?? "";
+  const sessionId = params?.sessionId ?? "";
   const { isZh, localeTag } = useLanguage();
   const locale: AppLocale = isZh ? "zh" : "en";
 
@@ -58,7 +58,7 @@ function SessionDetailPageContent() {
   }, [isZh, sessionId]);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
       <AppTopBar title={isZh ? "\u724c\u5c40\u8be6\u60c5" : "Session Detail"} backHref="/history" />
 
       <section className="space-y-4 px-4 pt-4">

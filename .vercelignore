@@ -1,0 +1,8 @@
+artifacts
+.env*
+server/.env*
+server/node_modules
+node_modules
+.next
+docs/screenshots
+docs/assets

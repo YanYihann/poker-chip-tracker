@@ -7,9 +7,9 @@ import {
 } from "@/features/persistence/storage";
 import {
   buildActionOrder,
+  assignPositions as assignLocalPositions,
   findPlayer,
   getActionablePlayers,
-  getNextActingPlayerId,
   getPlayerToCall
 } from "@/features/table/rules";
 import {
@@ -35,6 +35,8 @@ import type {
   TableSnapshot
 } from "@/types/domain";
 
+import { buildContributionPots, legalBettingActions, minimumRaiseTo, splitPotClockwise } from "../../../server/src/modules/rooms/betting-round";
+
 const STREET_SEQUENCE: Street[] = ["preflop", "flop", "turn", "river", "showdown"];
 
 export type MainActionModel = {
@@ -45,7 +47,7 @@ export type MainActionModel = {
 };
 
 export type UtilityActionModel = {
-  id: "undo" | "edit-hand" | "end-hand";
+  id: "undo" | "edit-hand" | "end-hand" | "next-hand" | "reopen";
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -72,6 +74,9 @@ type TableStateModel = {
   canOpenSettlement: boolean;
   settlementOpen: boolean;
   settlementPlayers: SettlementPlayerModel[];
+  settlementPotLabel: string;
+  minRaiseTo: number;
+  setActionAmount: (amount: number) => void;
   canSettlementUndo: boolean;
   canReopenSettlement: boolean;
   lastActionType?: TableActionType;
@@ -159,7 +164,37 @@ function emitPotToWinner(targetPlayerId: string, amount: number, delayMs = 0): v
   });
 }
 
-function settleRoundIfNeeded(previousActingPlayerId: string | null): void {
+function recordResponse(playerId: string, previousBet: number): void {
+  const hand = useHandStore.getState();
+  const betting = useBettingStore.getState();
+  const session = useSessionStore.getState();
+  const actionable = getActionablePlayers(session.players);
+  const raised = betting.currentBet > previousBet;
+  let order = hand.actionOrder.filter((id) => id !== playerId && actionable.some((p) => p.id === id));
+  if (raised) {
+    const clockwise = [...session.players].sort((a,b) => a.seatIndex - b.seatIndex);
+    const actorIndex = clockwise.findIndex((p) => p.id === playerId);
+    order = Array.from({length: clockwise.length - 1}, (_,i) => clockwise[(actorIndex+i+1)%clockwise.length])
+      .filter((p) => actionable.some((a) => a.id === p.id) && p.currentBet < betting.currentBet).map((p) => p.id);
+  }
+  hand.setActedAtBet({ ...hand.actedAtBet, [playerId]: betting.currentBet });
+  hand.setActionOrder(order);
+}
+
+function refundUncalledChips(): void {
+  const session = useSessionStore.getState();
+  const betting = useBettingStore.getState();
+  const pots = buildContributionPots(session.players.map((p) => ({playerId:p.id, amount:p.totalInvestedThisHand})));
+  const uncalled = pots.filter((p) => p.participants.length === 1);
+  if (!uncalled.length) return;
+  session.setPlayers(session.players.map((p) => {
+    const refund = uncalled.filter((pot) => pot.participants[0] === p.id).reduce((sum, pot) => sum + pot.amount, 0);
+    return {...p, stack:p.stack + refund, totalInvestedThisHand:p.totalInvestedThisHand-refund};
+  }));
+  betting.setPot(betting.pot - uncalled.reduce((sum,p) => sum+p.amount,0));
+}
+
+function settleRoundIfNeeded(): void {
   const sessionStore = useSessionStore.getState();
   const handStore = useHandStore.getState();
   const bettingStore = useBettingStore.getState();
@@ -176,19 +211,26 @@ function settleRoundIfNeeded(previousActingPlayerId: string | null): void {
     handStore.setStatus("pre-settlement");
     handStore.setActingPlayerId(null);
     sessionStore.setPlayers(setActingStatus(players, null));
+    refundUncalledChips();
     settlementStore.openDialog();
     return;
   }
 
   const actionable = getActionablePlayers(players);
-  const actionableIds = new Set(actionable.map((player) => player.id));
-  const currentOrder = handStore.actionOrder.filter((playerId) => actionableIds.has(playerId));
-  const nextActingPlayerId = getNextActingPlayerId(currentOrder, previousActingPlayerId);
-
-  if (nextActingPlayerId) {
-    handStore.setActionOrder(currentOrder);
-    handStore.setActingPlayerId(nextActingPlayerId);
+  const pending = handStore.actionOrder.filter((id) => actionable.some((p) => p.id === id));
+  if (pending.length > 0 && (actionable.length > 1 || actionable.some((p) => getPlayerToCall(p, bettingStore.currentBet) > 0))) {
+    const nextActingPlayerId = pending[0];
+    handStore.setActionOrder(pending);
     sessionStore.setPlayers(setActingStatus(players, nextActingPlayerId));
+    return;
+  }
+  if (actionable.length <= 1) {
+    handStore.setStreet("showdown");
+    handStore.setStatus("pre-settlement");
+    handStore.setActingPlayerId(null);
+    sessionStore.setPlayers(setActingStatus(players, null));
+    refundUncalledChips();
+    settlementStore.openDialog();
     return;
   }
 
@@ -199,6 +241,7 @@ function settleRoundIfNeeded(previousActingPlayerId: string | null): void {
     handStore.setStatus("pre-settlement");
     handStore.setActingPlayerId(null);
     sessionStore.setPlayers(setActingStatus(players, null));
+    refundUncalledChips();
     settlementStore.openDialog();
     return;
   }
@@ -212,6 +255,8 @@ function settleRoundIfNeeded(previousActingPlayerId: string | null): void {
   handStore.setActingPlayerId(nextStreetActing);
 
   bettingStore.setCurrentBet(0);
+  bettingStore.setLastAggressiveAmount(bettingStore.minBet);
+  handStore.setActedAtBet({});
   sessionStore.setPlayers(setActingStatus(resetPlayers, nextStreetActing));
 }
 
@@ -260,6 +305,8 @@ function applyPlayerChipChange(playerId: string, amount: number, forceAllIn = fa
   });
 }
 
+let requestedActionAmount = 0;
+
 function runAction(actionType: AvailablePlayerAction): void {
   const sessionStore = useSessionStore.getState();
   const handStore = useHandStore.getState();
@@ -276,7 +323,8 @@ function runAction(actionType: AvailablePlayerAction): void {
   }
 
   const toCall = getPlayerToCall(actingPlayer, bettingStore.currentBet);
-  const previousActingPlayerId = actingPlayer.id;
+  const legal = getAvailableActions(actingPlayer, toCall, handStore.status);
+  if (!legal.includes(actionType)) return;
 
   if (actionType === "fold") {
     if (!pushReversibleSnapshot(actionType)) {
@@ -288,7 +336,8 @@ function runAction(actionType: AvailablePlayerAction): void {
     );
 
     sessionStore.setPlayers(foldedPlayers);
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
     return;
   }
 
@@ -302,7 +351,8 @@ function runAction(actionType: AvailablePlayerAction): void {
     }
 
     sessionStore.setPlayers(clonePlayers(sessionStore.players));
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
     return;
   }
 
@@ -327,16 +377,16 @@ function runAction(actionType: AvailablePlayerAction): void {
       bettingStore.setCurrentBet(finalPlayer?.currentBet ?? bettingStore.currentBet);
     }
 
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
     return;
   }
 
   if (actionType === "bet") {
-    if (toCall > 0) {
-      return;
-    }
+    if (bettingStore.currentBet !== 0) return;
 
-    const betAmount = Math.min(actingPlayer.stack, bettingStore.minBet);
+    const betAmount = requestedActionAmount || bettingStore.minBet;
+    if (!Number.isSafeInteger(betAmount) || betAmount < bettingStore.minBet || betAmount > actingPlayer.stack) return;
 
     if (betAmount <= 0) {
       return;
@@ -355,18 +405,15 @@ function runAction(actionType: AvailablePlayerAction): void {
     bettingStore.setLastAggressiveAmount(betAmount);
     emitChipToPot(actingPlayer.id, betAmount);
 
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
     return;
   }
 
   if (actionType === "raise") {
-    if (toCall <= 0) {
-      runAction("bet");
-      return;
-    }
-
-    const raiseAmount = toCall + bettingStore.minRaiseDelta;
-    const appliedAmount = Math.min(actingPlayer.stack, raiseAmount);
+    const raiseTo = requestedActionAmount || minimumRaiseTo(bettingStore.currentBet, bettingStore.minRaiseDelta, bettingStore.minBet);
+    if (!Number.isSafeInteger(raiseTo) || raiseTo < minimumRaiseTo(bettingStore.currentBet, bettingStore.minRaiseDelta, bettingStore.minBet) || raiseTo > actingPlayer.stack + actingPlayer.currentBet) return;
+    const appliedAmount = raiseTo - actingPlayer.currentBet;
 
     if (appliedAmount <= 0) {
       return;
@@ -388,7 +435,8 @@ function runAction(actionType: AvailablePlayerAction): void {
     );
     emitChipToPot(actingPlayer.id, appliedAmount);
 
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
     return;
   }
 
@@ -409,9 +457,11 @@ function runAction(actionType: AvailablePlayerAction): void {
     sessionStore.setPlayers(changedPlayers);
     bettingStore.setPot(bettingStore.pot + allInAmount);
     bettingStore.setCurrentBet(nextCurrentBet);
+    if (nextCurrentBet - bettingStore.currentBet >= bettingStore.minRaiseDelta) bettingStore.setLastAggressiveAmount(nextCurrentBet - bettingStore.currentBet);
     emitChipToPot(actingPlayer.id, allInAmount);
 
-    settleRoundIfNeeded(previousActingPlayerId);
+    recordResponse(actingPlayer.id, bettingStore.currentBet);
+    settleRoundIfNeeded();
   }
 }
 
@@ -422,54 +472,13 @@ function runUndo(): void {
     return;
   }
 
+  if (["quick-win", "quick-split"].includes(useHandStore.getState().lastActionType ?? "")) useArchiveStore.getState().removeLatestEntry();
   applyTableSnapshot(snapshot);
+  useMotionStore.getState().clearAll();
 }
 
 function runEditHand(): void {
-  const handStore = useHandStore.getState();
-  const sessionStore = useSessionStore.getState();
-  const bettingStore = useBettingStore.getState();
-  const settlementStore = useSettlementStore.getState();
-
-  if (handStore.status === "settlement-confirmed") {
-    return;
-  }
-
-  const beforeStreet = handStore.street;
-  const nextStreet = getNextStreet(beforeStreet) ?? "showdown";
-
-  pushActionSnapshot("edit-hand");
-
-  const resetPlayers = clonePlayers(sessionStore.players).map((player) => ({
-    ...player,
-    currentBet: 0
-  }));
-
-  const actionOrder = buildActionOrder(resetPlayers, sessionStore.dealerSeatIndex, nextStreet);
-  const actingPlayerId = actionOrder[0] ?? null;
-
-  sessionStore.setPlayers(setActingStatus(resetPlayers, actingPlayerId));
-  handStore.setStreet(nextStreet);
-  handStore.setStatus(nextStreet === "showdown" ? "pre-settlement" : "in-progress");
-  handStore.setActionOrder(actionOrder);
-  handStore.setActingPlayerId(actingPlayerId);
-
-  if (nextStreet === "showdown") {
-    settlementStore.openDialog();
-  }
-
-  bettingStore.setCurrentBet(0);
-  settlementStore.markRevision();
-  settlementStore.setNotes(`Edited street from ${beforeStreet} to ${nextStreet}`);
-
-  handStore.appendAudit({
-    id: `audit-${Date.now()}`,
-    action: "edit-hand",
-    beforeStreet,
-    afterStreet: nextStreet,
-    note: "Organizer adjusted current hand stage.",
-    createdAtIso: new Date().toISOString()
-  });
+  if (useHandStore.getState().status === "pre-settlement") useSettlementStore.getState().openDialog();
 }
 
 function createArchiveEntry(
@@ -497,193 +506,77 @@ function createArchiveEntry(
   };
 }
 
-function runEndHand(): void {
-  const handStore = useHandStore.getState();
-  const settlementStore = useSettlementStore.getState();
+function runEndHand(): void { runEditHand(); }
 
-  if (handStore.status === "settlement-confirmed") {
-    return;
-  }
-
-  if (!pushReversibleSnapshot("end-hand")) {
-    return;
-  }
-
-  if (handStore.status === "in-progress") {
-    handStore.setStatus("pre-settlement");
-    handStore.setActingPlayerId(null);
-    settlementStore.openDialog();
-    return;
-  }
-
-  handStore.setStatus("settlement-confirmed");
-  settlementStore.closeDialog();
-  useArchiveStore.getState().addEntry(createArchiveEntry([], "Manual settlement confirm"));
+function getNextSettlementPot() {
+  const players = useSessionStore.getState().players;
+  return buildContributionPots(players.map((p) => ({playerId:p.id, amount:p.totalInvestedThisHand})))[0];
 }
 
-function getClockwiseWinnerOrder(players: Player[], dealerSeatIndex: number, winnerIds: string[]): string[] {
-  const winnerSet = new Set(winnerIds);
-  const bySeat = [...players].sort((a, b) => a.seatIndex - b.seatIndex);
-  const dealerIndex = bySeat.findIndex((player) => player.seatIndex === dealerSeatIndex);
-  const start = dealerIndex >= 0 ? dealerIndex : 0;
-  const ordered: string[] = [];
-
-  for (let step = 1; step <= bySeat.length; step += 1) {
-    const cursor = (start + step) % bySeat.length;
-    const id = bySeat[cursor].id;
-
-    if (winnerSet.has(id)) {
-      ordered.push(id);
-    }
-  }
-
-  return ordered;
-}
-
-function runQuickWin(winnerId: string): void {
-  const handStore = useHandStore.getState();
-  const sessionStore = useSessionStore.getState();
-  const bettingStore = useBettingStore.getState();
-  const settlementStore = useSettlementStore.getState();
-
-  if (handStore.status === "in-progress") {
-    return;
-  }
-
-  const pot = bettingStore.pot;
-
-  if (pot <= 0) {
-    return;
-  }
-
-  const winner = sessionStore.players.find((player) => player.id === winnerId);
-
-  if (!winner) {
-    return;
-  }
-
-  pushActionSnapshot("quick-win");
-
-  const updatedPlayers = clonePlayers(sessionStore.players).map((player) => {
-    if (player.id === winnerId) {
-      return {
-        ...player,
-        stack: player.stack + pot,
-        status: "winner"
-      } satisfies Player;
-    }
-
-    return {
-      ...player,
-      status: player.status === "folded" ? "folded" : "waiting"
-    } satisfies Player;
-  });
-
-  sessionStore.setPlayers(updatedPlayers);
-  bettingStore.setPot(0);
-  bettingStore.setCurrentBet(0);
-
-  handStore.setStatus("settlement-confirmed");
-  settlementStore.closeDialog();
-  settlementStore.markRevision();
-
-  emitPotToWinner(winnerId, pot);
-
-  useArchiveStore
-    .getState()
-    .addEntry(createArchiveEntry([{ playerId: winnerId, amount: pot }], "Quick Win"));
-}
+function runQuickWin(winnerId: string): void { runQuickSplit([winnerId]); }
 
 function runQuickSplit(winnerIds: string[]): void {
-  const handStore = useHandStore.getState();
-  const sessionStore = useSessionStore.getState();
-  const bettingStore = useBettingStore.getState();
-  const settlementStore = useSettlementStore.getState();
-
-  if (handStore.status === "in-progress") {
-    return;
-  }
-
-  const uniqueWinnerIds = Array.from(new Set(winnerIds));
-
-  if (uniqueWinnerIds.length < 2 || bettingStore.pot <= 0) {
-    return;
-  }
-
-  pushActionSnapshot("quick-split");
-
-  const orderedWinnerIds = getClockwiseWinnerOrder(
-    sessionStore.players,
-    sessionStore.dealerSeatIndex,
-    uniqueWinnerIds
-  );
-
-  const pot = bettingStore.pot;
-  const baseShare = Math.floor(pot / orderedWinnerIds.length);
-  let remainder = pot % orderedWinnerIds.length;
-
-  const payoutMap = new Map<string, number>();
-
-  orderedWinnerIds.forEach((id) => {
-    const extra = remainder > 0 ? 1 : 0;
-    if (remainder > 0) {
-      remainder -= 1;
-    }
-    payoutMap.set(id, baseShare + extra);
-  });
-
-  const updatedPlayers = clonePlayers(sessionStore.players).map((player) => {
-    const payout = payoutMap.get(player.id) ?? 0;
-
-    if (payout > 0) {
-      return {
-        ...player,
-        stack: player.stack + payout,
-        status: "winner"
-      } satisfies Player;
-    }
-
-    return {
-      ...player,
-      status: player.status === "folded" ? "folded" : "waiting"
-    } satisfies Player;
-  });
-
-  sessionStore.setPlayers(updatedPlayers);
-  bettingStore.setPot(0);
-  bettingStore.setCurrentBet(0);
-
-  handStore.setStatus("settlement-confirmed");
-  settlementStore.closeDialog();
-  settlementStore.markRevision();
-
-  orderedWinnerIds.forEach((winnerId, index) => {
-    emitPotToWinner(winnerId, payoutMap.get(winnerId) ?? 0, index * 70);
-  });
-
-  useArchiveStore.getState().addEntry(
-    createArchiveEntry(
-      orderedWinnerIds.map((winnerId) => ({
-        playerId: winnerId,
-        amount: payoutMap.get(winnerId) ?? 0
-      })),
-      "Quick Split"
-    )
-  );
+  const hand = useHandStore.getState();
+  const session = useSessionStore.getState();
+  const betting = useBettingStore.getState();
+  const settlement = useSettlementStore.getState();
+  if (hand.status !== "pre-settlement") return;
+  const pot = getNextSettlementPot();
+  if (!pot) return;
+  const ids = [...new Set(winnerIds)];
+  const winners = session.players.filter((p) => ids.includes(p.id) && pot.participants.includes(p.id) && p.status !== "folded");
+  if (!winners.length || winners.length !== ids.length) return;
+  pushActionSnapshot(ids.length === 1 ? "quick-win" : "quick-split");
+  const payouts = splitPotClockwise(pot.amount, winners.map((p) => ({playerId:p.id,seatIndex:p.seatIndex})),session.dealerSeatIndex);
+  const entry = createArchiveEntry(winners.map((p) => ({playerId:p.id,amount:payouts[p.id]})), "Pot settlement");
+  entry.totalPot = pot.amount;
+  session.setPlayers(session.players.map((p) => ({
+    ...p, stack:p.stack+(payouts[p.id]??0),
+    totalInvestedThisHand:Math.max(0,p.totalInvestedThisHand-(pot.participants.includes(p.id)?pot.contribution:0)),
+    currentBet:0, status:p.status === "folded" ? "folded" : payouts[p.id] ? "winner" : "waiting"
+  })));
+  betting.setPot(betting.pot-pot.amount);
+  betting.setCurrentBet(0);
+  hand.setStatus(betting.pot-pot.amount === 0 ? "settlement-confirmed" : "pre-settlement");
+  settlement.markRevision();
+  if (betting.pot-pot.amount === 0) settlement.closeDialog();
+  winners.forEach((p,i) => emitPotToWinner(p.id,payouts[p.id],i*50));
+  useArchiveStore.getState().addEntry(entry);
 }
 
 function runReopenSettlement(): void {
-  const handStore = useHandStore.getState();
-  const settlementStore = useSettlementStore.getState();
+  if (useHandStore.getState().status !== "settlement-confirmed") return;
+  runUndo();
+  useSettlementStore.getState().openDialog();
+}
 
-  if (handStore.status !== "settlement-confirmed") {
-    return;
-  }
-
-  pushActionSnapshot("reopen-settlement");
-  handStore.setStatus("pre-settlement");
-  settlementStore.openDialog();
-  settlementStore.markRevision();
+export function startLocalHand(rotate = false): void {
+  const session = useSessionStore.getState();
+  if (rotate) session.rotateDealer();
+  const refreshed = useSessionStore.getState();
+  const players: Player[] = refreshed.players.map((p) => ({...p,currentBet:0,totalInvestedThisHand:0,status:p.stack>0?"waiting":"folded"}));
+  const funded = players.filter((p) => p.stack > 0).sort((a,b) => a.seatIndex-b.seatIndex);
+  if (funded.length < 2) return;
+  const dealer = funded.findIndex((p) => p.seatIndex === refreshed.dealerSeatIndex);
+  const btn = dealer >= 0 ? dealer : 0;
+  const sb = funded.length === 2 ? funded[btn] : funded[(btn+1)%funded.length];
+  const bb = funded[(funded.indexOf(sb)+1)%funded.length];
+  const minBet = useBettingStore.getState().minBet;
+  const posted = players.map((p) => {
+    const amount = p.id === sb.id ? Math.min(p.stack,Math.floor(minBet/2)) : p.id === bb.id ? Math.min(p.stack,minBet) : 0;
+    return {...p, stack:p.stack-amount,currentBet:amount,totalInvestedThisHand:amount,status:p.stack>0 && p.stack===amount?"all-in":p.status} as Player;
+  });
+  const order = buildActionOrder(posted.filter((p) => p.status !== "folded"),funded[btn].seatIndex,"preflop");
+  const positioned = assignLocalPositions(posted.filter((p) => p.status !== "folded"), funded[btn].seatIndex);
+  session.applySnapshot({...refreshed,dealerSeatIndex:funded[btn].seatIndex,players:setActingStatus(posted.map((p) => positioned.find((active) => active.id === p.id) ?? {...p,position:undefined}),order[0]??null)});
+  useHandStore.getState().resetForNewHand(order);
+  useBettingStore.getState().resetForNewHand();
+  useBettingStore.getState().setPot(posted.reduce((sum,p) => sum+p.currentBet,0));
+  useBettingStore.getState().setCurrentBet(minBet);
+  useSettlementStore.getState().resetForNewHand();
+  useMotionStore.getState().clearAll();
+  requestedActionAmount = 0;
+  settleRoundIfNeeded();
 }
 
 function runSetPlayerCount(count: number): void {
@@ -718,15 +611,17 @@ function getAvailableActions(
     return [];
   }
 
-  if (actingPlayer.status === "all-in") {
+  if (actingPlayer.status === "all-in" || actingPlayer.status === "folded") {
     return [];
   }
 
-  if (toCall === 0) {
-    return ["fold", "check", "bet", "all-in"];
-  }
-
-  return ["fold", "call", "raise", "all-in"];
+  const betting = useBettingStore.getState();
+  return legalBettingActions({
+    stack:actingPlayer.stack,playerBet:actingPlayer.currentBet,currentBet:betting.currentBet,
+    minRaiseDelta:betting.minRaiseDelta,bigBlind:betting.minBet,
+    lastActedBet:useHandStore.getState().actedAtBet?.[actingPlayer.id],
+    canOpponentRespond:getActionablePlayers(useSessionStore.getState().players).some((p) => p.id !== actingPlayer.id)
+  });
 }
 
 const ACTION_COPY: Record<AvailablePlayerAction, { topLabel: string; mainLabel: string }> = {
@@ -785,7 +680,7 @@ export function useTableController(): TableStateModel {
       }
 
       timer = setTimeout(() => {
-        saveLiveSession(createPersistedLiveSession());
+        flush();
       }, 180);
     };
 
@@ -796,10 +691,16 @@ export function useTableController(): TableStateModel {
       useSettlementStore.subscribe(schedule)
     ];
 
+    const flush = () => {
+      const hand = useHandStore.getState();
+      if (!useSessionStore.getState().players.some((p) => p.totalInvestedThisHand > 0) && hand.historyStack.length === 0 && hand.status === "in-progress") return;
+      saveLiveSession(createPersistedLiveSession());
+    };
+    window.addEventListener("pagehide", flush);
     return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
+      window.removeEventListener("pagehide", flush);
+      flush();
+      if (timer) clearTimeout(timer);
       unsubs.forEach((unsubscribe) => unsubscribe());
     };
   }, [autosaveReady]);
@@ -865,25 +766,21 @@ export function useTableController(): TableStateModel {
         disabled: historyDepth === 0
       },
       {
-        id: "edit-hand",
-        label: "编辑本手",
-        onPress: runEditHand,
-        disabled: status === "settlement-confirmed"
+        id: "next-hand", label: "下一手", onPress: () => startLocalHand(true),
+        disabled: status !== "settlement-confirmed" || players.filter((p) => p.stack > 0).length < 2
       },
       {
-        id: "end-hand",
-        label: status === "pre-settlement" ? "确认结算" : "结束本手",
-        onPress: runEndHand,
-        disabled: status === "settlement-confirmed"
+        id: "reopen", label: "重开结算", onPress: runReopenSettlement,
+        disabled: status !== "settlement-confirmed" || historyDepth === 0
       }
     ],
-    [historyDepth, status]
+    [historyDepth, status, players]
   );
 
   const settlementPlayers = useMemo<SettlementPlayerModel[]>(
     () =>
       players
-        .filter((player) => player.status !== "folded")
+        .filter((player) => player.status !== "folded" && (getNextSettlementPot()?.participants.includes(player.id) ?? false))
         .map((player) => ({
           id: player.id,
           name: player.name,
@@ -921,6 +818,9 @@ export function useTableController(): TableStateModel {
     canOpenSettlement: status !== "in-progress",
     settlementOpen,
     settlementPlayers,
+    settlementPotLabel: formatChips(getNextSettlementPot()?.amount ?? 0),
+    minRaiseTo: minimumRaiseTo(currentBet, useBettingStore.getState().minRaiseDelta, useBettingStore.getState().minBet),
+    setActionAmount: (amount) => { requestedActionAmount = amount; },
     canSettlementUndo: historyDepth > 0,
     canReopenSettlement: status === "settlement-confirmed",
     lastActionType,

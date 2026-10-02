@@ -37,7 +37,7 @@ function localizePositionLabel(label: string, isZh: boolean): string {
 
 export function PlayerSeat({ player, xPercent, yPercent, compact = false }: PlayerSeatProps) {
   const { isZh } = useLanguage();
-  const avatarSize = compact ? "h-9 w-9" : "h-11 w-11";
+  const avatarSize = "h-11 w-11";
   const folded = player.status === "folded";
   const heroOrActive = player.isHero || player.isActive;
   const hasRevealedHoleCards = Boolean(player.revealedCards && player.revealedCards.length > 0);
@@ -53,6 +53,8 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           <button
             type="button"
             onClick={player.onPress}
+            aria-label={`${isZh ? "选择座位" : "Select seat"} ${player.name}`}
+            aria-pressed={player.placeholderSelected ?? false}
             disabled={!player.onPress}
             className={cn(
               avatarSize,
@@ -95,7 +97,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
               avatarSize,
               "grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
               heroOrActive
-                ? "border-stitch-mint/70 shadow-[0_0_18px_rgba(36,255,205,0.3)]"
+                ? "border-stitch-mint/70 "
                 : "border-stitch-outlineVariant/60",
               folded ? "opacity-45 grayscale" : ""
             )}
@@ -109,11 +111,10 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           </div>
         )}
 
-        <div className="min-w-[64px] rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]">
-          {!compact || player.isHero ? (
-            <p className="truncate text-[10px] font-body font-semibold text-stitch-onSurface">{player.name}</p>
-          ) : null}
-          <p className="text-[10px] text-stitch-onSurfaceVariant">{player.stackLabel}</p>
+        <div className={cn("seat-ledger rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]", compact && "seat-ledger-compact")}>
+            <p title={player.name} className="truncate text-xs font-body font-semibold text-stitch-onSurface">{player.name}</p>
+          <p title={player.stackLabel} className="truncate text-xs tabular-nums text-stitch-onSurfaceVariant">{player.stackLabel}</p>
+          {player.betLabel ? <p className="text-[10px] tabular-nums text-stitch-mint">{player.betLabel}</p> : null}
           {player.resultDeltaLabel ? (
             <p
               className={cn(
@@ -139,7 +140,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
         ) : null}
 
         {player.isActive ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-stitch-mint shadow-[0_0_10px_rgba(36,255,205,0.8)]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-stitch-mint " />
         ) : null}
       </div>
     </article>

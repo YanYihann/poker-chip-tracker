@@ -163,7 +163,16 @@ type ApiError = {
   message?: string;
 };
 
+let mutationEpoch = 0;
+let pendingMutations = 0;
+export function getRoomSyncEpoch(): number | null {
+  return pendingMutations ? null : mutationEpoch;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const isMutation = (init.method ?? "GET") !== "GET" && path.startsWith("/api/rooms");
+  if (isMutation) { pendingMutations++; mutationEpoch++; }
+  try {
   let response: Response;
 
   try {
@@ -186,6 +195,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   return payload as T;
+  } finally {
+    if (isMutation) { pendingMutations--; mutationEpoch++; }
+  }
 }
 
 export async function createRoom(input?: {

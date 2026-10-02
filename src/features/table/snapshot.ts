@@ -31,7 +31,8 @@ export function createTableSnapshotFromStores(): TableSnapshot {
       actionOrder: [...hand.actionOrder],
       actionIndex: hand.actionIndex,
       lastActionType: hand.lastActionType,
-      actionCount: hand.actionCount
+      actionCount: hand.actionCount,
+      actedAtBet: { ...hand.actedAtBet }
     },
     betting: {
       pot: betting.pot,

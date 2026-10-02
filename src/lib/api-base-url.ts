@@ -11,8 +11,9 @@ function resolveApiBaseUrl(): string {
   }
 
   if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-    return `${protocol}//${window.location.hostname}:${DEFAULT_API_PORT}`;
+    const local = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    if (!local || process.env.NEXT_PUBLIC_API_TRANSPORT === "polling") return window.location.origin;
+    return `http://${window.location.hostname}:${DEFAULT_API_PORT}`;
   }
 
   return `http://localhost:${DEFAULT_API_PORT}`;
@@ -30,7 +31,7 @@ export function getApiUrl(path: string): string {
 export function toNetworkError(error: unknown): Error {
   if (error instanceof TypeError) {
     return new Error(
-      `Unable to reach API server (${getApiBaseUrl()}). Start backend on port ${DEFAULT_API_PORT} or set NEXT_PUBLIC_API_BASE_URL.`
+      "暂时无法连接服务，请检查网络后重试。"
     );
   }
 

@@ -34,11 +34,11 @@ export function CentralPot({
         shouldShowStatusBadges ? "max-w-[228px] sm:max-w-[250px]" : "max-w-[248px] sm:max-w-[272px]"
       ].join(" ")}
     >
-      <div className="isolate flex flex-col items-center rounded-2xl border border-stitch-primary/10 bg-stitch-surfaceContainerHigh/70 px-2.5 py-1.5 text-center shadow-[var(--stitch-shadow-float)] backdrop-blur sm:px-3 sm:py-2">
-        <p className="font-label text-[10px] uppercase tracking-[0.28em] text-stitch-primary/70">
+      <div className="central-pot-content isolate flex flex-col items-center px-2.5 py-1.5 text-center sm:px-3 sm:py-2">
+        <p className="font-label text-[10px] uppercase tracking-[0.28em] text-stitch-onSurfaceVariant">
           {isZh ? "\u603b\u5e95\u6c60" : "Total Pot"}
         </p>
-        <p className="mt-1 font-headline text-[1.7rem] font-extrabold tracking-tight text-stitch-primary sm:text-3xl">
+        <p className="mt-1 font-label tabular-nums text-[1.7rem] font-semibold tracking-tight text-stitch-primary sm:text-3xl">
           {amountLabel}
         </p>
         {shouldShowStatusBadges ? (

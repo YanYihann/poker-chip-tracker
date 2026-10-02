@@ -43,7 +43,7 @@ function formatDollar(amount: number): string {
 
 function WaitingRoomPageContent() {
   const params = useParams<{ roomCode: string }>();
-  const roomCode = (params.roomCode ?? "").toUpperCase();
+  const roomCode = (params?.roomCode ?? "").toUpperCase();
   const { isZh } = useLanguage();
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
@@ -232,7 +232,7 @@ function WaitingRoomPageContent() {
     : ROOM_STATUS_LABELS.en[roomStatus as keyof typeof ROOM_STATUS_LABELS.en];
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
       <AppTopBar title={isZh ? `\u623f\u95f4 ${roomCode}` : `Room ${roomCode}`} backHref="/profile" />
 
       <section className="space-y-4 px-4 pt-4">

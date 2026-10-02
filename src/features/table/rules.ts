@@ -1,6 +1,11 @@
 ﻿import type { Player, Position, Street } from "@/types/domain";
 
-const POSITION_SEQUENCE: Position[] = ["UTG", "UTG+1", "MP", "LJ", "HJ", "CO"];
+const POSITION_SEQUENCE: Record<number, Position[]> = {
+  4: ["UTG"], 5: ["UTG", "CO"], 6: ["UTG", "HJ", "CO"],
+  7: ["UTG", "MP", "HJ", "CO"], 8: ["UTG", "UTG+1", "MP", "HJ", "CO"],
+  9: ["UTG", "UTG+1", "MP", "LJ", "HJ", "CO"],
+  10: ["UTG", "UTG+1", "UTG+2", "MP", "LJ", "HJ", "CO"]
+};
 
 function sortBySeat(players: Player[]): Player[] {
   return [...players].sort((a, b) => a.seatIndex - b.seatIndex);
@@ -15,19 +20,7 @@ function findSeatIndexByPlayerId(players: Player[], playerId: string): number {
 }
 
 function getNextActiveIndex(players: Player[], startIndex: number): number {
-  const total = players.length;
-  let cursor = startIndex;
-
-  for (let i = 0; i < total; i += 1) {
-    cursor = getNextIndex(cursor, total);
-    const player = players[cursor];
-
-    if (player.status !== "folded") {
-      return cursor;
-    }
-  }
-
-  return startIndex;
+  return getNextIndex(startIndex, players.length);
 }
 
 export function assignPositions(players: Player[], dealerSeatIndex: number): Player[] {
@@ -45,7 +38,7 @@ export function assignPositions(players: Player[], dealerSeatIndex: number): Pla
 
     return seatSorted.map((player, index) => {
       if (index === safeDealerIndex) {
-        return { ...player, position: "BTN" };
+        return { ...player, position: "BTN/SB" };
       }
 
       if (index === otherIndex) {
@@ -72,7 +65,8 @@ export function assignPositions(players: Player[], dealerSeatIndex: number): Pla
     const playerId = seatSorted[cursor].id;
 
     if (!positionById.has(playerId)) {
-      positionById.set(playerId, POSITION_SEQUENCE[positionCursor] ?? "CO");
+      const labels = POSITION_SEQUENCE[seatSorted.length] ?? [];
+      positionById.set(playerId, (labels[positionCursor] ?? "UTG") as Position);
       positionCursor += 1;
     }
   }
@@ -84,7 +78,7 @@ export function assignPositions(players: Player[], dealerSeatIndex: number): Pla
 }
 
 export function getActionablePlayers(players: Player[]): Player[] {
-  return players.filter((player) => player.status !== "folded" && player.status !== "all-in");
+  return players.filter((player) => player.status !== "folded" && player.status !== "all-in" && player.stack > 0);
 }
 
 export function buildActionOrder(
@@ -105,7 +99,7 @@ export function buildActionOrder(
   let startIndex = safeDealerIndex;
 
   if (street === "preflop") {
-    const sbIndex = getNextActiveIndex(seatSorted, safeDealerIndex);
+    const sbIndex = seatSorted.length === 2 ? safeDealerIndex : getNextActiveIndex(seatSorted, safeDealerIndex);
     const bbIndex = getNextActiveIndex(seatSorted, sbIndex);
     startIndex = bbIndex;
   }
@@ -117,7 +111,7 @@ export function buildActionOrder(
     cursor = getNextIndex(cursor, seatSorted.length);
     const player = seatSorted[cursor];
 
-    if (player.status !== "folded" && player.status !== "all-in") {
+    if (player.status !== "folded" && player.status !== "all-in" && player.stack > 0) {
       orderedIds.push(player.id);
     }
   }

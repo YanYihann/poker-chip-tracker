@@ -37,3 +37,9 @@ pnpm-debug.log*
 
 # build cache
 *.tsbuildinfo
+
+/server/dist
+/.vercel
+/artifacts
+.vercel
+.env*

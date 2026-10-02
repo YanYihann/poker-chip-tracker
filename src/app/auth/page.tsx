@@ -13,7 +13,7 @@ type AuthMode = "login" | "register";
 function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("next") || "/rooms/join";
+  const redirectTo = searchParams?.get("next") || "/rooms/join";
   const { isZh } = useLanguage();
 
   const [mode, setMode] = useState<AuthMode>("login");
@@ -34,7 +34,7 @@ function AuthPageContent() {
     (mode === "login" || username.trim().length >= 1);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
       <AppTopBar title={isZh ? "\u8d26\u6237" : "Account"} backHref="/" />
 
       <section className="px-4 pt-4">
@@ -198,7 +198,7 @@ function AuthPageContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
+    <Suspense fallback={<main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8" />}>
       <AuthPageContent />
     </Suspense>
   );

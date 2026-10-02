@@ -5,6 +5,7 @@ export type TableSeatPlayer = {
   name: string;
   avatarUrl?: string | null;
   stackLabel: string;
+  betLabel?: string;
   isPlaceholder?: boolean;
   placeholderLabel?: string;
   placeholderSelected?: boolean;

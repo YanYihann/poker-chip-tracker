@@ -3,6 +3,14 @@ import { z } from "zod";
 
 loadEnv();
 
+// Vercel's Neon integration uses a prefix when DATABASE_URL already exists.
+if (process.env.NEON_DATABASE_URL) {
+  const runtimeUrl = new URL(process.env.NEON_DATABASE_URL);
+  if (!runtimeUrl.searchParams.has("connection_limit")) runtimeUrl.searchParams.set("connection_limit", "2");
+  process.env.DATABASE_URL = runtimeUrl.toString();
+  process.env.DATABASE_URL_DIRECT = process.env.NEON_DATABASE_URL_UNPOOLED ?? process.env.NEON_DATABASE_URL;
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4001),

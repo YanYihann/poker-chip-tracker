@@ -102,12 +102,12 @@ export function TableMotionLayer({ width, height, seatPointsByPlayerId }: TableM
               key={event.id}
               className={
                 isToPot
-                  ? "absolute block h-3 w-3 rounded-full border border-stitch-primary/70 bg-stitch-primaryContainer shadow-[0_0_10px_rgba(242,202,80,0.4)] will-change-transform"
-                  : "absolute block h-3 w-3 rounded-full border border-stitch-mint/70 bg-stitch-mint shadow-[0_0_10px_rgba(36,255,205,0.45)] will-change-transform"
+                  ? "absolute block h-3 w-3 rounded-full border border-stitch-primary/70 bg-stitch-primaryContainer will-change-transform"
+                  : "absolute block h-3 w-3 rounded-full border border-stitch-mint/70 bg-stitch-mint will-change-transform"
               }
               initial={{
-                x: points.start.x - 6,
-                y: points.start.y - 6,
+                x: (prefersReducedMotion ? points.end.x : points.start.x) - 6,
+                y: (prefersReducedMotion ? points.end.y : points.start.y) - 6,
                 scale: 1,
                 opacity: 0.95
               }}

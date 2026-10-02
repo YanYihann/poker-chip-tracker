@@ -12,13 +12,13 @@ import { TableModeScreen } from "@/features/table/presentation/table-mode-screen
 
 function OnlineModePageContent() {
   const searchParams = useSearchParams();
-  const roomCode = (searchParams.get("room") ?? "").toUpperCase();
+  const roomCode = (searchParams?.get("room") ?? "").toUpperCase();
   const adapter = useOnlineRoomTableModeAdapter(roomCode);
   const { isZh } = useLanguage();
 
   if (!roomCode) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+      <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
         <AppTopBar title={isZh ? "在线模式" : "Online Mode"} backHref="/profile" />
         <section className="space-y-3 px-4 pt-4">
           <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
@@ -58,7 +58,7 @@ function OnlineModePageContent() {
 export default function OnlineModePage() {
   return (
     <OnlineAuthGate title="Online Mode Table" backHref="/profile">
-      <Suspense fallback={<main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8" />}>
+      <Suspense fallback={<main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8" />}>
         <OnlineModePageContent />
       </Suspense>
     </OnlineAuthGate>

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { env } from "../config/env.js";
 
 type GlobalWithPrisma = typeof globalThis & {
   prisma?: PrismaClient;
@@ -45,6 +46,8 @@ logDatabaseUrlPoolHints();
 export const prisma =
   globalWithPrisma.prisma ??
   new PrismaClient({
+    datasourceUrl: env.DATABASE_URL,
+    transactionOptions: { maxWait: 10000, timeout: 15000 },
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"]
   });
 

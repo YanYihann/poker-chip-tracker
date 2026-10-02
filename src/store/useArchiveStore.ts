@@ -12,6 +12,7 @@ type ArchiveStore = {
   hydrate: () => void;
   addEntry: (entry: ArchivedSessionRecord) => void;
   clearEntries: () => void;
+  removeLatestEntry: () => void;
 };
 
 export const useArchiveStore = create<ArchiveStore>((set, get) => ({
@@ -31,6 +32,11 @@ export const useArchiveStore = create<ArchiveStore>((set, get) => ({
     const nextEntries = [entry, ...get().entries].slice(0, 200);
     saveArchiveSessions(nextEntries);
     set({ entries: nextEntries, hydrated: true });
+  },
+  removeLatestEntry: () => {
+    const entries = get().entries.slice(1);
+    saveArchiveSessions(entries);
+    set({entries});
   },
   clearEntries: () => {
     saveArchiveSessions([]);

@@ -9,10 +9,12 @@ export type PlayerStatus = "waiting" | "acting" | "folded" | "all-in" | "winner"
 
 export type Position =
   | "BTN"
+  | "BTN/SB"
   | "SB"
   | "BB"
   | "UTG"
   | "UTG+1"
+  | "UTG+2"
   | "MP"
   | "LJ"
   | "HJ"
@@ -71,6 +73,7 @@ export type HandSlice = {
   actionIndex: number;
   lastActionType?: TableActionType;
   actionCount: number;
+  actedAtBet?: Record<string, number>;
 };
 
 export type BettingSlice = {

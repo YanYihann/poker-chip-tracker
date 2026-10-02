@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import { useLanguage } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/cn";
 
@@ -8,6 +10,7 @@ type MainActionItem = {
   topLabel: string;
   mainLabel: string;
   onPress: () => void;
+  disabled?: boolean;
 };
 
 type UtilityActionItem = {
@@ -42,18 +45,28 @@ export function BottomActionPanel({
   previousActionHint
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const workspace = panel.closest<HTMLElement>(".table-workspace");
+    const observer = new ResizeObserver(() => workspace?.style.setProperty("--action-panel-height", `${panel.offsetHeight}px`));
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, []);
   const shouldShowEmptyMainActions = mainActions.length === 0 && utilityActions.length === 0 && !canOpenSettlement;
 
   return (
-    <section className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 rounded-t-[22px] border-t border-stitch-primary/10 bg-stitch-surface-container/95 px-2 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:rounded-t-[28px] sm:px-4 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-3">
+    <section ref={panelRef} aria-label={isZh ? "牌局操作" : "Table actions"} className="action-panel">
+      <h2 className="action-panel-heading">{isZh ? "牌局操作" : "Table actions"}</h2>
       {utilityActions.length > 0 ? (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {utilityActions.map((action) => (
             <button
               key={action.id}
               type="button"
               className={cn(
-                "rounded-full border border-stitch-outlineVariant/20 px-3 py-1 text-[11px] font-label text-stitch-onSurfaceVariant transition",
+                "min-h-11 rounded-xl border border-stitch-outlineVariant/20 px-3 py-2 text-xs font-label text-stitch-onSurfaceVariant transition",
                 action.disabled ? "cursor-not-allowed opacity-40" : "hover:bg-stitch-surfaceBright/50"
               )}
               onClick={action.onPress}
@@ -66,7 +79,7 @@ export function BottomActionPanel({
       ) : null}
 
       {previousActionHint ? (
-        <article className="mt-1.5 rounded-lg border border-[#39ff14]/45 bg-[#39ff14]/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#8dff72] shadow-[0_0_10px_rgba(57,255,20,0.28)] sm:mt-2">
+        <article className="mt-1.5 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant sm:mt-2">
           {previousActionHint}
         </article>
       ) : null}
@@ -76,14 +89,14 @@ export function BottomActionPanel({
           <div className="grid grid-cols-5 gap-1 rounded-lg border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1 sm:rounded-xl">
             <button
               type="button"
-              className="h-7 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
+              className="h-11 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-11 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(-100)}
             >
               -100
             </button>
             <button
               type="button"
-              className="h-7 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
+              className="h-11 min-w-0 rounded-md bg-stitch-tertiary/20 px-1 text-[10px] font-semibold text-stitch-tertiary transition hover:brightness-110 sm:h-11 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(-50)}
             >
               -50
@@ -91,20 +104,21 @@ export function BottomActionPanel({
             <input
               type="text"
               inputMode="numeric"
+              aria-label={isZh ? "本轮下注总额" : "Total wager this round"}
               value={amountControl.value}
               onChange={(event) => amountControl.onValueChange(event.target.value)}
-              className="h-7 min-w-0 w-full rounded-md border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-1 text-center text-[13px] text-stitch-onSurface outline-none focus:border-stitch-primary/50 sm:h-8 sm:rounded-lg sm:text-sm"
+              className="h-11 min-w-0 w-full rounded-md border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-1 text-center text-[13px] text-stitch-onSurface focus:border-stitch-primary/50 sm:h-11 sm:rounded-lg sm:text-sm"
             />
             <button
               type="button"
-              className="h-7 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
+              className="h-11 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-11 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(50)}
             >
               +50
             </button>
             <button
               type="button"
-              className="h-7 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-8 sm:rounded-lg sm:text-[11px]"
+              className="h-11 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-11 sm:rounded-lg sm:text-[11px]"
               onClick={() => amountControl.onStep(100)}
             >
               +100
@@ -124,16 +138,17 @@ export function BottomActionPanel({
               key={action.id}
               type="button"
               className={cn(
-                "flex h-14 flex-col items-center justify-center rounded-xl border px-1.5 text-center transition active:scale-95 sm:h-16 sm:rounded-2xl sm:px-2",
+                "flex h-14 flex-col items-center justify-center rounded-xl border px-1.5 text-center transition-[transform,background-color] duration-150 active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed sm:h-16 sm:rounded-2xl sm:px-2",
                 action.id === "all-in"
                   ? "border-stitch-primary/40 bg-stitch-surfaceContainerHighest text-stitch-primary"
                   : action.id === "bet" || action.id === "raise"
-                    ? "border-stitch-primary/20 bg-gradient-to-b from-stitch-primary to-stitch-primaryContainer text-stitch-onPrimary shadow-[0_10px_30px_rgba(242,202,80,0.3)]"
+                    ? "border-stitch-primary/20 bg-gradient-to-b from-stitch-primary to-stitch-primaryContainer text-stitch-onPrimary"
                     : action.id === "fold"
                       ? "border-stitch-tertiary/25 bg-stitch-tertiary/10 text-stitch-tertiary"
                       : "border-stitch-mint/25 bg-stitch-surfaceContainerHighest text-stitch-mint"
               )}
               onClick={action.onPress}
+              disabled={action.disabled}
             >
               {!isZh ? (
                 <span className="font-label text-[8px] uppercase tracking-[0.16em] opacity-80 sm:text-[9px] sm:tracking-[0.2em]">
@@ -142,7 +157,7 @@ export function BottomActionPanel({
               ) : null}
               <span
                 className={cn(
-                  "font-headline text-[1.02rem] font-bold italic sm:text-base",
+                  "text-base font-semibold",
                   !isZh ? "mt-0.5 sm:mt-1" : ""
                 )}
               >

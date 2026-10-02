@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "regions": [
+    "iad1"
+  ],
+  "functions": {
+    "src/pages/api/[...path].js": {
+      "maxDuration": 60
+    }
+  },
+  "buildCommand": "npm run build"
+}

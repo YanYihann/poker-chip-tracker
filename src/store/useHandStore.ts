@@ -14,7 +14,8 @@ function createInitialHandSlice(): HandSlice {
     actingPlayerId: actionOrder[0] ?? null,
     actionOrder,
     actionIndex: 0,
-    actionCount: 0
+    actionCount: 0,
+    actedAtBet: {}
   };
 }
 
@@ -22,6 +23,7 @@ type HandStore = HandSlice & {
   historyStack: TableSnapshot[];
   auditTrail: HandAuditEntry[];
   setActionOrder: (actionOrder: string[]) => void;
+  setActedAtBet: (values: Record<string, number>) => void;
   setActingPlayerId: (playerId: string | null) => void;
   setStreet: (street: HandSlice["street"]) => void;
   setStatus: (status: HandSlice["status"]) => void;
@@ -39,6 +41,7 @@ export const useHandStore = create<HandStore>((set, get) => ({
   ...INITIAL_HAND,
   historyStack: [],
   auditTrail: [],
+  setActedAtBet: (actedAtBet) => set({ actedAtBet }),
   setActionOrder: (actionOrder) => {
     set({ actionOrder, actionIndex: 0, actingPlayerId: actionOrder[0] ?? null });
   },
@@ -86,7 +89,9 @@ export const useHandStore = create<HandStore>((set, get) => ({
       actingPlayerId: actionOrder[0] ?? null,
       actionIndex: 0,
       lastActionType: undefined,
-      actionCount: 0
+      actionCount: 0,
+      actedAtBet: {},
+      historyStack: []
     });
   },
   applySnapshot: (slice) => {
@@ -97,7 +102,8 @@ export const useHandStore = create<HandStore>((set, get) => ({
       actionOrder: slice.actionOrder,
       actionIndex: slice.actionIndex,
       lastActionType: slice.lastActionType,
-      actionCount: slice.actionCount
+      actionCount: slice.actionCount,
+      actedAtBet: slice.actedAtBet ?? {}
     });
   }
 }));

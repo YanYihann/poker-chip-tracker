@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { recordPerfSample } from "../../lib/perf-metrics.js";
 import type { RoomActionPatch, RoomActionTraceMeta } from "../../realtime/room-patch.js";
 import { compareHoldemHandStrength, evaluateBestHoldemHand } from "./hand-evaluator.js";
+import { legalBettingActions, minimumRaiseTo, replayBettingRound, splitPotClockwise } from "./betting-round.js";
 import {
   createStandardDeck,
   dealCards,
@@ -487,19 +488,21 @@ function getCurrentBet(players: RoomPlayerRecord[]): number {
 function computeLegalActions(
   player: RoomPlayerRecord | null,
   currentBet: number,
-  isTurn: boolean
+  isTurn: boolean,
+  bigBlind = 1,
+  actions: HandActionRecord[] = [],
+  opponents: RoomPlayerRecord[] = []
 ): PlayerActionType[] {
   if (!player || !isTurn || player.hasFolded || player.isAllIn || toNumber(player.stack) <= 0) {
     return [];
   }
 
-  const toCall = Math.max(0, currentBet - toNumber(player.currentBet));
-
-  if (toCall === 0) {
-    return ["fold", "check", "bet", "all-in"];
-  }
-
-  return ["fold", "call", "raise", "all-in"];
+  const round = replayBettingRound(actions.map((a) => ({ playerId: a.userId, actionType: a.actionType, amount: toNumber(a.amount) })), bigBlind);
+  return legalBettingActions({
+    stack: toNumber(player.stack), playerBet: toNumber(player.currentBet), currentBet,
+    minRaiseDelta: round.minRaiseDelta, bigBlind, lastActedBet: round.actedAtBet[player.userId],
+    canOpponentRespond: opponents.some((p) => p.userId !== player.userId && !p.hasFolded && !p.isAllIn && toNumber(p.stack) > 0)
+  });
 }
 
 function computeNextStreet(street: StreetCode): StreetCode {
@@ -617,7 +620,6 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
               orderBy: {
                 actionOrder: "desc"
               },
-              take: 1,
               select: {
                 userId: true,
                 seatIndex: true,
@@ -728,7 +730,6 @@ async function fetchRoomPatchSnapshotByCode(roomCode: string): Promise<RoomPatch
               orderBy: {
                 actionOrder: "desc"
               },
-              take: 1,
               select: {
                 userId: true,
                 seatIndex: true,
@@ -770,6 +771,7 @@ function buildRoomActionPatchFromSnapshot(snapshot: RoomPatchSnapshot): RoomActi
     roomMode === "online" ? normalizeCardList(latestHand?.boardCards ?? []) : [];
   const boardCards = roomMode === "online" ? revealedBoardCardsByStreet(reservedBoardCards, streetCode) : [];
   const minBet = Math.max(1, toNumber(snapshot.bigBlind));
+  const round = replayBettingRound([...(latestHand?.actions ?? [])].reverse().filter((a) => a.street === streetCode).map((a) => ({ playerId: a.userId, actionType: a.actionType, amount: toNumber(a.amount) })), minBet);
   const latestAction = latestHand?.actions[0] ?? null;
   const latestActionType = toPublicActionType(latestAction?.actionType);
   const lastAction =
@@ -802,7 +804,7 @@ function buildRoomActionPatchFromSnapshot(snapshot: RoomPatchSnapshot): RoomActi
             sbSeat: latestHand.sbSeat ?? null,
             bbSeat: latestHand.bbSeat ?? null,
             minBet,
-            minRaiseDelta: minBet,
+            minRaiseDelta: round.minRaiseDelta,
             boardCards,
             lastAction
           },
@@ -907,7 +909,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   const mePlayer = sortedPlayers.find((player) => player.userId === currentUserId) ?? null;
   const allReady = players.length > 0 && players.every((player) => player.isReady);
 
-  const currentBet = getCurrentBet(sortedPlayers);
+  const currentBet = streetCode === "PREFLOP" && gameStatus === "in-progress" ? Math.max(getCurrentBet(sortedPlayers), toNumber(room.bigBlind)) : getCurrentBet(sortedPlayers);
   const activePlayer = sortedPlayers.find((player) => player.seatIndex === activeSeat) ?? null;
   const isMyTurn =
     roomStatus === "active" &&
@@ -917,6 +919,8 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
     activeSeat !== null &&
     mePlayer.seatIndex === activeSeat;
 
+  const streetActions = [...(latestHand?.actions ?? [])].reverse().filter((a) => a.street === streetCode);
+  const round = replayBettingRound(streetActions.map((a) => ({ playerId: a.userId, actionType: a.actionType, amount: toNumber(a.amount) })), Math.max(1, toNumber(room.bigBlind)));
   const toCall = mePlayer ? Math.max(0, currentBet - toNumber(mePlayer.currentBet)) : 0;
   const contenders = sortedPlayers.filter((player) => !player.hasFolded && player.seatIndex !== null);
   const playerNameMap = new Map(players.map((player) => [player.userId, player.displayName]));
@@ -1026,10 +1030,10 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
             sbSeat: latestHand?.sbSeat ?? null,
             bbSeat: latestHand?.bbSeat ?? null,
             isMyTurn,
-            legalActions: computeLegalActions(mePlayer, currentBet, isMyTurn && gameStatus === "in-progress"),
+            legalActions: computeLegalActions(mePlayer, currentBet, isMyTurn && gameStatus === "in-progress", Math.max(1, toNumber(room.bigBlind)), streetActions, sortedPlayers),
             toCall,
             minBet: Math.max(1, toNumber(room.bigBlind)),
-            minRaiseDelta: Math.max(1, toNumber(room.bigBlind)),
+            minRaiseDelta: round.minRaiseDelta,
             canSettle: !!mePlayer?.isHost && gameStatus === "showdown",
             canDecideNextHand: !!mePlayer?.isHost && gameStatus === "settled",
             myHoleCards,
@@ -1338,6 +1342,11 @@ async function settleCurrentHand(input: {
       continue;
     }
 
+    if (sidePot.participantUserIds.length === 1) {
+      const owner = sidePot.participantUserIds[0];
+      payoutByUserId.set(owner, (payoutByUserId.get(owner) ?? 0) + sidePot.amount);
+      continue;
+    }
     const eligibleParticipants = sidePot.participantUserIds
       .filter((userId) => contenderSet.has(userId))
       .map((userId) => contenderByUserId.get(userId))
@@ -1394,12 +1403,10 @@ async function settleCurrentHand(input: {
       throw new Error("INVALID_WINNERS");
     }
 
-    const eachShare = Math.floor(sidePot.amount / eligibleWinners.length);
-    const remainder = sidePot.amount % eligibleWinners.length;
-
-    eligibleWinners.forEach((winner, index) => {
+    const shares = splitPotClockwise(sidePot.amount, eligibleWinners.map((p) => ({ playerId: p.userId, seatIndex: p.seatIndex ?? 0 })), hand.dealerSeat);
+    eligibleWinners.forEach((winner) => {
       const previous = payoutByUserId.get(winner.userId) ?? 0;
-      payoutByUserId.set(winner.userId, previous + eachShare + (index === 0 ? remainder : 0));
+      payoutByUserId.set(winner.userId, previous + shares[winner.userId]);
     });
 
     if (eligibleWinners.length > 1) {
@@ -2333,6 +2340,7 @@ export async function applyPlayerActionByRoomCode(input: {
     }
 
     await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM game_rooms WHERE room_code = ${roomCode} FOR UPDATE`;
     const room = (await tx.gameRoom.findUnique({
       where: { roomCode },
       include: {
@@ -2382,8 +2390,11 @@ export async function applyPlayerActionByRoomCode(input: {
       throw new Error("NOT_YOUR_TURN");
     }
 
-    const currentBet = getCurrentBet(players);
-    const legalActions = computeLegalActions(actor, currentBet, true);
+    const existingHandActions = await tx.handAction.findMany({ where: { handId: hand.id }, orderBy: { actionOrder: "asc" } });
+    const streetActions = existingHandActions.filter((a) => a.street === street);
+    const round = replayBettingRound(streetActions.map((a) => ({ playerId: a.userId, actionType: a.actionType, amount: toNumber(a.amount) })), Math.max(1, toNumber(room.bigBlind)));
+    const currentBet = street === "PREFLOP" ? Math.max(getCurrentBet(players), toNumber(room.bigBlind)) : getCurrentBet(players);
+    const legalActions = computeLegalActions(actor, currentBet, true, Math.max(1, toNumber(room.bigBlind)), streetActions, players);
 
     if (!legalActions.includes(input.actionType)) {
       throw new Error("ILLEGAL_ACTION");
@@ -2425,7 +2436,7 @@ export async function applyPlayerActionByRoomCode(input: {
         }
 
         const requested = input.amount ?? bigBlind;
-        if (requested < bigBlind) {
+        if (!Number.isSafeInteger(requested) || requested < bigBlind || requested > actorStack) {
           throw new Error("ILLEGAL_ACTION");
         }
 
@@ -2439,13 +2450,9 @@ export async function applyPlayerActionByRoomCode(input: {
         break;
       }
       case "raise": {
-        if (toCall <= 0) {
-          throw new Error("ILLEGAL_ACTION");
-        }
-
-        const minRaiseTo = currentBet + bigBlind;
+        const minRaiseTo = minimumRaiseTo(currentBet, round.minRaiseDelta, bigBlind);
         const requestedRaiseTo = input.amount ?? minRaiseTo;
-        if (requestedRaiseTo < minRaiseTo || requestedRaiseTo <= currentBet) {
+        if (!Number.isSafeInteger(requestedRaiseTo) || requestedRaiseTo < minRaiseTo || requestedRaiseTo <= currentBet) {
           throw new Error("ILLEGAL_ACTION");
         }
 
@@ -2491,16 +2498,6 @@ export async function applyPlayerActionByRoomCode(input: {
       });
     }
 
-    const existingHandActions = await tx.handAction.findMany({
-      where: {
-        handId: hand.id
-      },
-      select: {
-        actionOrder: true,
-        seatIndex: true,
-        street: true
-      }
-    });
     const nextActionOrder = existingHandActions.reduce(
       (maxOrder, action) => Math.max(maxOrder, action.actionOrder),
       0
@@ -2555,33 +2552,17 @@ export async function applyPlayerActionByRoomCode(input: {
     let roundComplete = false;
     let nextActiveSeat: number | null = null;
 
-    if (nextCurrentBetMax === 0) {
-      const actedSeats = new Set(
-        existingHandActions
-          .filter((action) => action.street === street)
-          .map((action) => action.seatIndex)
-      );
-      actedSeats.add(actor.seatIndex);
-      roundComplete = actionable.every((player) =>
-        player.seatIndex !== null ? actedSeats.has(player.seatIndex) : false
-      );
-
-      if (!roundComplete) {
-        nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) =>
-          actionable.some((candidate) => candidate.id === player.id)
-        );
-      }
-    } else {
-      const needResponse = actionable.filter(
-        (player) => toNumber(player.currentBet) < nextCurrentBetMax
-      );
-      roundComplete = needResponse.length === 0;
-
-      if (!roundComplete) {
-        nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (player) =>
-          needResponse.some((candidate) => candidate.id === player.id)
-        );
-      }
+    const actedUserIds = new Set(streetActions.filter((a) => a.actionType !== "POST_SB" && a.actionType !== "POST_BB").map((a) => a.userId));
+    actedUserIds.add(actor.userId);
+    const responseBet = street === "PREFLOP" ? Math.max(bigBlind, nextCurrentBetMax) : nextCurrentBetMax;
+    const needResponse = actionable.filter((p) => toNumber(p.currentBet) < responseBet || (actionable.length > 1 && !actedUserIds.has(p.userId)));
+    roundComplete = needResponse.length === 0;
+    if (!roundComplete) nextActiveSeat = getNextSeat(seatedNextPlayers, actor.seatIndex, (p) => needResponse.some((candidate) => candidate.id === p.id));
+    // A single non-all-in player cannot make an uncontested side bet.
+    if (roundComplete && actionable.length <= 1) {
+      await moveHandToShowdown({ tx, roomId: room.id, handId: hand.id, finalPotTotal });
+      await autoSettleOnlineIfNeeded({ tx, roomId: room.id });
+      return;
     }
 
     if (!roundComplete && nextActiveSeat !== null) {
