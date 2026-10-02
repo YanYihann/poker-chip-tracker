@@ -8,7 +8,7 @@
 
 本地快速开局，或通过房间码进行服务端权威的多人联机牌局。
 
-[Documentation](docs/) · [Report Bug](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=bug) · [Request Feature](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=enhancement)
+[Open app](https://poker.yanyihan.top/) · [Documentation](docs/) · [Report Bug](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=bug) · [Request Feature](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=enhancement)
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-realtime-010101?logo=socketdotio&logoColor=white)](https://socket.io/)
@@ -22,7 +22,7 @@
 PokerChip Ledger covers a home-game session from table creation and buy-ins through player actions, showdown settlement, session archiving, and personal history. It supports two modes:
 
 - **Local mode:** fast manual scorekeeping for an in-person table.
-- **Online mode:** room-code access with server-authoritative state and Socket.IO synchronization.
+- **Online mode:** room-code access with server-authoritative state; HTTP polling on Vercel and Socket.IO on standalone servers.
 
 > PokerChip Ledger is a scorekeeping utility. It does not process wagers, payments, or real-money gaming.
 
@@ -41,7 +41,7 @@ PokerChip Ledger covers a home-game session from table creation and buy-ins thro
 | Settlement | Showdown settlement and balance calculation |
 | Local play | Browser-based manual game tracking |
 | Online rooms | Join by room code with authoritative server state |
-| Realtime | Socket.IO room updates and action patches |
+| Synchronization | Vercel room refresh every 1.5 seconds; Socket.IO updates on standalone servers |
 | Accounts | Registration, login, session-cookie authentication, and profiles |
 | History | Archived sessions and personal statistics |
 
@@ -180,6 +180,7 @@ poker-chip-tracker/
 ```bash
 npm run typecheck
 npm run lint
+npm test
 npm run build
 
 cd server
@@ -190,6 +191,7 @@ npm run build
 
 Deployment references:
 
+- [Vercel + Neon guide](docs/deployment-vercel.md) — current production deployment
 - [Railway + Neon guide](docs/deployment-railway-neon.md)
 - [Deployment checklist](docs/deployment-checklist.md)
 
