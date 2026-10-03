@@ -100,25 +100,21 @@ export function TableMotionLayer({ width, height, seatPointsByPlayerId }: TableM
           return (
             <motion.span
               key={event.id}
-              className={
-                isToPot
-                  ? "absolute block h-3 w-3 rounded-full border border-stitch-primary/70 bg-stitch-primaryContainer will-change-transform"
-                  : "absolute block h-3 w-3 rounded-full border border-stitch-mint/70 bg-stitch-mint will-change-transform"
-              }
+              className={`chip-flight ${isToPot ? "chip-bet" : "chip-win"}`}
               initial={{
-                x: (prefersReducedMotion ? points.end.x : points.start.x) - 6,
-                y: (prefersReducedMotion ? points.end.y : points.start.y) - 6,
+                x: (prefersReducedMotion ? points.end.x : points.start.x) - 10,
+                y: (prefersReducedMotion ? points.end.y : points.start.y) - 10,
                 scale: 1,
                 opacity: 0.95
               }}
               animate={{
-                x: points.end.x - 6,
-                y: points.end.y - 6,
-                scale: prefersReducedMotion ? 1 : 0.72,
-                opacity: 0
+                x: points.end.x - 10,
+                y: points.end.y - 10,
+                scale: prefersReducedMotion ? 1 : [1, 1.15, 0.85],
+                opacity: [1, 1, 0]
               }}
               transition={{
-                duration: prefersReducedMotion ? 0.14 : 0.42,
+                duration: prefersReducedMotion ? 0.1 : 0.48,
                 delay: (event.delayMs ?? 0) / 1000,
                 ease: [0.18, 0.8, 0.24, 1]
               }}

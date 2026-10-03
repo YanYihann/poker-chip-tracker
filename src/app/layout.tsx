@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Newsreader, Space_Grotesk } from "next/font/google";
+import { Manrope, Bungee } from "next/font/google";
 
 import { LanguageProvider } from "@/components/i18n/language-provider";
 import "./globals.css";
@@ -9,12 +9,8 @@ const bodyFont = Manrope({
   variable: "--font-body"
 });
 
-const headlineFont = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-headline"
-});
-
-const labelFont = Space_Grotesk({
+const labelFont = Bungee({
+  weight: "400",
   subsets: ["latin"],
   variable: "--font-label"
 });
@@ -30,8 +26,8 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="zh-CN">
-      <body className={`${bodyFont.variable} ${headlineFont.variable} ${labelFont.variable}`}>
+    <html lang="en-US">
+      <body className={`${bodyFont.variable} ${labelFont.variable}`}>
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

@@ -3,64 +3,36 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
-import { AppTopBar } from "@/components/layout/app-top-bar";
+import { PageShell } from "@/components/layout/page-shell";
+import { EntryArt } from "@/components/layout/entry-art";
 import { useOnlineRoomTableModeAdapter } from "@/features/table/adapters/useOnlineRoomTableModeAdapter";
 import { TableModeScreen } from "@/features/table/presentation/table-mode-screen";
 
+function OnlineTable({ roomCode }: { roomCode: string }) {
+  const adapter = useOnlineRoomTableModeAdapter(roomCode);
+  return <TableModeScreen adapter={adapter} />;
+}
 function OnlineModePageContent() {
   const searchParams = useSearchParams();
   const roomCode = (searchParams?.get("room") ?? "").toUpperCase();
-  const adapter = useOnlineRoomTableModeAdapter(roomCode);
   const { isZh } = useLanguage();
-
-  if (!roomCode) {
-    return (
-      <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
-        <AppTopBar title={isZh ? "在线模式" : "Online Mode"} backHref="/profile" />
-        <section className="space-y-3 px-4 pt-4">
-          <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-            <h2 className="font-headline text-2xl text-stitch-onSurface">
-              {isZh ? "选择一个房间进入牌桌" : "Choose a Room to Enter Table"}
-            </h2>
-            <p className="mt-2 text-sm text-stitch-onSurfaceVariant">
-              {isZh
-                ? "在线牌桌由服务端状态驱动。先创建房间或输入房间码加入。"
-                : "Online table is server-authoritative. Create a room or join by room code first."}
-            </p>
-            <div className="mt-4 flex gap-2">
-              <Link
-                href="/rooms/create"
-                className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary"
-              >
-                {isZh ? "创建房间" : "Create Room"}
-              </Link>
-              <Link
-                href="/rooms/join"
-                className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant"
-              >
-                {isZh ? "加入房间" : "Join Room"}
-              </Link>
-            </div>
-          </article>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <TableModeScreen adapter={adapter} />
-  );
+  if (roomCode) return <OnlineAuthGate title={isZh ? "线上牌桌" : "Online table"} backHref="/online"><OnlineTable roomCode={roomCode} /></OnlineAuthGate>;
+  return <PageShell title={isZh ? "游戏大厅" : "Game lobby"} className="lobby-shell">
+    <section className="game-menu" aria-label={isZh ? "游戏模式" : "Game modes"}>
+      <div className="game-menu-title"><h2>TEXAS<br /><span>HOLD’EM</span></h2><p>{isZh ? "德州扑克 · 2–10 人" : "Texas Hold’em · 2–10 players"}</p></div>
+      <EntryArt />
+      <div className="game-menu-actions">
+        <Link href="/rooms/create" className="game-menu-button menu-host"><span>{isZh ? "创建房间" : "CREATE ROOM"}<small>{isZh ? "线上发牌 / 多人同步记分" : "Online play / synced scoring"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
+        <Link href="/rooms/join" className="game-menu-button menu-join"><span>{isZh ? "加入房间" : "JOIN ROOM"}<small>{isZh ? "输入 4 位房间码" : "Enter a 4-digit room code"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
+        <Link href="/local" className="game-menu-button menu-local"><span>{isZh ? "本地记分" : "LOCAL GAME"}<small>{isZh ? "实体牌 · 单设备 · 无需登录" : "Physical cards · One device · No account"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
+      </div>
+      <div className="game-menu-footer"><Link href="/history">{isZh ? "牌局记录" : "History"}</Link><Link href="/profile">{isZh ? "个人资料" : "Profile"}</Link></div>
+    </section>
+  </PageShell>;
 }
-
 export default function OnlineModePage() {
-  return (
-    <OnlineAuthGate title="Online Mode Table" backHref="/profile">
-      <Suspense fallback={<main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8" />}>
-        <OnlineModePageContent />
-      </Suspense>
-    </OnlineAuthGate>
-  );
+  return <Suspense fallback={<main className="app-shell"><div className="loading-skeleton" /></main>}><OnlineModePageContent /></Suspense>;
 }

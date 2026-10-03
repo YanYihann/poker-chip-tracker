@@ -7,7 +7,7 @@ import type { TableSeatPlayer } from "@/components/player/types";
 import { buildActionOrder, assignPositions } from "@/features/table/rules";
 import { startLocalHand, useTableController } from "@/features/table/useTableController";
 import type { TableModeAdapter } from "@/features/table/mode/types";
-import { MAX_PLAYERS } from "@/lib/table-layout";
+import { getAutoSeatIndices, MAX_PLAYERS } from "@/lib/table-layout";
 import { useBettingStore } from "@/store/useBettingStore";
 import { useHandStore } from "@/store/useHandStore";
 import { useMotionStore } from "@/store/useMotionStore";
@@ -171,6 +171,8 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
         return {
           id: `seat-picker-${seatIndex + 1}`,
           name: `S${seatIndex + 1}`,
+          seatIndex,
+          seatCount: MAX_PLAYERS,
           stackLabel: "",
           isPlaceholder: true,
           placeholderLabel: selectedOrder >= 0 ? String(selectedOrder + 1) : "+",
@@ -196,6 +198,8 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     return controller.players.map((player) => ({
       id: player.id,
       name: player.name,
+      seatIndex: player.seatIndex,
+      seatCount: MAX_PLAYERS,
       avatarUrl: player.avatar ?? null,
       stackLabel: formatCurrency(player.stack, locale),
       betLabel: player.currentBet > 0 ? `${isZh ? "注" : "Bet"} ${formatCurrency(player.currentBet, locale)}` : undefined,
@@ -208,9 +212,9 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
 
   const seatSelectionContent =
     seatSelectionMode ? (
-      <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
+      <article className="local-setup rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
         <p className="text-sm font-semibold text-stitch-onSurface">
-          {isZh ? "\u672c\u5730\u5ea7\u4f4d\u9009\u62e9" : "Local Seat Selection"}
+          {isZh ? "牌局设置" : "Game setup"}
         </p>
         <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
           {isZh
@@ -219,7 +223,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
         </p>
         <div className="mt-4 space-y-2">
           <p className="text-xs text-stitch-onSurfaceVariant">{isZh ? "玩家姓名 / 起始筹码（盲注 100 / 200）" : "Player / Starting chips (blinds 100 / 200)"}</p>
-          {controller.players.map((player) => <div key={player.id} className="grid grid-cols-2 gap-2">
+          {controller.players.map((player) => <div key={player.id} className="local-setup-player grid grid-cols-2 gap-2">
             <input aria-label={`${isZh ? "姓名" : "Name"} ${player.id}`} value={player.name} maxLength={24}
               onChange={(event) => useSessionStore.getState().setPlayers(useSessionStore.getState().players.map((p) => p.id === player.id ? {...p,name:event.target.value} : p))}
               className="h-11 min-w-0 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 text-sm" />
@@ -228,7 +232,8 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
               className="h-11 min-w-0 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 text-sm" />
           </div>)}
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" className="min-h-11 rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurface" onClick={() => setSelectedSeats(getAutoSeatIndices(controller.playerCount))}>{isZh ? "自动安排座位" : "Auto-seat"}</button>
           <button
             type="button"
             className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
@@ -243,7 +248,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
               }
             }}
           >
-            {isZh ? "\u786e\u8ba4\u5ea7\u4f4d" : "Confirm Seats"}
+            {isZh ? "确认入座，开始牌局" : "Take seats & play"}
           </button>
           <button
             type="button"
@@ -254,7 +259,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           </button>
         </div>
       </article>
-    ) : (
+    ) : controller.status === "settlement-confirmed" ? (
       <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
         <button
           type="button"
@@ -268,7 +273,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           {isZh ? "\u91cd\u65b0\u9009\u5ea7" : "Reselect Seats"}
         </button>
       </article>
-    );
+    ) : null;
 
   const topActionHint = useMemo(() => {
     if (seatSelectionMode) {

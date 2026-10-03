@@ -1,122 +1,69 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-
+import { usePathname } from "next/navigation";
+import { ArrowLeft } from "@phosphor-icons/react/dist/csr/ArrowLeft";
+import { Cards } from "@phosphor-icons/react/dist/csr/Cards";
+import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
+import { Globe } from "@phosphor-icons/react/dist/csr/Globe";
+import { Minus } from "@phosphor-icons/react/dist/csr/Minus";
+import { Plus } from "@phosphor-icons/react/dist/csr/Plus";
+import { PokerChip } from "@phosphor-icons/react/dist/csr/PokerChip";
+import { Users } from "@phosphor-icons/react/dist/csr/Users";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { fetchProfile } from "@/features/auth/api";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/table-layout";
 
-type AppTopBarProps = {
-  title: string;
-  playerCount?: number;
-  onPlayerCountChange?: (nextCount: number) => void;
-  backHref?: string;
-};
+type AppTopBarProps = { title: string; playerCount?: number; onPlayerCountChange?: (count: number) => void; backHref?: string };
 
-export function AppTopBar({
-  title,
-  playerCount,
-  onPlayerCountChange,
-  backHref
-}: AppTopBarProps) {
-  const { isZh } = useLanguage();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [username, setUsername] = useState<string>("P");
-  const hasPlayerControl =
-    typeof playerCount === "number" && typeof onPlayerCountChange === "function";
-
+export function AppTopBar({ title, playerCount, onPlayerCountChange, backHref }: AppTopBarProps) {
+  const { isZh, toggleLocale } = useLanguage();
+  const pathname = usePathname() ?? "";
+  const [profile, setProfile] = useState<{ username: string; avatarUrl: string | null } | null>(null);
+  const isAuth = pathname === "/auth";
   useEffect(() => {
+    if (isAuth) return;
     let active = true;
-
-    const run = async () => {
-      try {
-        const profile = await fetchProfile();
-        if (!active) {
-          return;
-        }
-        setAvatarUrl(profile.avatarUrl);
-        setUsername(profile.username);
-      } catch {
-        if (!active) {
-          return;
-        }
-        setAvatarUrl(null);
-      }
-    };
-
-    void run();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const avatarLabel = useMemo(() => {
-    const first = username.trim().slice(0, 1).toUpperCase();
-    return first || "P";
-  }, [username]);
-
-  return (
-    <header className="app-top-bar sticky top-0 z-30 border-b border-white/5 bg-[color:var(--panel)]/95 px-4 pb-3 pt-4 backdrop-blur">
-      <div className="flex items-center justify-between gap-2">
-        {backHref ? (
-          <Link
-            href={backHref}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-[color:var(--text)] transition hover:bg-white/10"
-          >
-            {isZh ? "\u8fd4\u56de" : "Back"}
-          </Link>
-        ) : (
-          <Link
-            href="/profile"
-            className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-[color:var(--text)]"
-          >
-            {isZh ? "\u8d26\u6237" : "Account"}
-          </Link>
-        )}
-
-        <h1 className="min-w-0 truncate px-1 text-lg font-semibold text-[color:var(--text)]">{title}</h1>
-
-        <Link
-          href="/profile"
-          aria-label={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"}
-          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/20 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:brightness-110"
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={isZh ? "\u5934\u50cf" : "Avatar"} className="h-full w-full object-cover" />
-          ) : (
-            <span>{avatarLabel}</span>
-          )}
-        </Link>
+    void fetchProfile().then((next) => { if (active) setProfile(next); }).catch(() => { if (active) setProfile(null); });
+    return () => { active = false; };
+  }, [isAuth]);
+  const nav = [
+    { href: "/online", label: isZh ? "游戏大厅" : "Lobby", icon: Users },
+    { href: "/local", label: isZh ? "本地牌桌" : "Local", icon: Cards },
+    { href: "/history", label: isZh ? "牌局记录" : "History", icon: ClockCounterClockwise }
+  ];
+  return <header className="app-top-bar">
+    <div className="app-nav-row">
+      <Link href="/online" className="app-brand" aria-label="PokerChip Ledger">
+        <PokerChip size={30} weight="duotone" aria-hidden="true" />
+        <span>PokerChip<span className="brand-ledger"> Ledger</span></span>
+      </Link>
+      {!isAuth && <nav className="app-nav" aria-label={isZh ? "主导航" : "Main navigation"}>
+        {nav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={pathname.startsWith(href) ? "page" : undefined}>
+          <Icon size={19} aria-hidden="true" /><span>{label}</span>
+        </Link>)}
+      </nav>}
+      <div className="app-nav-tools">
+        <button type="button" className="language-switch" onClick={toggleLocale} aria-label={isZh ? "Switch to English" : "切换中文"}>
+          <Globe size={18} aria-hidden="true" /><span>{isZh ? "EN" : "中文"}</span>
+        </button>
+        {!isAuth && <Link href={profile ? "/profile" : "/auth?next=/online"} className={profile ? "profile-avatar" : "nav-signin"} aria-label={profile ? (isZh ? "个人资料" : "Profile") : undefined}>
+          {profile ? profile.avatarUrl ? // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : profile.username.slice(0, 1).toUpperCase() : isZh ? "登录" : "Sign in"}
+        </Link>}
       </div>
-
-      {title.includes("本地") || title.includes("Local") ? <Link href="/online" className="mt-2 inline-flex min-h-11 items-center text-sm text-stitch-onSurfaceVariant hover:text-stitch-primary">{isZh ? "进入联机房间 →" : "Online rooms →"}</Link> : null}
-
-      {hasPlayerControl ? (
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <button
-            type="button"
-            className="h-11 w-11 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
-            onClick={() => onPlayerCountChange(Math.max(MIN_PLAYERS, playerCount - 1))}
-            aria-label={isZh ? "\u51cf\u5c11\u4eba\u6570" : "Decrease players"}
-          >
-            -
-          </button>
-          <div className="rounded-full bg-[color:var(--surface)] px-4 py-1 text-xs font-semibold tracking-[0.2em] text-[color:var(--muted)]">
-            {isZh ? `${playerCount} \u4eba\u684c` : `${playerCount} Players`}
-          </div>
-          <button
-            type="button"
-            className="h-11 w-11 rounded-full bg-white/5 text-sm text-[color:var(--text)] transition hover:bg-white/10"
-            onClick={() => onPlayerCountChange(Math.min(MAX_PLAYERS, playerCount + 1))}
-            aria-label={isZh ? "\u589e\u52a0\u4eba\u6570" : "Increase players"}
-          >
-            +
-          </button>
-        </div>
-      ) : null}
-    </header>
-  );
+    </div>
+    {!isAuth && <div className="workspace-heading">
+      <div className="workspace-title">
+        {backHref && <Link className="back-link" href={backHref} aria-label={isZh ? "返回" : "Back"}><ArrowLeft size={20} /></Link>}
+        <h1>{title}</h1>
+      </div>
+      {typeof playerCount === "number" && onPlayerCountChange && <div className="player-count-control">
+        <button type="button" disabled={playerCount <= MIN_PLAYERS} onClick={() => onPlayerCountChange(Math.max(MIN_PLAYERS, playerCount - 1))} aria-label={isZh ? "减少人数" : "Decrease players"}><Minus size={16} /></button>
+        <span>{playerCount} {isZh ? "人桌" : "players"}</span>
+        <button type="button" disabled={playerCount >= MAX_PLAYERS} onClick={() => onPlayerCountChange(Math.min(MAX_PLAYERS, playerCount + 1))} aria-label={isZh ? "增加人数" : "Increase players"}><Plus size={16} /></button>
+      </div>}
+    </div>}
+  </header>;
 }

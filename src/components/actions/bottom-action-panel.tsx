@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 import { useLanguage } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/cn";
 
@@ -45,22 +43,13 @@ export function BottomActionPanel({
   previousActionHint
 }: BottomActionPanelProps) {
   const { isZh } = useLanguage();
-  const panelRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const workspace = panel.closest<HTMLElement>(".table-workspace");
-    const observer = new ResizeObserver(() => workspace?.style.setProperty("--action-panel-height", `${panel.offsetHeight}px`));
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, []);
   const shouldShowEmptyMainActions = mainActions.length === 0 && utilityActions.length === 0 && !canOpenSettlement;
 
   return (
-    <section ref={panelRef} aria-label={isZh ? "牌局操作" : "Table actions"} className="action-panel">
+    <section aria-label={isZh ? "牌局操作" : "Table actions"} className="action-panel">
       <h2 className="action-panel-heading">{isZh ? "牌局操作" : "Table actions"}</h2>
       {utilityActions.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="utility-actions flex flex-wrap items-center justify-center gap-2">
           {utilityActions.map((action) => (
             <button
               key={action.id}
@@ -86,6 +75,7 @@ export function BottomActionPanel({
 
       {amountControl ? (
         <div className="mt-1.5 sm:mt-2">
+          <label htmlFor="wager-amount" className="amount-control-label">{isZh ? "本轮下注总额" : "Total wager this round"}</label>
           <div className="grid grid-cols-5 gap-1 rounded-lg border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1 sm:rounded-xl">
             <button
               type="button"
@@ -102,6 +92,7 @@ export function BottomActionPanel({
               -50
             </button>
             <input
+              id="wager-amount"
               type="text"
               inputMode="numeric"
               aria-label={isZh ? "本轮下注总额" : "Total wager this round"}
@@ -131,18 +122,19 @@ export function BottomActionPanel({
         </div>
       ) : null}
 
-      <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:mt-2 sm:gap-2">
+      <div className="action-grid mt-1.5 grid grid-cols-4 gap-1.5 sm:mt-2 sm:gap-2">
         {mainActions.length > 0 ? (
           mainActions.map((action) => (
             <button
               key={action.id}
+              data-action={action.id}
               type="button"
               className={cn(
                 "flex h-14 flex-col items-center justify-center rounded-xl border px-1.5 text-center transition-[transform,background-color] duration-150 active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed sm:h-16 sm:rounded-2xl sm:px-2",
                 action.id === "all-in"
                   ? "border-stitch-primary/40 bg-stitch-surfaceContainerHighest text-stitch-primary"
                   : action.id === "bet" || action.id === "raise"
-                    ? "border-stitch-primary/20 bg-gradient-to-b from-stitch-primary to-stitch-primaryContainer text-stitch-onPrimary"
+                    ? "border-stitch-primary/20 bg-stitch-primary text-stitch-onPrimary"
                     : action.id === "fold"
                       ? "border-stitch-tertiary/25 bg-stitch-tertiary/10 text-stitch-tertiary"
                       : "border-stitch-mint/25 bg-stitch-surfaceContainerHighest text-stitch-mint"

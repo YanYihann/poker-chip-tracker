@@ -43,10 +43,10 @@ function HistoryPageContent() {
   }, [isZh]);
 
   return (
-    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell history-shell">
       <AppTopBar title={isZh ? "牌局历史" : "Session History"} backHref="/" />
 
-      <section className="space-y-4 px-4 pt-4">
+      <section className="page-content content-grid">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
             {isZh ? "正在加载历史记录..." : "Loading history..."}

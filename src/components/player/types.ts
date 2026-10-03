@@ -3,6 +3,8 @@
 export type TableSeatPlayer = {
   id: string;
   name: string;
+  seatIndex?: number;
+  seatCount?: number;
   avatarUrl?: string | null;
   stackLabel: string;
   betLabel?: string;

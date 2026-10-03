@@ -16,7 +16,7 @@ const LanguageContext = createContext<{
 
 function resolveInitialLocale(): AppLocale {
   if (typeof window === "undefined") {
-    return "zh";
+    return "en";
   }
 
   const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -24,7 +24,7 @@ function resolveInitialLocale(): AppLocale {
     return stored;
   }
 
-  return window.navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
+  return "en";
 }
 
 export function getLocaleTag(locale: AppLocale): "zh-CN" | "en-US" {
@@ -36,20 +36,22 @@ type LanguageProviderProps = {
 };
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [locale, setLocale] = useState<AppLocale>("zh");
+  const [locale, setLocale] = useState<AppLocale>("en");
+  const [localeLoaded, setLocaleLoaded] = useState(false);
 
   useEffect(() => {
     setLocale(resolveInitialLocale());
+    setLocaleLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || !localeLoaded) {
       return;
     }
 
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     document.documentElement.lang = getLocaleTag(locale);
-  }, [locale]);
+  }, [locale, localeLoaded]);
 
   const value = useMemo(
     () => ({

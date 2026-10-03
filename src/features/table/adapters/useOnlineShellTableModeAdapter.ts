@@ -19,7 +19,7 @@ const STATUS_LABELS: Record<AppLocale, string> = {
 
 export function useOnlineShellTableModeAdapter(): TableModeAdapter {
   const { locale, isZh } = useLanguage();
-  const [playerCount, setPlayerCount] = useState(6);
+  const [playerCount, setPlayerCount] = useState(4);
 
   const players = useMemo(
     () =>

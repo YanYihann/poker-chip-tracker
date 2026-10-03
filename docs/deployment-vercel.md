@@ -14,11 +14,15 @@ The Next.js frontend and Express API share one Vercel project. `/api/*` is route
 - Deploy using `vercel --prod` and verify `/api/health` returns 200, then test authentication, two-player room joining and a complete hand.
 - Configure only `poker.yanyihan.top` in DNS using the record recommended by Vercel. Leave the parent domain and other services intact.
 
-The home route opens local mode without an account. Local gameplay does not require the API after the page has loaded. Online play requires a reachable PostgreSQL database.
+The home route opens the game lobby. Local mode at `/local` needs no account, and its gameplay does not require the API after the page has loaded. Online play requires a reachable PostgreSQL database.
 
 API functions use `iad1`, matching the current Neon database's AWS `us-east-1` region. Keep these regions aligned if the database moves: poker actions and settlement use transactions with several database queries. The Prisma transaction timeout is 15 seconds, with a 10 second connection wait budget.
 
 Generated `server/dist` files are ignored and rebuilt during deployment. Production connection strings stay in environment variables.
+
+## Room lifecycle integration checks
+
+Use a disposable local PostgreSQL database whose name ends in `_test`. Apply `server/prisma` migrations with `DATABASE_URL` and `DATABASE_URL_DIRECT` pointing to it. Set `ROOM_TEST_DATABASE_URL` to the same connection string and run `node --import tsx --test tests/room-lifecycle.integration.ts` from the repository root. The suite refuses remote hosts and production Neon overrides; it creates and removes only its own test users and rooms. It checks uniform stacks, auto-ready, both game modes, seat/capacity races, host-only and duplicate start, and reconnect preservation. Without the opt-in variable it skips.
 
 ## Rules validation
 

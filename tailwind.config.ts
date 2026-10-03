@@ -1,33 +1,35 @@
 import type { Config } from "tailwindcss";
 
+const palette = (token: string) => `color-mix(in srgb, var(${token}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
         stitch: {
-          background: "#00180d",
-          surface: "#00180d",
-          surfaceBright: "#1d402f",
-          surfaceContainer: "#012517",
-          surfaceContainerHigh: "#0c3021",
-          surfaceContainerHighest: "#193b2b",
-          surfaceContainerLowest: "#001209",
-          surfaceVariant: "#193b2b",
-          outlineVariant: "#4d4635",
-          primary: "#f2ca50",
-          primaryContainer: "#d4af37",
-          onPrimary: "#3c2f00",
-          onPrimaryContainer: "#554300",
-          mint: "#24ffcd",
-          mintDim: "#00e0b3",
-          tertiary: "#ffbeb9",
-          onSurface: "#c5ebd4",
-          onSurfaceVariant: "#d0c5af"
+          background: palette("--stitch-background"),
+          surface: palette("--stitch-surface"),
+          surfaceBright: palette("--stitch-surface-bright"),
+          surfaceContainer: palette("--stitch-surface-container"),
+          surfaceContainerHigh: palette("--stitch-surface-container-high"),
+          surfaceContainerHighest: palette("--stitch-surface-container-highest"),
+          surfaceContainerLowest: palette("--stitch-surface-container-lowest"),
+          surfaceVariant: palette("--stitch-surface-variant"),
+          outlineVariant: palette("--stitch-outline-variant"),
+          primary: palette("--stitch-primary"),
+          primaryContainer: palette("--stitch-primary-container"),
+          onPrimary: palette("--stitch-on-primary"),
+          onPrimaryContainer: palette("--stitch-on-primary-container"),
+          mint: palette("--stitch-mint"),
+          mintDim: palette("--stitch-mint-dim"),
+          tertiary: palette("--stitch-tertiary"),
+          onSurface: palette("--stitch-on-surface"),
+          onSurfaceVariant: palette("--stitch-on-surface-variant")
         }
       },
       fontFamily: {
-        headline: ["var(--font-headline)", "serif"],
+        headline: ["var(--font-headline)", "var(--font-apple-zh)"],
         body: ["var(--font-body)", "sans-serif"],
         label: ["var(--font-label)", "sans-serif"]
       },

@@ -1,14 +1,16 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { TableSeatPlayer } from "@/components/player/types";
 import { PlayerSeat } from "@/components/player/player-seat";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { CentralPot } from "@/components/pot/central-pot";
 import { TableMotionLayer } from "@/components/table/table-motion-layer";
-import { getSeatCoordinates } from "@/lib/table-layout";
+import { getPlayerSeatCoordinates } from "@/lib/table-layout";
 
 type PokerTableProps = {
+  centerContent?: ReactNode;
   players: TableSeatPlayer[];
   potLabel: string;
   boardCards?: string[] | null;
@@ -20,6 +22,7 @@ type PokerTableProps = {
 };
 
 export function PokerTable({
+  centerContent,
   players,
   potLabel,
   boardCards,
@@ -29,10 +32,13 @@ export function PokerTable({
   street,
   handKey
 }: PokerTableProps) {
+  const { isZh } = useLanguage();
+  const isSeatSelection = players.length > 0 && players.every((player) => player.isPlaceholder);
+  const selectedCount = players.filter((player) => player.placeholderSelected).length;
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
-  const seatCoordinates = useMemo(() => getSeatCoordinates(players.length), [players.length]);
-  const compactSeats = players.length >= 8;
+  const seatCoordinates = useMemo(() => getPlayerSeatCoordinates(players), [players]);
+  const compactSeats = (players[0]?.seatCount ?? players.length) >= 8;
 
   useEffect(() => {
     const node = tableRef.current;
@@ -78,7 +84,10 @@ export function PokerTable({
       >
         <div className="poker-felt-inset absolute inset-[5%]" />
 
-        <CentralPot
+        {centerContent ? <div className="table-seat-prompt absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 text-center">{centerContent}</div> : isSeatSelection ? <div className="table-seat-prompt pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 text-center">
+          <p>{isZh ? "点击 + 入座" : "Pick your seats"}</p>
+          <span>{isZh ? `已选 ${selectedCount} 个座位` : `${selectedCount} seats selected`}</span>
+        </div> : <CentralPot
           amountLabel={potLabel}
           boardCards={boardCards}
           streetLabel={streetLabel}
@@ -86,7 +95,7 @@ export function PokerTable({
           showStatusBadges={showCenterStatusBadges}
           street={street}
           handKey={handKey}
-        />
+        />}
 
         <TableMotionLayer
           width={tableSize.width}

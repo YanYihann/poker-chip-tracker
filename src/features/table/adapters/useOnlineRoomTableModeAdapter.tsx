@@ -159,6 +159,8 @@ function toSeatPlayers(roomState: RoomState | null, locale: AppLocale, isZh: boo
 
     return {
       id: player.userId,
+      seatIndex: player.seatIndex ?? undefined,
+      seatCount: roomState.room.maxPlayers,
       name: player.displayName,
       avatarUrl: player.avatarUrl,
       stackLabel,
@@ -492,6 +494,10 @@ export function useOnlineRoomTableModeAdapter(
     }
 
     const roomStatus = roomState?.room.status;
+    if (roomStatus === "waiting") {
+      router.replace(`/rooms/${encodeURIComponent(roomCode)}`);
+      return;
+    }
     const shouldRedirect = roomStatus === "finished" || roomStatus === "cancelled";
 
     if (!shouldRedirect) {

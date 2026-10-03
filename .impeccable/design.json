@@ -1,0 +1,664 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T03:05:34.222Z",
+  "title": "Design System: PokerChip Ledger",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Golden action",
+        "tonalRamp": [
+          "oklch(15.0% 0.1138 87.49)",
+          "oklch(26.4% 0.1138 87.49)",
+          "oklch(37.9% 0.1138 87.49)",
+          "oklch(49.3% 0.1138 87.49)",
+          "oklch(60.7% 0.1138 87.49)",
+          "oklch(72.1% 0.1138 87.49)",
+          "oklch(83.6% 0.1138 87.49)",
+          "oklch(95.0% 0.1138 87.49)"
+        ]
+      },
+      "primary-container": {
+        "role": "primary",
+        "displayName": "Golden hover",
+        "tonalRamp": [
+          "oklch(15.0% 0.1042 86.21)",
+          "oklch(26.4% 0.1042 86.21)",
+          "oklch(37.9% 0.1042 86.21)",
+          "oklch(49.3% 0.1042 86.21)",
+          "oklch(60.7% 0.1042 86.21)",
+          "oklch(72.1% 0.1042 86.21)",
+          "oklch(83.6% 0.1042 86.21)",
+          "oklch(95.0% 0.1042 86.21)"
+        ]
+      },
+      "on-primary": {
+        "role": "primary",
+        "displayName": "Dark action ink",
+        "tonalRamp": [
+          "oklch(15.0% 0.0202 90.43)",
+          "oklch(26.4% 0.0202 90.43)",
+          "oklch(37.9% 0.0202 90.43)",
+          "oklch(49.3% 0.0202 90.43)",
+          "oklch(60.7% 0.0202 90.43)",
+          "oklch(72.1% 0.0202 90.43)",
+          "oklch(83.6% 0.0202 90.43)",
+          "oklch(95.0% 0.0202 90.43)"
+        ]
+      },
+      "on-primary-container": {
+        "role": "primary",
+        "displayName": "Dark container ink",
+        "tonalRamp": [
+          "oklch(15.0% 0.0285 87.02)",
+          "oklch(26.4% 0.0285 87.02)",
+          "oklch(37.9% 0.0285 87.02)",
+          "oklch(49.3% 0.0285 87.02)",
+          "oklch(60.7% 0.0285 87.02)",
+          "oklch(72.1% 0.0285 87.02)",
+          "oklch(83.6% 0.0285 87.02)",
+          "oklch(95.0% 0.0285 87.02)"
+        ]
+      },
+      "game-red": {
+        "role": "secondary",
+        "displayName": "Create red",
+        "tonalRamp": [
+          "oklch(15.0% 0.1572 25.76)",
+          "oklch(26.4% 0.1572 25.76)",
+          "oklch(37.9% 0.1572 25.76)",
+          "oklch(49.3% 0.1572 25.76)",
+          "oklch(60.7% 0.1572 25.76)",
+          "oklch(72.1% 0.1572 25.76)",
+          "oklch(83.6% 0.1572 25.76)",
+          "oklch(95.0% 0.1572 25.76)"
+        ]
+      },
+      "game-blue": {
+        "role": "secondary",
+        "displayName": "Join blue",
+        "tonalRamp": [
+          "oklch(15.0% 0.0897 245.76)",
+          "oklch(26.4% 0.0897 245.76)",
+          "oklch(37.9% 0.0897 245.76)",
+          "oklch(49.3% 0.0897 245.76)",
+          "oklch(60.7% 0.0897 245.76)",
+          "oklch(72.1% 0.0897 245.76)",
+          "oklch(83.6% 0.0897 245.76)",
+          "oklch(95.0% 0.0897 245.76)"
+        ]
+      },
+      "menu-ink": {
+        "role": "secondary",
+        "displayName": "Warm menu ink",
+        "tonalRamp": [
+          "oklch(15.0% 0.0203 74.66)",
+          "oklch(26.4% 0.0203 74.66)",
+          "oklch(37.9% 0.0203 74.66)",
+          "oklch(49.3% 0.0203 74.66)",
+          "oklch(60.7% 0.0203 74.66)",
+          "oklch(72.1% 0.0203 74.66)",
+          "oklch(83.6% 0.0203 74.66)",
+          "oklch(95.0% 0.0203 74.66)"
+        ]
+      },
+      "mint": {
+        "role": "secondary",
+        "displayName": "Mint status",
+        "tonalRamp": [
+          "oklch(15.0% 0.0754 150.04)",
+          "oklch(26.4% 0.0754 150.04)",
+          "oklch(37.9% 0.0754 150.04)",
+          "oklch(49.3% 0.0754 150.04)",
+          "oklch(60.7% 0.0754 150.04)",
+          "oklch(72.1% 0.0754 150.04)",
+          "oklch(83.6% 0.0754 150.04)",
+          "oklch(95.0% 0.0754 150.04)"
+        ]
+      },
+      "mint-dim": {
+        "role": "secondary",
+        "displayName": "Muted mint status",
+        "tonalRamp": [
+          "oklch(15.0% 0.0748 153.54)",
+          "oklch(26.4% 0.0748 153.54)",
+          "oklch(37.9% 0.0748 153.54)",
+          "oklch(49.3% 0.0748 153.54)",
+          "oklch(60.7% 0.0748 153.54)",
+          "oklch(72.1% 0.0748 153.54)",
+          "oklch(83.6% 0.0748 153.54)",
+          "oklch(95.0% 0.0748 153.54)"
+        ]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Coral feedback",
+        "tonalRamp": [
+          "oklch(15.0% 0.1020 26.88)",
+          "oklch(26.4% 0.1020 26.88)",
+          "oklch(37.9% 0.1020 26.88)",
+          "oklch(49.3% 0.1020 26.88)",
+          "oklch(60.7% 0.1020 26.88)",
+          "oklch(72.1% 0.1020 26.88)",
+          "oklch(83.6% 0.1020 26.88)",
+          "oklch(95.0% 0.1020 26.88)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Deep felt ground",
+        "tonalRamp": [
+          "oklch(15.0% 0.0486 176.34)",
+          "oklch(26.4% 0.0486 176.34)",
+          "oklch(37.9% 0.0486 176.34)",
+          "oklch(49.3% 0.0486 176.34)",
+          "oklch(60.7% 0.0486 176.34)",
+          "oklch(72.1% 0.0486 176.34)",
+          "oklch(83.6% 0.0486 176.34)",
+          "oklch(95.0% 0.0486 176.34)"
+        ]
+      },
+      "surface-container": {
+        "role": "neutral",
+        "displayName": "Charcoal panel",
+        "tonalRamp": [
+          "oklch(15.0% 0.0182 179.38)",
+          "oklch(26.4% 0.0182 179.38)",
+          "oklch(37.9% 0.0182 179.38)",
+          "oklch(49.3% 0.0182 179.38)",
+          "oklch(60.7% 0.0182 179.38)",
+          "oklch(72.1% 0.0182 179.38)",
+          "oklch(83.6% 0.0182 179.38)",
+          "oklch(95.0% 0.0182 179.38)"
+        ]
+      },
+      "surface-container-high": {
+        "role": "neutral",
+        "displayName": "Raised charcoal",
+        "tonalRamp": [
+          "oklch(15.0% 0.0219 168.82)",
+          "oklch(26.4% 0.0219 168.82)",
+          "oklch(37.9% 0.0219 168.82)",
+          "oklch(49.3% 0.0219 168.82)",
+          "oklch(60.7% 0.0219 168.82)",
+          "oklch(72.1% 0.0219 168.82)",
+          "oklch(83.6% 0.0219 168.82)",
+          "oklch(95.0% 0.0219 168.82)"
+        ]
+      },
+      "surface-container-highest": {
+        "role": "neutral",
+        "displayName": "Charcoal highlight",
+        "tonalRamp": [
+          "oklch(15.0% 0.0249 160.52)",
+          "oklch(26.4% 0.0249 160.52)",
+          "oklch(37.9% 0.0249 160.52)",
+          "oklch(49.3% 0.0249 160.52)",
+          "oklch(60.7% 0.0249 160.52)",
+          "oklch(72.1% 0.0249 160.52)",
+          "oklch(83.6% 0.0249 160.52)",
+          "oklch(95.0% 0.0249 160.52)"
+        ]
+      },
+      "surface-container-lowest": {
+        "role": "neutral",
+        "displayName": "Inset charcoal",
+        "tonalRamp": [
+          "oklch(15.0% 0.0235 167.60)",
+          "oklch(26.4% 0.0235 167.60)",
+          "oklch(37.9% 0.0235 167.60)",
+          "oklch(49.3% 0.0235 167.60)",
+          "oklch(60.7% 0.0235 167.60)",
+          "oklch(72.1% 0.0235 167.60)",
+          "oklch(83.6% 0.0235 167.60)",
+          "oklch(95.0% 0.0235 167.60)"
+        ]
+      },
+      "surface-bright": {
+        "role": "neutral",
+        "displayName": "Structural stroke",
+        "tonalRamp": [
+          "oklch(15.0% 0.0201 182.87)",
+          "oklch(26.4% 0.0201 182.87)",
+          "oklch(37.9% 0.0201 182.87)",
+          "oklch(49.3% 0.0201 182.87)",
+          "oklch(60.7% 0.0201 182.87)",
+          "oklch(72.1% 0.0201 182.87)",
+          "oklch(83.6% 0.0201 182.87)",
+          "oklch(95.0% 0.0201 182.87)"
+        ]
+      },
+      "outline-variant": {
+        "role": "neutral",
+        "displayName": "Muted stroke",
+        "tonalRamp": [
+          "oklch(15.0% 0.0296 160.46)",
+          "oklch(26.4% 0.0296 160.46)",
+          "oklch(37.9% 0.0296 160.46)",
+          "oklch(49.3% 0.0296 160.46)",
+          "oklch(60.7% 0.0296 160.46)",
+          "oklch(72.1% 0.0296 160.46)",
+          "oklch(83.6% 0.0296 160.46)",
+          "oklch(95.0% 0.0296 160.46)"
+        ]
+      },
+      "on-surface": {
+        "role": "neutral",
+        "displayName": "Warm information",
+        "tonalRamp": [
+          "oklch(15.0% 0.0259 92.40)",
+          "oklch(26.4% 0.0259 92.40)",
+          "oklch(37.9% 0.0259 92.40)",
+          "oklch(49.3% 0.0259 92.40)",
+          "oklch(60.7% 0.0259 92.40)",
+          "oklch(72.1% 0.0259 92.40)",
+          "oklch(83.6% 0.0259 92.40)",
+          "oklch(95.0% 0.0259 92.40)"
+        ]
+      },
+      "on-surface-variant": {
+        "role": "neutral",
+        "displayName": "Muted information",
+        "tonalRamp": [
+          "oklch(15.0% 0.0221 136.61)",
+          "oklch(26.4% 0.0221 136.61)",
+          "oklch(37.9% 0.0221 136.61)",
+          "oklch(49.3% 0.0221 136.61)",
+          "oklch(60.7% 0.0221 136.61)",
+          "oklch(72.1% 0.0221 136.61)",
+          "oklch(83.6% 0.0221 136.61)",
+          "oklch(95.0% 0.0221 136.61)"
+        ]
+      },
+      "table-felt": {
+        "role": "neutral",
+        "displayName": "Playing felt",
+        "tonalRamp": [
+          "oklch(15.0% 0.0605 172.49)",
+          "oklch(26.4% 0.0605 172.49)",
+          "oklch(37.9% 0.0605 172.49)",
+          "oklch(49.3% 0.0605 172.49)",
+          "oklch(60.7% 0.0605 172.49)",
+          "oklch(72.1% 0.0605 172.49)",
+          "oklch(83.6% 0.0605 172.49)",
+          "oklch(95.0% 0.0605 172.49)"
+        ]
+      },
+      "table-edge": {
+        "role": "neutral",
+        "displayName": "Felt edge",
+        "tonalRamp": [
+          "oklch(15.0% 0.0383 175.80)",
+          "oklch(26.4% 0.0383 175.80)",
+          "oklch(37.9% 0.0383 175.80)",
+          "oklch(49.3% 0.0383 175.80)",
+          "oklch(60.7% 0.0383 175.80)",
+          "oklch(72.1% 0.0383 175.80)",
+          "oklch(83.6% 0.0383 175.80)",
+          "oklch(95.0% 0.0383 175.80)"
+        ]
+      },
+      "table-inset": {
+        "role": "neutral",
+        "displayName": "Felt inset",
+        "tonalRamp": [
+          "oklch(15.0% 0.0654 161.14)",
+          "oklch(26.4% 0.0654 161.14)",
+          "oklch(37.9% 0.0654 161.14)",
+          "oklch(49.3% 0.0654 161.14)",
+          "oklch(60.7% 0.0654 161.14)",
+          "oklch(72.1% 0.0654 161.14)",
+          "oklch(83.6% 0.0654 161.14)",
+          "oklch(95.0% 0.0654 161.14)"
+        ]
+      },
+      "card-face": {
+        "role": "neutral",
+        "displayName": "Warm card stock",
+        "tonalRamp": [
+          "oklch(15.0% 0.0356 89.44)",
+          "oklch(26.4% 0.0356 89.44)",
+          "oklch(37.9% 0.0356 89.44)",
+          "oklch(49.3% 0.0356 89.44)",
+          "oklch(60.7% 0.0356 89.44)",
+          "oklch(72.1% 0.0356 89.44)",
+          "oklch(83.6% 0.0356 89.44)",
+          "oklch(95.0% 0.0356 89.44)"
+        ]
+      },
+      "card-ink": {
+        "role": "neutral",
+        "displayName": "Printed black suit",
+        "tonalRamp": [
+          "oklch(15.0% 0.0209 170.88)",
+          "oklch(26.4% 0.0209 170.88)",
+          "oklch(37.9% 0.0209 170.88)",
+          "oklch(49.3% 0.0209 170.88)",
+          "oklch(60.7% 0.0209 170.88)",
+          "oklch(72.1% 0.0209 170.88)",
+          "oklch(83.6% 0.0209 170.88)",
+          "oklch(95.0% 0.0209 170.88)"
+        ]
+      },
+      "card-red": {
+        "role": "tertiary",
+        "displayName": "Printed red suit",
+        "tonalRamp": [
+          "oklch(15.0% 0.1673 26.15)",
+          "oklch(26.4% 0.1673 26.15)",
+          "oklch(37.9% 0.1673 26.15)",
+          "oklch(49.3% 0.1673 26.15)",
+          "oklch(60.7% 0.1673 26.15)",
+          "oklch(72.1% 0.1673 26.15)",
+          "oklch(83.6% 0.1673 26.15)",
+          "oklch(95.0% 0.1673 26.15)"
+        ]
+      },
+      "card-back": {
+        "role": "neutral",
+        "displayName": "Printed red back",
+        "tonalRamp": [
+          "oklch(15.0% 0.1477 26.15)",
+          "oklch(26.4% 0.1477 26.15)",
+          "oklch(37.9% 0.1477 26.15)",
+          "oklch(49.3% 0.1477 26.15)",
+          "oklch(60.7% 0.1477 26.15)",
+          "oklch(72.1% 0.1477 26.15)",
+          "oklch(83.6% 0.1477 26.15)",
+          "oklch(95.0% 0.1477 26.15)"
+        ]
+      },
+      "card-pattern": {
+        "role": "neutral",
+        "displayName": "Card-back pattern",
+        "tonalRamp": [
+          "oklch(15.0% 0.0696 59.53)",
+          "oklch(26.4% 0.0696 59.53)",
+          "oklch(37.9% 0.0696 59.53)",
+          "oklch(49.3% 0.0696 59.53)",
+          "oklch(60.7% 0.0696 59.53)",
+          "oklch(72.1% 0.0696 59.53)",
+          "oklch(83.6% 0.0696 59.53)",
+          "oklch(95.0% 0.0696 59.53)"
+        ]
+      },
+      "button-depth": {
+        "role": "neutral",
+        "displayName": "Physical dark edge",
+        "tonalRamp": [
+          "oklch(15.0% 0.0308 177.51)",
+          "oklch(26.4% 0.0308 177.51)",
+          "oklch(37.9% 0.0308 177.51)",
+          "oklch(49.3% 0.0308 177.51)",
+          "oklch(60.7% 0.0308 177.51)",
+          "oklch(72.1% 0.0308 177.51)",
+          "oklch(83.6% 0.0308 177.51)",
+          "oklch(95.0% 0.0308 177.51)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Lobby game-menu title."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Compact authentication heading."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Workspace titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Task copy and supporting information."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Shared action labels."
+      },
+      "badge": {
+        "displayName": "Badge",
+        "purpose": "Dense table metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "button-rest",
+        "value": "0 5px 0 var(--button-depth)",
+        "purpose": "Shared action lower edge."
+      },
+      {
+        "name": "button-hover",
+        "value": "0 7px 0 var(--button-depth)",
+        "purpose": "Primary action lift."
+      },
+      {
+        "name": "button-pressed",
+        "value": "0 1px 0 var(--button-depth)",
+        "purpose": "Shared action press."
+      },
+      {
+        "name": "menu-rest",
+        "value": "0 7px 0 var(--button-depth), inset 0 2px 0 rgb(255 255 255 / 15%)",
+        "purpose": "Large entry choices."
+      },
+      {
+        "name": "menu-hover",
+        "value": "0 10px 0 var(--button-depth), inset 0 2px 0 rgb(255 255 255 / 15%)",
+        "purpose": "Large entry hover."
+      },
+      {
+        "name": "seat-depth",
+        "value": "0 3px 0 var(--button-depth)",
+        "purpose": "Seat ledger."
+      },
+      {
+        "name": "profile-panel-depth",
+        "value": "0 4px 0 var(--button-depth)",
+        "purpose": "Profile articles."
+      },
+      {
+        "name": "felt-depth",
+        "value": "0 6px 0 #0e2923",
+        "purpose": "Table base."
+      },
+      {
+        "name": "playing-card-depth",
+        "value": "0 3px 0 rgb(9 30 23 / 45%)",
+        "purpose": "Card stock edge."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(.2,.8,.2,1)",
+        "purpose": "Shared surface and control easing."
+      },
+      {
+        "name": "control-transition",
+        "value": "120ms",
+        "purpose": "Shared button feedback."
+      },
+      {
+        "name": "menu-transition",
+        "value": "130ms",
+        "purpose": "Large entry button feedback."
+      },
+      {
+        "name": "surface-entry",
+        "value": "220ms; translateY(6px) to translateY(0)",
+        "purpose": "Page content arrival."
+      },
+      {
+        "name": "entry-card-spring",
+        "value": "stiffness:260; damping:22; stagger:55ms",
+        "purpose": "Lobby card entrance."
+      },
+      {
+        "name": "pot-spring",
+        "value": "stiffness:420; damping:22",
+        "purpose": "Single response to pot changes."
+      },
+      {
+        "name": "community-card-flip",
+        "value": "280ms; stagger:60ms",
+        "purpose": "Newly revealed cards only."
+      },
+      {
+        "name": "chip-flight",
+        "value": "480ms; cubic-bezier(.18,.8,.24,1)",
+        "purpose": "Actual wager and settlement events."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "CSS animations .01ms; transitions 0ms; chip fade 100ms",
+        "purpose": "Movement is removed on the documented paths. Secondary-button active translation and chip event delay remain source caveats, not reusable rules."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "card-detail-sm",
+        "value": "640px"
+      },
+      {
+        "name": "phone-layout-max",
+        "value": "767px"
+      },
+      {
+        "name": "desktop-table-min",
+        "value": "1024px"
+      },
+      {
+        "name": "narrow-phone-max",
+        "value": "360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Shared physical action with a short press response.",
+      "html": "<button class=\"ds-button-primary\">Start game</button>",
+      "css": ".ds-button-primary { min-height:52px; padding:13px 22px; display:inline-flex; gap:12px; justify-content:center; align-items:center; border-radius:6px; font-size:15px; font-weight:800; white-space:nowrap; box-shadow:0 5px 0 var(--button-depth, #0d241f); transition:transform 120ms var(--ease-out, cubic-bezier(.2,.8,.2,1)),background 120ms,box-shadow 120ms; }.ds-button-primary { background:var(--accent, var(--stitch-primary, #f0cc75)); color:var(--accent-foreground, var(--stitch-on-primary, #2a261b)); }.ds-button-primary { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; cursor:pointer; border:0; }.ds-button-primary:hover:not(:disabled) { background:var(--accent-soft, var(--stitch-primary-container, #ffdc8e)); transform:translateY(-2px); box-shadow:0 7px 0 var(--button-depth, #0d241f); }.ds-button-primary:active:not(:disabled) { transform:translateY(4px); box-shadow:0 1px 0 var(--button-depth, #0d241f); }.ds-button-primary:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }.ds-button-primary:disabled { opacity:.45; box-shadow:none; }@media(prefers-reduced-motion:reduce) { .ds-button-primary { transition-duration:0ms; } .ds-button-primary:hover:not(:disabled),.ds-button-primary:active:not(:disabled) { transform:none; } }"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Shared physical action with a short press response.",
+      "html": "<button class=\"ds-button-secondary\">Cancel</button>",
+      "css": ".ds-button-secondary { min-height:52px; padding:13px 22px; display:inline-flex; gap:12px; justify-content:center; align-items:center; border-radius:6px; font-size:15px; font-weight:800; white-space:nowrap; box-shadow:0 5px 0 var(--button-depth, #0d241f); transition:transform 120ms var(--ease-out, cubic-bezier(.2,.8,.2,1)),background 120ms,box-shadow 120ms; }.ds-button-secondary { background:var(--stitch-surface-container-high, #35443e); color:var(--text, var(--stitch-on-surface, #f6f0dd)); border:1px solid var(--stitch-surface-bright, #536360); }.ds-button-secondary { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; cursor:pointer;  }.ds-button-secondary:hover { background:var(--stitch-surface-container-highest, #44544b); }.ds-button-secondary:active { transform:translateY(4px); box-shadow:0 1px 0 var(--button-depth, #0d241f); }.ds-button-secondary:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(prefers-reduced-motion:reduce) { .ds-button-secondary { transition-duration:0ms; }  }"
+    },
+    {
+      "name": "Create room",
+      "kind": "button",
+      "refersTo": "menu-host",
+      "description": "One of the three explicit entry choices.",
+      "html": "<button class=\"ds-menu-host\">Create room</button>",
+      "css": ".ds-menu-host { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:100px; padding:24px; border-radius:8px; box-shadow:0 7px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); transition:transform 130ms var(--ease-out, cubic-bezier(.2,.8,.2,1)),box-shadow 130ms,filter 130ms; font-size:25px; font-weight:900; }.ds-menu-host { background:var(--game-red, #b83f3b); color:#fff5e8; }.ds-menu-host { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; cursor:pointer; border:0; width:100%; }.ds-menu-host:hover { transform:translateY(-3px) rotate(-.5deg); box-shadow:0 10px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); filter:brightness(1.08); }.ds-menu-host:active { transform:translateY(6px); box-shadow:0 1px 0 var(--button-depth, #0d241f); }.ds-menu-host:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(max-width:1023px) { .ds-menu-host { font-size:22px; } } @media(max-width:767px) { .ds-menu-host { min-height:78px; font-size:21px; } } @media(prefers-reduced-motion:reduce) { .ds-menu-host { transition-duration:0ms; } .ds-menu-host:hover,.ds-menu-host:active { transform:none; } }"
+    },
+    {
+      "name": "Join room",
+      "kind": "button",
+      "refersTo": "menu-join",
+      "description": "One of the three explicit entry choices.",
+      "html": "<button class=\"ds-menu-join\">Join room</button>",
+      "css": ".ds-menu-join { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:100px; padding:24px; border-radius:8px; box-shadow:0 7px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); transition:transform 130ms var(--ease-out, cubic-bezier(.2,.8,.2,1)),box-shadow 130ms,filter 130ms; font-size:25px; font-weight:900; }.ds-menu-join { background:var(--game-blue, #2c618c); color:#fff5e8; }.ds-menu-join { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; cursor:pointer; border:0; width:100%; }.ds-menu-join:hover { transform:translateY(-3px) rotate(-.5deg); box-shadow:0 10px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); filter:brightness(1.08); }.ds-menu-join:active { transform:translateY(6px); box-shadow:0 1px 0 var(--button-depth, #0d241f); }.ds-menu-join:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(max-width:1023px) { .ds-menu-join { font-size:22px; } } @media(max-width:767px) { .ds-menu-join { min-height:78px; font-size:21px; } } @media(prefers-reduced-motion:reduce) { .ds-menu-join { transition-duration:0ms; } .ds-menu-join:hover,.ds-menu-join:active { transform:none; } }"
+    },
+    {
+      "name": "Local scoring",
+      "kind": "button",
+      "refersTo": "menu-local",
+      "description": "One of the three explicit entry choices.",
+      "html": "<button class=\"ds-menu-local\">Local scoring</button>",
+      "css": ".ds-menu-local { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:100px; padding:24px; border-radius:8px; box-shadow:0 7px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); transition:transform 130ms var(--ease-out, cubic-bezier(.2,.8,.2,1)),box-shadow 130ms,filter 130ms; font-size:25px; font-weight:900; }.ds-menu-local { background:var(--accent, var(--stitch-primary, #f0cc75)); color:var(--accent-foreground, var(--stitch-on-primary, #2a261b)); }.ds-menu-local { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; cursor:pointer; border:0; width:100%; }.ds-menu-local:hover { transform:translateY(-3px) rotate(-.5deg); box-shadow:0 10px 0 var(--button-depth, #0d241f),inset 0 2px 0 rgb(255 255 255 / 15%); filter:brightness(1.08); }.ds-menu-local:active { transform:translateY(6px); box-shadow:0 1px 0 var(--button-depth, #0d241f); }.ds-menu-local:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(max-width:1023px) { .ds-menu-local { font-size:22px; } } @media(max-width:767px) { .ds-menu-local { min-height:78px; font-size:21px; } } @media(prefers-reduced-motion:reduce) { .ds-menu-local { transition-duration:0ms; } .ds-menu-local:hover,.ds-menu-local:active { transform:none; } }"
+    },
+    {
+      "name": "Inset text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Explicitly labeled charcoal field with gold focus.",
+      "html": "<label class=\"ds-field\">Nickname<input class=\"ds-input\" value=\"Player\" /></label>",
+      "css": ".ds-field { display:grid; gap:8px; font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; color:var(--text, var(--stitch-on-surface, #f6f0dd)); font-size:14px; }.ds-input { width:100%; padding:12px 16px; border:2px solid var(--stitch-surface-bright, #536360); background:var(--stitch-surface-container-lowest, #172620); color:var(--text, var(--stitch-on-surface, #f6f0dd)); outline:none; transition:border-color 120ms; }.ds-input { min-height:48px; font-size:16px; border-radius:6px; font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; }.ds-input:focus { border-color:var(--accent, var(--stitch-primary, #f0cc75)); }.ds-input:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(prefers-reduced-motion:reduce) { .ds-input { transition-duration:0ms; } }"
+    },
+    {
+      "name": "Route navigation",
+      "kind": "nav",
+      "refersTo": "navigation-item",
+      "description": "Muted links and gold current route.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main\"><a class=\"ds-nav-link\" href=\"#lobby\" aria-current=\"page\">Lobby</a><a class=\"ds-nav-link\" href=\"#history\">History</a></nav>",
+      "css": ".ds-nav { display:flex; gap:8px; font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; }.ds-nav-link { display:flex; align-items:center; gap:8px; min-height:44px; padding:8px 14px; border-radius:6px; color:var(--muted, var(--stitch-on-surface-variant, #c1cbbd)); font-size:14px; white-space:nowrap; transition:background 120ms,color 120ms; }.ds-nav-link { text-decoration:none; }.ds-nav-link:hover { color:var(--text, var(--stitch-on-surface, #f6f0dd)); background:var(--panel, var(--stitch-surface-container, #273431)); }.ds-nav-link[aria-current=page] { color:var(--accent, var(--stitch-primary, #f0cc75)); background:var(--stitch-surface-container-lowest, #172620); box-shadow:0 3px 0 var(--button-depth, #0d241f); }.ds-nav-link:focus-visible { outline:3px solid var(--accent, var(--stitch-primary, #f0cc75)); outline-offset:4px; }@media(prefers-reduced-motion:reduce) { .ds-nav-link { transition-duration:0ms; } }"
+    },
+    {
+      "name": "Neutral status badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Compact noninteractive table metadata.",
+      "html": "<span class=\"ds-badge\">BB</span>",
+      "css": ".ds-badge { display:inline-flex; flex-shrink:0; align-items:center; justify-content:center; white-space:nowrap; border-radius:6px; font-family:var(--font-label,Bungee),sans-serif; font-weight:600; text-transform:uppercase; line-height:1; padding:2px 8px; font-size:11px; letter-spacing:.02em; background:var(--stitch-surface-container-high, #35443e); color:var(--stitch-on-surface-variant, #c1cbbd); border:1px solid color-mix(in srgb,var(--stitch-outline-variant, #84998d) 50%,transparent); }"
+    },
+    {
+      "name": "Playing card",
+      "kind": "card",
+      "refersTo": "playing-card",
+      "description": "Authored rank and suit on warm card stock.",
+      "html": "<div class=\"ds-card\" aria-label=\"A of Hearts\"><span class=\"ds-rank\">A</span><span class=\"ds-suit\" aria-hidden=\"true\">♥</span></div>",
+      "css": ".ds-card { background:var(--card-face, #fff5db); border-color:var(--card-face, #fff5db); box-shadow:0 3px 0 rgb(9 30 23 / 45%); }.ds-card { position:relative; flex-shrink:0; overflow:hidden; border-width:1px; border-style:solid; width:32px; height:48px; border-radius:6px; font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; color:var(--card-red, #b73532); } .ds-rank { position:absolute; left:4px; top:2px; font-weight:700; line-height:1; font-size:9px; } .ds-suit { display:grid; width:100%; height:100%; place-items:center; font-weight:900; font-size:16px; } @media(min-width:640px) { .ds-rank { font-size:10px; } .ds-suit { font-size:18px; } }"
+    },
+    {
+      "name": "Action panel",
+      "kind": "card",
+      "refersTo": "action-panel",
+      "description": "Charcoal container used alongside the felt for game controls.",
+      "html": "<section class=\"ds-action-panel\" aria-label=\"Game actions\"><span class=\"ds-panel-label\">Your turn</span></section>",
+      "css": ".ds-action-panel { position:relative; width:100%; max-width:520px; margin-inline:auto; padding:16px 16px max(16px,env(safe-area-inset-bottom)); border:2px solid var(--stitch-surface-bright, #536360); border-radius:8px; background:var(--panel, var(--stitch-surface-container, #273431)); box-shadow:0 5px 0 var(--button-depth, #0d241f); }.ds-action-panel { font-family:var(--font-body, Manrope),\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif; color:var(--text, var(--stitch-on-surface, #f6f0dd)); } .ds-panel-label { font-size:14px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Felt Game Menu",
+    "overview": "PokerChip Ledger uses a Balatro-inspired game interface: deep green felt, charcoal control surfaces, warm paper cards and chunky colored controls. Clear actions and readable poker state set the hierarchy. This user-authorized world replaces the rejected tournament broadcast and celadon system.\n\nBungee gives Latin headings and numerical readouts their game character; Manrope and Chinese system fallbacks keep functional copy legible. Card fans, printed card backs and short physical press responses supply the personality. Copy stays concise: action verbs, functional nouns and rules needed to make a decision.\n\nThis is a source-derived record, not a claim of browser validation. Normative token values above come from [theme](src/styles/stitch-theme.css), [globals](src/app/globals.css), [spacing tokens](src/styles/tokens.css), [font setup](src/app/layout.tsx) and sampled components. [PRODUCT.md](PRODUCT.md) retains product truth; [the surface brief](docs/surfaces/entry-redesign.md) owns page strategy. Local scoring needs no account; synced rooms require an account and a four-digit code. Hosts choose scoring-only or server-dealt play.",
+    "keyCharacteristics": [
+      "Deep felt, warm card stock and charcoal control surfaces.",
+      "Red create-room, blue join-room and gold local-scoring controls.",
+      "Compact task forms and direct game-menu copy.",
+      "Event-driven card and chip motion with reduced-motion paths."
+    ],
+    "rules": [
+      {
+        "name": "The Labeled Color Rule",
+        "body": "Pair every action or status color with a readable label, sign or game symbol.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Ledger Rule",
+        "body": "Keep names, balances and actions distinct; reserve dense type for the table's compact metadata.",
+        "section": "typography"
+      },
+      {
+        "name": "The Physical Feedback Rule",
+        "body": "Use the dark lower edge to show a control's rest, hover and pressed state; keep the motion brief and tied to interaction.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the deep felt, charcoal, paper and colored-action tokens through the shared theme.",
+      "**Do** keep concise action labels, explicit field labels and visible keyboard focus.",
+      "**Do** preserve local scoring without an account and distinguish scoring-only rooms from server-dealt play.",
+      "**Do** allow dense tables to grow vertically while keeping cards and game state readable.",
+      "**Do** keep phone actions in normal document flow and desktop actions in the right sidebar.",
+      "**Do** tie card, pot and chip movement to entry or actual state changes and respect reduced motion."
+    ],
+    "donts": [
+      "**Don't** restore the rejected broadcast/celadon identity, promotional hero or split auth story.",
+      "**Don't** add invitation slogans, invented claims or decorative feature cards.",
+      "**Don't** copy Balatro artwork, branding or rules; the reference governs visual and motion character.",
+      "**Don't** use color alone to communicate a turn, outcome or action.",
+      "**Don't** hide dealt cards to preserve an arbitrary table height.",
+      "**Don't** add looping ornamental motion or delay a game-state update for an animation."
+    ]
+  }
+}

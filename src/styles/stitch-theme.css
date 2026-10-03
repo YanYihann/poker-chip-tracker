@@ -1,23 +1,36 @@
-﻿:root {
-  --stitch-background: #00180d;
-  --stitch-surface: #00180d;
-  --stitch-surface-bright: #1d402f;
-  --stitch-surface-container: #012517;
-  --stitch-surface-container-high: #0c3021;
-  --stitch-surface-container-highest: #193b2b;
-  --stitch-surface-container-lowest: #001209;
-  --stitch-surface-variant: #193b2b;
-  --stitch-outline-variant: #4d4635;
-  --stitch-primary: #f2ca50;
-  --stitch-primary-container: #d4af37;
-  --stitch-on-primary: #3c2f00;
-  --stitch-on-primary-container: #554300;
-  --stitch-mint: #24ffcd;
-  --stitch-mint-dim: #00e0b3;
-  --stitch-tertiary: #ffbeb9;
-  --stitch-on-surface: #c5ebd4;
-  --stitch-on-surface-variant: #d0c5af;
-
-  --stitch-shadow-float: 0 20px 40px rgba(0, 0, 0, 0.4);
-  --stitch-shadow-ambient: 0 12px 30px rgba(0, 0, 0, 0.5);
+/* Game surfaces: felt, charcoal controls, paper cards, colored actions. */
+:root {
+  --stitch-background: #153e35;
+  --stitch-surface: #153e35;
+  --stitch-surface-bright: #536360;
+  --stitch-surface-container: #273431;
+  --stitch-surface-container-high: #35443e;
+  --stitch-surface-container-highest: #44544b;
+  --stitch-surface-container-lowest: #172620;
+  --stitch-surface-variant: #44544b;
+  --stitch-outline-variant: #84998d;
+  --stitch-primary: #f0cc75;
+  --stitch-primary-container: #ffdc8e;
+  --stitch-on-primary: #2a261b;
+  --stitch-on-primary-container: #373020;
+  --stitch-mint: #a7d8b0;
+  --stitch-mint-dim: #86b995;
+  --stitch-tertiary: #ffaaa0;
+  --stitch-on-surface: #f6f0dd;
+  --stitch-on-surface-variant: #c1cbbd;
+  --stitch-shadow-float: 0 20px 50px rgb(6 13 15 / 25%);
+  --stitch-shadow-ambient: 0 8px 24px rgb(6 13 15 / 18%);
+  --table-felt: #1d5143;
+  --table-edge: #102e27;
+  --table-inset: #43735b;
+  --table-shadow: 0 6px 0 #0e2923;
+  --card-face: #fff5db;
+  --card-ink: #22302b;
+  --card-red: #b73532;
+  --card-back: #ad3d38;
+  --card-pattern: #f0c3a0;
+  --button-depth: #0d241f;
+  --game-red: #b83f3b;
+  --game-blue: #2c618c;
+  --shadow-color: rgb(6 13 15 / 22%);
 }

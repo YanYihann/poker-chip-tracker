@@ -51,14 +51,7 @@ export function CommunityBoard({ street, handKey, boardCards, cardSize = "xs" }:
   }, [revealCount]);
 
   return (
-    <div
-      className={[
-        "mt-2 flex items-center gap-1 rounded-xl border px-1 py-1  sm:mt-2.5 sm:gap-1.5 sm:px-1.5 sm:py-1.5",
-        street === "showdown"
-          ? "border-stitch-primary/45 bg-stitch-surfaceContainerHighest/72 "
-          : "border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh/70"
-      ].join(" ")}
-    >
+    <div className="community-board mt-3 flex items-center gap-1.5 py-1 sm:gap-2">
       {Array.from({ length: 5 }, (_, index) => {
         const isRevealed = index < revealCount;
         const isNewlyRevealed = isRevealed && index >= previousRevealCount;

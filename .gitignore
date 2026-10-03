@@ -41,5 +41,6 @@ pnpm-debug.log*
 /server/dist
 /.vercel
 /artifacts
+.impeccable/review/
 .vercel
 .env*

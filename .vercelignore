@@ -6,3 +6,5 @@ node_modules
 .next
 docs/screenshots
 docs/assets
+.impeccable
+PRODUCT.md

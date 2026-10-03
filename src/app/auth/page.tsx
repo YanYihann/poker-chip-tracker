@@ -1,9 +1,12 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { Eye } from "@phosphor-icons/react/dist/csr/Eye";
+import { EyeSlash } from "@phosphor-icons/react/dist/csr/EyeSlash";
+import { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { loginAccount, registerAccount } from "@/features/auth/api";
@@ -13,193 +16,66 @@ type AuthMode = "login" | "register";
 function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams?.get("next") || "/rooms/join";
+  const next = searchParams?.get("next") || "/online";
+  const redirectTo = next.startsWith("/") && !next.startsWith("//") ? next : "/online";
   const { isZh } = useLanguage();
-
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canSubmit = email.trim().length > 3 && password.length >= 8 && (mode === "login" || username.trim().length >= 1);
 
-  const title = useMemo(
-    () => (mode === "login" ? (isZh ? "\u767b\u5f55" : "Login") : isZh ? "\u6ce8\u518c" : "Register"),
-    [isZh, mode]
-  );
-
-  const canSubmit =
-    email.trim().length > 3 &&
-    password.trim().length >= 8 &&
-    (mode === "login" || username.trim().length >= 1);
-
-  return (
-    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "\u8d26\u6237" : "Account"} backHref="/" />
-
-      <section className="px-4 pt-4">
-        <div className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-          <div className="mb-4 flex items-center gap-2">
-            <button
-              type="button"
-              className={[
-                "rounded-full px-3 py-1 text-xs font-semibold",
-                mode === "login"
-                  ? "bg-stitch-primary/20 text-stitch-primary"
-                  : "bg-stitch-surfaceContainerHigh text-stitch-onSurfaceVariant"
-              ].join(" ")}
-              onClick={() => setMode("login")}
-            >
-              {isZh ? "\u767b\u5f55" : "Login"}
-            </button>
-            <button
-              type="button"
-              className={[
-                "rounded-full px-3 py-1 text-xs font-semibold",
-                mode === "register"
-                  ? "bg-stitch-primary/20 text-stitch-primary"
-                  : "bg-stitch-surfaceContainerHigh text-stitch-onSurfaceVariant"
-              ].join(" ")}
-              onClick={() => setMode("register")}
-            >
-              {isZh ? "\u6ce8\u518c" : "Register"}
-            </button>
-          </div>
-
-          <h2 className="font-headline text-2xl text-stitch-onSurface">{title}</h2>
-          <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-            {isZh
-              ? "\u8d26\u6237\u548c\u8d44\u6599\u80fd\u529b\u5df2\u63a5\u5165\uff0c\u4e0d\u5f71\u54cd\u672c\u5730\u724c\u684c\u73a9\u6cd5\u3002"
-              : "This adds account and profile features without changing local table gameplay."}
-          </p>
-
-          <form
-            className="mt-4 space-y-3"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (!canSubmit || loading) {
-                return;
-              }
-
-              setLoading(true);
-              setError(null);
-              try {
-                if (mode === "login") {
-                  await loginAccount({
-                    email: email.trim(),
-                    password
-                  });
-                } else {
-                  await registerAccount({
-                    email: email.trim(),
-                    password,
-                    username: username.trim()
-                  });
-                }
-                router.push(redirectTo);
-              } catch (submitError) {
-                setError(
-                  submitError instanceof Error
-                    ? submitError.message
-                    : isZh
-                      ? "\u8bf7\u6c42\u5931\u8d25\u3002"
-                      : "Request failed."
-                );
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            <label className="block">
-              <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">Email</span>
-              <input
-                type="email"
-                autoComplete="email"
-                className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09" : "Password (min 8 chars)"}
-              </span>
-              <input
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="********"
-              />
-            </label>
-
-            {mode === "register" ? (
-              <label className="block">
-                <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-                  {isZh ? "\u7528\u6237\u540d" : "Username"}
-                </span>
-                <input
-                  type="text"
-                  autoComplete="nickname"
-                  className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="player_one"
-                />
-              </label>
-            ) : null}
-
-            {error ? (
-              <p className="rounded-xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 px-3 py-2 text-xs text-stitch-tertiary">
-                {error}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={!canSubmit || loading}
-              className="w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading
-                ? isZh
-                  ? "\u63d0\u4ea4\u4e2d..."
-                  : "Submitting..."
-                : mode === "login"
-                  ? isZh
-                    ? "\u767b\u5f55"
-                    : "Login"
-                  : isZh
-                    ? "\u6ce8\u518c\u5e76\u767b\u5f55"
-                    : "Register & Login"}
-            </button>
-          </form>
-
-          <div className="mt-4 rounded-2xl bg-stitch-surfaceContainerHigh px-3 py-3 text-center">
-            <p className="text-xs text-stitch-onSurfaceVariant">
-              {isZh
-                ? "不登录也可继续使用本地模式。"
-                : "You can continue in local mode without signing in."}
-            </p>
-            <Link
-              href="/local"
-              className="mt-2 inline-block rounded-xl bg-stitch-surfaceContainer px-3 py-2 text-xs text-stitch-onSurface"
-            >
-              {isZh ? "继续本地模式" : "Continue Local Mode"}
-            </Link>
-          </div>
+  return <main className="app-shell auth-shell">
+    <AppTopBar title={isZh ? "账户" : "Account"} />
+    <section className="auth-layout">
+      <div className="auth-form-area">
+        <div className="auth-form-heading"><h1>{mode === "login" ? isZh ? "登录" : "SIGN IN" : isZh ? "注册" : "SIGN UP"}</h1></div>
+        <div className="auth-tabs" role="group" aria-label={isZh ? "账户操作" : "Account action"}>
+          {(["login", "register"] as const).map((tab) => <button key={tab} type="button" aria-pressed={mode === tab} disabled={loading} onClick={() => { setMode(tab); setError(null); }}>
+            {tab === "login" ? isZh ? "登录" : "Sign in" : isZh ? "注册" : "Sign up"}
+          </button>)}
         </div>
-      </section>
-    </main>
-  );
+        <form className="ui-form" aria-busy={loading} onSubmit={async (event) => {
+          event.preventDefault();
+          if (!canSubmit || loading) return;
+          setLoading(true); setError(null);
+          try {
+            if (mode === "login") await loginAccount({ email: email.trim(), password });
+            else await registerAccount({ email: email.trim(), password, username: username.trim() });
+            router.push(redirectTo);
+          } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : isZh ? "暂时无法登录，请重试。" : "Unable to sign in. Please try again.");
+          } finally { setLoading(false); }
+        }}>
+          <label className="form-field"><span>{isZh ? "邮箱" : "Email"}</span>
+            <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" disabled={loading} />
+          </label>
+          <label className="form-field"><span>{isZh ? "密码" : "Password"}</span>
+            <div className="password-field">
+              <input aria-label={isZh ? "密码" : "Password"} type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isZh ? "至少 8 个字符" : "At least 8 characters"} disabled={loading} />
+              <button type="button" disabled={loading} aria-label={showPassword ? isZh ? "隐藏密码" : "Hide password" : isZh ? "显示密码" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}</button>
+            </div>
+          </label>
+          {mode === "register" && <label className="form-field register-field"><span>{isZh ? "玩家昵称" : "Player name"}</span>
+            <input type="text" autoComplete="nickname" maxLength={24} required value={username} onChange={(e) => setUsername(e.target.value)} placeholder={isZh ? "牌桌上如何称呼你" : "Your name at the table"} disabled={loading} />
+          </label>}
+          {error && <p className="form-error" role="alert"><WarningCircle size={20} aria-hidden="true" />{error}</p>}
+          <button type="submit" className="button-primary" disabled={!canSubmit || loading}>
+            {loading ? isZh ? "连接中…" : "Connecting…" : mode === "login" ? isZh ? "登录" : "Sign in" : isZh ? "注册" : "Create account"}<ArrowRight size={20} aria-hidden="true" />
+          </button>
+        </form>
+        <div className="auth-local-entry">
+          <Link href="/local">{isZh ? "本地记分（免登录）" : "Local game · No account"}<ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/online">{isZh ? "返回大厅" : "Back to menu"}</Link>
+        </div>
+      </div>
+    </section>
+  </main>;
 }
 
 export default function AuthPage() {
-  return (
-    <Suspense fallback={<main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8" />}>
-      <AuthPageContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<main className="app-shell auth-shell"><div className="loading-skeleton" /></main>}><AuthPageContent /></Suspense>;
 }

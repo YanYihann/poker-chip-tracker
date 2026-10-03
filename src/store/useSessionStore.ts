@@ -21,7 +21,7 @@ function buildMockPlayers(playerCount: number): Player[] {
   return assignPositions(basePlayers, 0);
 }
 
-function createInitialSessionSlice(playerCount = 6): SessionSlice {
+function createInitialSessionSlice(playerCount = 4): SessionSlice {
   return {
     sessionId: `local-${Date.now()}`,
     sessionName: "Local Table",

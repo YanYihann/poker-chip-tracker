@@ -90,7 +90,10 @@ function ProfilePageContent() {
   const { isZh, localeTag, locale, setLocale } = useLanguage();
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -99,6 +102,7 @@ function ProfilePageContent() {
   const [sessions, setSessions] = useState<RecentSession[]>([]);
 
   const [saving, setSaving] = useState(false);
+  const [avatarProcessing, setAvatarProcessing] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [totalAssets, setTotalAssets] = useState("10000");
   const [totals, setTotals] = useState({
@@ -109,9 +113,10 @@ function ProfilePageContent() {
   });
 
   useEffect(() => {
+    let active = true;
     const run = async () => {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       try {
         const [me, profile, recent] = await Promise.all([
           fetchCurrentUser(),
@@ -119,6 +124,9 @@ function ProfilePageContent() {
           fetchRecentSessions()
         ]);
 
+        if (!active) {
+          return;
+        }
         setEmail(me.email);
         setUsername(profile.username);
         setAvatarUrl(profile.avatarUrl ?? "");
@@ -127,7 +135,10 @@ function ProfilePageContent() {
         setTotals(profile.totals);
         setSessions(recent);
       } catch (loadError) {
-        setError(
+        if (!active) {
+          return;
+        }
+        setLoadError(
           loadError instanceof Error
             ? loadError.message
             : isZh
@@ -135,12 +146,17 @@ function ProfilePageContent() {
               : "Unable to load profile."
         );
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     void run();
-  }, [isZh]);
+    return () => {
+      active = false;
+    };
+  }, [isZh, loadAttempt]);
 
   const avatarLabel = useMemo(() => {
     if (username.trim().length > 0) {
@@ -152,22 +168,22 @@ function ProfilePageContent() {
     return "P";
   }, [email, username]);
 
-  const isAuthError = error?.toLowerCase().includes("auth") || error?.toLowerCase().includes("not");
+  const isAuthError = loadError ? /not authenticated|authentication required|unauthorized/i.test(loadError) : false;
 
   return (
-    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell profile-shell">
       <AppTopBar title={isZh ? "\u4e2a\u4eba\u8d44\u6599" : "Profile"} backHref="/" />
 
-      <section className="space-y-4 px-4 pt-4">
+      <section className="page-content content-grid">
         {loading ? (
-          <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
+          <article role="status" className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
             {isZh ? "\u6b63\u5728\u52a0\u8f7d\u4e2a\u4eba\u8d44\u6599..." : "Loading profile..."}
           </article>
         ) : null}
 
-        {!loading && error ? (
+        {!loading && loadError ? (
           <article className="rounded-2xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 p-4">
-            <p className="text-sm text-stitch-tertiary">{error}</p>
+            <p role="alert" className="break-words text-sm text-stitch-tertiary">{loadError}</p>
             {isAuthError ? (
               <Link
                 href="/auth?next=/profile"
@@ -175,16 +191,25 @@ function ProfilePageContent() {
               >
                 {isZh ? "\u524d\u5f80\u767b\u5f55" : "Go to Login"}
               </Link>
-            ) : null}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+                className="mt-2 rounded-xl bg-stitch-primary px-3 py-2 text-sm font-semibold text-stitch-onPrimary"
+              >
+                {isZh ? "重新加载" : "Retry loading"}
+              </button>
+            )}
           </article>
         ) : null}
 
-        {!loading && !error ? (
-          <>
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+        {!loading && !loadError ? (
+          <div className="profile-layout">
+            <div className="profile-column">
+            <article className="min-w-0 rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border border-stitch-mint/40 bg-stitch-surfaceContainerHigh text-lg font-semibold text-stitch-mint">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-stitch-mint/40 bg-stitch-surfaceContainerHigh text-lg font-semibold text-stitch-mint">
                     {avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={avatarUrl} alt={isZh ? "\u5934\u50cf" : "Avatar"} className="h-full w-full object-cover" />
@@ -192,21 +217,25 @@ function ProfilePageContent() {
                       avatarLabel
                     )}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-stitch-onSurface">{username}</p>
-                    <p className="text-xs text-stitch-onSurfaceVariant">{email}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-stitch-onSurface [overflow-wrap:anywhere]">{username}</p>
+                    <p className="break-all text-xs text-stitch-onSurfaceVariant">{email}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1 text-xs text-stitch-onSurfaceVariant disabled:opacity-40"
-                  disabled={logoutLoading}
+                  className="shrink-0 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1 text-xs text-stitch-onSurfaceVariant disabled:opacity-40"
+                  disabled={logoutLoading || saving || avatarProcessing}
                   onClick={async () => {
                     setLogoutLoading(true);
+                    setActionError(null);
+                    setSaved(false);
                     try {
                       await logoutAccount();
                       router.push("/auth");
+                    } catch {
+                      setActionError(isZh ? "退出登录失败，请重试。" : "Unable to log out. Please try again.");
                     } finally {
                       setLogoutLoading(false);
                     }
@@ -221,8 +250,12 @@ function ProfilePageContent() {
                   <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">{isZh ? "\u7528\u6237\u540d" : "Username"}</span>
                   <input
                     value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+                    disabled={saving || logoutLoading}
+                    onChange={(event) => {
+                      setUsername(event.target.value);
+                      setSaved(false);
+                    }}
+                    className="min-w-0 w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50 disabled:opacity-50"
                   />
                 </label>
 
@@ -233,35 +266,57 @@ function ProfilePageContent() {
                   <input
                     type="file"
                     accept="image/*"
-                    className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface file:mr-3 file:rounded-lg file:border-0 file:bg-stitch-primary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-stitch-onPrimary"
+                    disabled={saving || logoutLoading || avatarProcessing}
+                    className="min-w-0 w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface file:mr-3 file:rounded-lg file:border-0 file:bg-stitch-primary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-stitch-onPrimary disabled:opacity-50"
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) {
                         return;
                       }
 
+                      event.target.value = "";
+                      setActionError(null);
+                      setSaved(false);
+                      setAvatarProcessing(true);
                       try {
                         const compactAvatar = await buildAvatarDataUrl(file);
                         setAvatarUrl(compactAvatar);
                         setAvatarDirty(true);
                       } catch {
-                        setError(
+                        setActionError(
                           isZh
                             ? "\u5934\u50cf\u5904\u7406\u5931\u8d25\uff0c\u8bf7\u9009\u62e9\u5c0f\u4e00\u4e9b\u7684\u56fe\u7247\u3002"
                             : "Avatar processing failed. Please choose a smaller image."
                         );
+                      } finally {
+                        setAvatarProcessing(false);
                       }
                     }}
                   />
                 </label>
 
+                {avatarProcessing ? (
+                  <p role="status" className="text-sm text-stitch-onSurfaceVariant">
+                    {isZh ? "正在处理头像…" : "Processing avatar…"}
+                  </p>
+                ) : null}
+                {actionError ? (
+                  <p role="alert" className="break-words text-sm text-stitch-tertiary">{actionError}</p>
+                ) : null}
+                {saved ? (
+                  <p role="status" className="text-sm text-stitch-mint">
+                    {isZh ? "资料已保存。" : "Profile saved."}
+                  </p>
+                ) : null}
+
                 <button
                   type="button"
                   className="w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
-                  disabled={saving}
+                  disabled={saving || logoutLoading || avatarProcessing}
                   onClick={async () => {
                     setSaving(true);
-                    setError(null);
+                    setActionError(null);
+                    setSaved(false);
                     try {
                       const profile = await updateProfile({
                         username: username.trim(),
@@ -270,13 +325,14 @@ function ProfilePageContent() {
                       setUsername(profile.username);
                       setAvatarUrl(profile.avatarUrl ?? "");
                       setAvatarDirty(false);
+                      setSaved(true);
                     } catch (saveError) {
-                      setError(
+                      setActionError(
                         saveError instanceof Error
-                          ? saveError.message
+                          ? `${saveError.message} ${isZh ? "修改仍在，请重试保存。" : "Your edits are kept. Please try saving again."}`
                           : isZh
-                            ? "\u4fdd\u5b58\u5931\u8d25\u3002"
-                            : "Save failed."
+                            ? "保存失败，修改仍在，请重试。"
+                            : "Save failed. Your edits are kept. Please try again."
                       );
                     } finally {
                       setSaving(false);
@@ -287,106 +343,6 @@ function ProfilePageContent() {
                 </button>
               </div>
             </article>
-
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u603b\u8d44\u4ea7" : "Total Assets"}</h2>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u521d\u59cb\u8d44\u4ea7 $10,000\uff0c\u4f1a\u968f\u724c\u5c40\u76c8\u4e8f\u53d8\u5316\u3002" : "Starts at $10,000 and changes with your session results."}
-              </p>
-              <p className="mt-3 text-3xl font-bold text-stitch-mint">{formatMoney(totalAssets, locale)}</p>
-            </article>
-
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u724c\u5c40\u603b\u89c8" : "Session Totals"}</h2>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are synced from server."}
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u724c\u5c40\u6570" : "Sessions"}</p>
-                  <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.sessions}</p>
-                </div>
-                <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u603b\u624b\u6570" : "Hands"}</p>
-                  <p className="mt-1 text-lg font-semibold text-stitch-onSurface">{totals.hands}</p>
-                </div>
-                <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u76c8\u5229" : "Profit"}</p>
-                  <p className="mt-1 text-lg font-semibold text-stitch-mint">{formatMoney(totals.profit, locale)}</p>
-                </div>
-                <div className="rounded-xl bg-stitch-surfaceContainerHigh p-3">
-                  <p className="text-[11px] text-stitch-onSurfaceVariant">{isZh ? "\u4e8f\u635f" : "Loss"}</p>
-                  <p className="mt-1 text-lg font-semibold text-stitch-tertiary">{formatMoney(totals.loss, locale)}</p>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u4e2a\u4eba\u5386\u53f2" : "Profile History"}</h2>
-                <Link
-                  href="/history"
-                  className="rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
-                >
-                  {isZh ? "\u67e5\u770b\u5168\u90e8" : "View All"}
-                </Link>
-              </div>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5df2\u5b8c\u6210\u724c\u5c40\u4f1a\u5173\u8054\u5230\u4f60\u7684\u8d26\u6237\u3002" : "Completed sessions are linked to your profile."}
-              </p>
-
-              <div className="mt-3 space-y-2">
-                {sessions.length === 0 ? (
-                  <p className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurfaceVariant">
-                    {isZh ? "\u6682\u65e0\u724c\u5c40\u8bb0\u5f55\u3002" : "No sessions yet."}
-                  </p>
-                ) : (
-                  sessions.map((session) => (
-                    <Link
-                      key={session.sessionId}
-                      href={`/history/${session.sessionId}`}
-                      className="block rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2"
-                    >
-                      <p className="text-sm text-stitch-onSurface">
-                        {isZh ? "\u623f\u95f4" : "Room"} {session.roomCode} | {new Date(session.endedAtIso).toLocaleString(localeTag)}
-                      </p>
-                      <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "\u8d77\u59cb" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "\u7ed3\u675f" : "End"}{" "}
-                        {formatMoney(session.endStack, locale)}
-                      </p>
-                      <p className="text-xs text-stitch-onSurfaceVariant">
-                        {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} | {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
-                        {formatMoney(session.profitLoss, locale)}
-                      </p>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </article>
-
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u623f\u95f4" : "Rooms"}</h2>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh
-                  ? "\u521b\u5efa\u6216\u52a0\u5165\u7b49\u5f85\u623f\u95f4\uff0c\u5b9e\u65f6\u540c\u6b65\u724c\u5c40\u72b6\u6001\u3002"
-                  : "Create or join a waiting room with realtime sync."}
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Link
-                  href="/rooms/create"
-                  className="rounded-xl bg-stitch-primary px-3 py-2 text-center text-sm font-semibold text-stitch-onPrimary"
-                >
-                  {isZh ? "\u521b\u5efa\u623f\u95f4" : "Create Room"}
-                </Link>
-                <Link
-                  href="/rooms/join"
-                  className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-center text-sm text-stitch-onSurface"
-                >
-                  {isZh ? "\u52a0\u5165\u623f\u95f4" : "Join Room"}
-                </Link>
-              </div>
-            </article>
-
             <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u754c\u9762\u8bed\u8a00" : "Language"}</h2>
               <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
@@ -421,7 +377,109 @@ function ProfilePageContent() {
                 </button>
               </div>
             </article>
-          </>
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u623f\u95f4" : "Rooms"}</h2>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh
+                  ? "\u521b\u5efa\u6216\u52a0\u5165\u7b49\u5f85\u623f\u95f4\uff0c\u5b9e\u65f6\u540c\u6b65\u724c\u5c40\u72b6\u6001\u3002"
+                  : "Create or join a waiting room with realtime sync."}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link
+                  href="/rooms/create"
+                  className="rounded-xl bg-stitch-primary px-3 py-2 text-center text-sm font-semibold text-stitch-onPrimary"
+                >
+                  {isZh ? "\u521b\u5efa\u623f\u95f4" : "Create Room"}
+                </Link>
+                <Link
+                  href="/rooms/join"
+                  className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-center text-sm text-stitch-onSurface"
+                >
+                  {isZh ? "\u52a0\u5165\u623f\u95f4" : "Join Room"}
+                </Link>
+              </div>
+            </article>
+            </div>
+            <div className="profile-column">
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u603b\u8d44\u4ea7" : "Total Assets"}</h2>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh ? "\u521d\u59cb\u8d44\u4ea7 $10,000\uff0c\u4f1a\u968f\u724c\u5c40\u76c8\u4e8f\u53d8\u5316\u3002" : "Starts at $10,000 and changes with your session results."}
+              </p>
+              <p className="mt-3 break-words text-3xl font-bold tabular-nums text-stitch-mint">{formatMoney(totalAssets, locale)}</p>
+            </article>
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u724c\u5c40\u603b\u89c8" : "Session Totals"}</h2>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are synced from server."}
+              </p>
+              <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5">
+                <div className="min-w-0">
+                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u724c\u5c40\u6570" : "Sessions"}</dt>
+                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-onSurface">{totals.sessions}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u603b\u624b\u6570" : "Hands"}</dt>
+                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-onSurface">{totals.hands}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u76c8\u5229" : "Profit"}</dt>
+                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-mint">{formatMoney(totals.profit, locale)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u4e8f\u635f" : "Loss"}</dt>
+                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-tertiary">{formatMoney(totals.loss, locale)}</dd>
+                </div>
+              </dl>
+            </article>
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u4e2a\u4eba\u5386\u53f2" : "Profile History"}</h2>
+                <Link
+                  href="/history"
+                  className="shrink-0 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
+                >
+                  {isZh ? "\u67e5\u770b\u5168\u90e8" : "View All"}
+                </Link>
+              </div>
+              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
+                {isZh ? "\u5df2\u5b8c\u6210\u724c\u5c40\u4f1a\u5173\u8054\u5230\u4f60\u7684\u8d26\u6237\u3002" : "Completed sessions are linked to your profile."}
+              </p>
+
+              {sessions.length === 0 ? (
+                <p className="mt-4 text-sm text-stitch-onSurfaceVariant">
+                  {isZh ? "\u6682\u65e0\u724c\u5c40\u8bb0\u5f55\u3002" : "No sessions yet."}
+                </p>
+              ) : (
+                <ul className="mt-3 divide-y divide-stitch-outlineVariant/30">
+                  {sessions.map((session) => (
+                    <li key={session.sessionId}>
+                      <Link
+                        href={`/history/${session.sessionId}`}
+                        className="block py-4 transition-colors hover:text-stitch-primary [overflow-wrap:anywhere]"
+                      >
+                        <p className="text-sm font-semibold">
+                          {isZh ? "\u623f\u95f4" : "Room"} {session.roomCode}
+                        </p>
+                        <time dateTime={session.endedAtIso} className="mt-1 block text-xs text-stitch-onSurfaceVariant">
+                          {new Date(session.endedAtIso).toLocaleString(localeTag)}
+                        </time>
+                        <p className="mt-2 text-xs tabular-nums text-stitch-onSurfaceVariant">
+                          {isZh ? "\u8d77\u59cb" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "\u7ed3\u675f" : "End"}{" "}
+                          {formatMoney(session.endStack, locale)}
+                        </p>
+                        <p className="text-xs tabular-nums text-stitch-onSurfaceVariant">
+                          {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} | {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
+                          {formatMoney(session.profitLoss, locale)}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+            </div>
+          </div>
         ) : null}
       </section>
     </main>

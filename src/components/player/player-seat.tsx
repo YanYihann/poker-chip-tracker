@@ -21,6 +21,7 @@ const POSITION_LABEL_ZH_MAP: Record<string, string> = {
   BB: "\u5927\u76f2",
   UTG: "\u67aa\u53e3",
   "UTG+1": "\u67aa\u53e3+1",
+  "UTG+2": "枪口+2",
   MP: "\u4e2d\u4f4d",
   LJ: "\u4f4e\u52ab\u4f4d",
   HJ: "\u52ab\u4f4d",
@@ -41,6 +42,8 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
   const folded = player.status === "folded";
   const heroOrActive = player.isHero || player.isActive;
   const hasRevealedHoleCards = Boolean(player.revealedCards && player.revealedCards.length > 0);
+  const positionLabel = player.positionLabel ? localizePositionLabel(player.positionLabel, isZh) : "";
+  const statusLabel = [positionLabel, player.isActive ? (isZh ? "行动中" : "Acting") : ""].filter(Boolean).join(" · ");
 
   if (player.isPlaceholder) {
     return (
@@ -49,7 +52,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
         style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
         aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
       >
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="player-seat-content flex flex-col items-center gap-1.5">
           <button
             type="button"
             onClick={player.onPress}
@@ -74,13 +77,13 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
 
   return (
     <article
-      className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+      className={cn("player-seat absolute z-20 -translate-x-1/2 -translate-y-1/2", compact && "player-seat-compact")}
       style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
       aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
     >
-      <div className="flex flex-col items-center gap-1.5">
+      <div className="player-seat-content flex flex-col items-center gap-1.5">
         {hasRevealedHoleCards ? (
-          <div className={cn("flex items-center gap-1", folded ? "opacity-45 grayscale" : "")}>
+          <div className={cn("seat-hole-cards flex items-center gap-1", folded ? "opacity-45 grayscale" : "")}>
             {Array.from({ length: 2 }, (_, index) => (
               <SimPokerCard
                 key={`${player.id}-avatar-hole-${index}`}
@@ -95,7 +98,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           <div
             className={cn(
               avatarSize,
-              "grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
+              "seat-avatar grid place-items-center overflow-hidden rounded-full border bg-stitch-surfaceContainer text-xs font-label font-semibold text-stitch-onSurface shadow-[var(--stitch-shadow-ambient)]",
               heroOrActive
                 ? "border-stitch-mint/70 "
                 : "border-stitch-outlineVariant/60",
@@ -111,7 +114,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           </div>
         )}
 
-        <div className={cn("seat-ledger rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]", compact && "seat-ledger-compact")}>
+        <div className={cn("seat-ledger rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]", compact && "seat-ledger-compact", player.isActive && "seat-ledger-active")}>
             <p title={player.name} className="truncate text-xs font-body font-semibold text-stitch-onSurface">{player.name}</p>
           <p title={player.stackLabel} className="truncate text-xs tabular-nums text-stitch-onSurfaceVariant">{player.stackLabel}</p>
           {player.betLabel ? <p className="text-[10px] tabular-nums text-stitch-mint">{player.betLabel}</p> : null}
@@ -129,19 +132,24 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           ) : null}
         </div>
 
-        {player.positionLabel ? (
-          <Badge
-            size="sm"
-            variant={heroOrActive ? "mint" : "neutral"}
-            className={folded ? "opacity-45" : ""}
+        {(positionLabel || player.isActive) && <div className={cn("seat-status flex items-center justify-center gap-1.5", !compact && "flex-col")}>
+          {compact ? <span
+            className={cn("block max-w-full truncate", player.isActive ? "active-seat-label" : "seat-position-label", folded && "opacity-45")}
+            title={statusLabel}
+            aria-label={statusLabel}
           >
-            {localizePositionLabel(player.positionLabel, isZh)}
-          </Badge>
-        ) : null}
-
-        {player.isActive ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-stitch-mint " />
-        ) : null}
+            {[positionLabel, player.isActive ? (isZh ? "行动" : "Act") : ""].filter(Boolean).join(" · ")}
+          </span> : <>
+            {positionLabel && <Badge
+              size="sm"
+              variant={heroOrActive ? "mint" : "neutral"}
+              className={folded ? "opacity-45" : ""}
+            >
+              {positionLabel}
+            </Badge>}
+            {player.isActive && <span className="active-seat-label">{isZh ? "行动中" : "Acting"}</span>}
+          </>}
+        </div>}
       </div>
     </article>
   );

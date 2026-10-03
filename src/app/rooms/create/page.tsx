@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
-import { AppTopBar } from "@/components/layout/app-top-bar";
+import { PageShell } from "@/components/layout/page-shell";
 import { createRoom } from "@/features/rooms/api";
 
 type GameMode = "local" | "online";
@@ -18,94 +18,36 @@ function clampPlayers(value: number): number {
 function CreateRoomPageContent() {
   const router = useRouter();
   const { isZh } = useLanguage();
-  const [mode, setMode] = useState<GameMode>("local");
-  const [maxPlayers, setMaxPlayers] = useState(6);
+  const [mode, setMode] = useState<GameMode>("online");
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [startingStack, setStartingStack] = useState(10000);
+  const [smallBlind, setSmallBlind] = useState(100);
+  const [bigBlind, setBigBlind] = useState(200);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const safePlayers = clampPlayers(maxPlayers);
+  const settingsValid = [maxPlayers, startingStack, smallBlind, bigBlind].every((value) => Number.isSafeInteger(value) && value > 0)
+    && maxPlayers >= 2 && maxPlayers <= 10 && bigBlind >= smallBlind && startingStack >= bigBlind;
 
   return (
-    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
-      <AppTopBar title={isZh ? "创建模式" : "Create Mode"} backHref="/profile" />
-
-      <section className="space-y-4 px-4 pt-4">
-        <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-          <h2 className="font-headline text-2xl text-stitch-onSurface">
-            {isZh ? "先选择对局模式" : "Choose Game Mode"}
-          </h2>
-          <p className="mt-1 text-sm text-stitch-onSurfaceVariant">
-            {isZh
-              ? "本地模式也通过房间同步（仅记分、不发牌）；线上模式为完整在线发牌对战。"
-              : "Local mode now also uses synced rooms (chip flow only, no dealing); online mode is full server-dealt play."}
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className={[
-                "rounded-xl border px-3 py-3 text-left transition",
-                mode === "local"
-                  ? "border-stitch-primary/50 bg-stitch-primary/10 text-stitch-primary"
-                  : "border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh text-stitch-onSurface"
-              ].join(" ")}
-              onClick={() => setMode("local")}
-            >
-              <p className="text-sm font-semibold">{isZh ? "本地模式" : "Local Mode"}</p>
-              <p className="mt-1 text-[11px] opacity-80">
-                {isZh ? "房间同步记分（不发牌）" : "Synced room scoring (no dealing)"}
-              </p>
-            </button>
-
-            <button
-              type="button"
-              className={[
-                "rounded-xl border px-3 py-3 text-left transition",
-                mode === "online"
-                  ? "border-stitch-primary/50 bg-stitch-primary/10 text-stitch-primary"
-                  : "border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh text-stitch-onSurface"
-              ].join(" ")}
-              onClick={() => setMode("online")}
-            >
-              <p className="text-sm font-semibold">{isZh ? "线上模式" : "Online Mode"}</p>
-              <p className="mt-1 text-[11px] opacity-80">
-                {isZh ? "在线同步回合与操作" : "Realtime synchronized online gameplay"}
-              </p>
-            </button>
-          </div>
-
-          <label className="mt-4 block">
-            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
-              {isZh ? "玩家人数" : "Player Count"}
-            </span>
-            <input
-              type="number"
-              min={2}
-              max={10}
-              value={maxPlayers}
-              onChange={(event) => setMaxPlayers(Number(event.target.value))}
-              className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
-            />
-          </label>
-
-          {error ? (
-            <p className="mt-3 rounded-xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 px-3 py-2 text-xs text-stitch-tertiary">
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={loading}
-            className="mt-4 w-full rounded-xl bg-stitch-primary px-4 py-2 text-sm font-semibold text-stitch-onPrimary disabled:opacity-50"
-            onClick={async () => {
+    <PageShell title={isZh ? "创建房间" : "Create a room"} backHref="/online" className="room-form-shell">
+      <div className="room-form-layout">
+        <div className="room-form-fields">
+        <form className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (loading || !settingsValid) return;
               setLoading(true);
               setError(null);
 
               try {
                 const room = await createRoom({
                   mode,
-                  maxPlayers: safePlayers
+                  maxPlayers: safePlayers,
+                  startingStack,
+                  smallBlind,
+                  bigBlind
                 });
                 router.push(`/rooms/${room.room.code}`);
               } catch (createError) {
@@ -124,6 +66,85 @@ function CreateRoomPageContent() {
                 setLoading(false);
               }
             }}
+        >
+          <h2 className="font-headline text-2xl text-stitch-onSurface">
+            {isZh ? "对局模式" : "GAME MODE"}
+          </h2>
+          <div className="game-mode-options" role="group" aria-label={isZh ? "对局方式" : "Game mode"}>
+            <button
+              type="button"
+              className={[
+                "rounded-xl border px-3 py-3 text-left transition",
+                mode === "local"
+                  ? "border-stitch-primary/50 bg-stitch-primary/10 text-stitch-primary"
+                  : "border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+              ].join(" ")}
+              aria-pressed={mode === "local"}
+              onClick={() => setMode("local")}
+            >
+              <p className="text-sm font-semibold">{isZh ? "同步记分" : "Synced scoring"}</p>
+              <p className="mt-1 text-[11px] opacity-80">
+                {isZh ? "实体牌，多设备记分" : "Physical cards, shared scoring"}
+              </p>
+            </button>
+
+            <button
+              type="button"
+              className={[
+                "rounded-xl border px-3 py-3 text-left transition",
+                mode === "online"
+                  ? "border-stitch-primary/50 bg-stitch-primary/10 text-stitch-primary"
+                  : "border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh text-stitch-onSurface"
+              ].join(" ")}
+              aria-pressed={mode === "online"}
+              onClick={() => setMode("online")}
+            >
+              <p className="text-sm font-semibold">{isZh ? "线上对战" : "Online play"}</p>
+              <p className="mt-1 text-[11px] opacity-80">
+                {isZh ? "系统发牌，自动结算" : "Server dealing, auto settlement"}
+              </p>
+            </button>
+          </div>
+
+          <label className="mt-4 block">
+            <span className="mb-1 block text-xs text-stitch-onSurfaceVariant">
+              {isZh ? "玩家人数" : "Player Count"}
+            </span>
+            <input
+              type="number"
+              min={2}
+              max={10}
+              value={maxPlayers}
+              onChange={(event) => setMaxPlayers(Number(event.target.value))}
+              className="w-full rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 py-2 text-sm text-stitch-onSurface outline-none focus:border-stitch-primary/50"
+            />
+          </label>
+
+          <label className="form-field mt-5">
+            <span>{isZh ? "每人起始筹码" : "Starting chips per player"}</span>
+            <input type="number" min={bigBlind || 1} step={1} required value={startingStack || ""} disabled={loading} onChange={(event) => setStartingStack(Number(event.target.value))} />
+          </label>
+          <p className="mt-2 text-sm text-stitch-onSurfaceVariant">{isZh ? "所有玩家使用相同筹码，入座后不可单独修改。" : "Same chips for every player. Individual buy-ins are disabled."}</p>
+          <fieldset className="mt-6">
+            <legend className="font-semibold">{isZh ? "设置盲注" : "Set blinds"}</legend>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="form-field"><span>{isZh ? "小盲" : "Small blind"}</span><input type="number" min={1} step={1} required value={smallBlind || ""} disabled={loading} onChange={(event) => setSmallBlind(Number(event.target.value))} /></label>
+              <label className="form-field"><span>{isZh ? "大盲" : "Big blind"}</span><input type="number" min={smallBlind || 1} step={1} required value={bigBlind || ""} disabled={loading} onChange={(event) => setBigBlind(Number(event.target.value))} /></label>
+            </div>
+          </fieldset>
+          {!settingsValid && <p role="status" className="mt-3 text-sm text-stitch-tertiary">{isZh ? "人数为 2–10；筹码和盲注须为正整数，且小盲 ≤ 大盲 ≤ 起始筹码。" : "Use 2–10 players and positive whole numbers: small blind ≤ big blind ≤ starting chips."}</p>}
+
+          {error ? (
+            <p role="alert" className="mt-3 rounded-xl border border-stitch-tertiary/35 bg-stitch-tertiary/10 px-3 py-2 text-xs text-stitch-tertiary">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading || !settingsValid}
+            className="button-primary mt-6 w-full"
+
           >
             {loading
               ? isZh
@@ -141,28 +162,23 @@ function CreateRoomPageContent() {
                   ? "Create Local Room"
                   : "Create Online Room"}
           </button>
-        </article>
+        </form>
 
         <Link
           href="/rooms/join"
           className="block rounded-xl bg-stitch-surfaceContainerHigh px-4 py-3 text-center text-sm text-stitch-onSurfaceVariant"
         >
-          {isZh
-            ? mode === "online"
-              ? "已有房间码？去加入线上房间"
-              : "已有房间码？去加入本地同步房间"
-            : mode === "online"
-              ? "Have a code? Join an online room"
-              : "Have a code? Join a local synced room"}
+          {isZh ? "加入房间" : "Join room"}
         </Link>
-      </section>
-    </main>
+        </div>
+      </div>
+    </PageShell>
   );
 }
 
 export default function CreateRoomPage() {
   return (
-    <OnlineAuthGate title="Create Mode" backHref="/profile">
+    <OnlineAuthGate title="Create Mode" backHref="/online">
       <CreateRoomPageContent />
     </OnlineAuthGate>
   );

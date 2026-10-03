@@ -58,10 +58,10 @@ function SessionDetailPageContent() {
   }, [isZh, sessionId]);
 
   return (
-    <main className="app-shell mx-auto min-h-dvh w-full max-w-[480px] bg-stitch-background pb-8">
+    <main className="app-shell history-detail-shell">
       <AppTopBar title={isZh ? "\u724c\u5c40\u8be6\u60c5" : "Session Detail"} backHref="/history" />
 
-      <section className="space-y-4 px-4 pt-4">
+      <section className="page-content content-grid">
         {loading ? (
           <article className="rounded-2xl bg-stitch-surfaceContainer p-4 text-sm text-stitch-onSurfaceVariant">
             {isZh ? "\u6b63\u5728\u52a0\u8f7d\u724c\u5c40\u8be6\u60c5..." : "Loading session detail..."}

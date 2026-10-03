@@ -68,8 +68,8 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
   const pathname = usePathname();
   const { isZh } = useLanguage();
 
-  const [allowed, setAllowed] = useState(() => !!readAuthCache());
-  const [checking, setChecking] = useState(() => !readAuthCache());
+  const [allowed, setAllowed] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const nextPath = useMemo(() => {
     if (typeof window === "undefined") {
@@ -83,6 +83,10 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
   useEffect(() => {
     let active = true;
     const cached = readAuthCache();
+    if (cached) {
+      setAllowed(true);
+      setChecking(false);
+    }
 
     const verify = async () => {
       if (!cached) {
@@ -119,10 +123,10 @@ export function OnlineAuthGate({ children, title, backHref }: OnlineAuthGateProp
 
   if (!allowed) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-[480px] bg-stitch-background pb-8">
+      <main className="app-shell auth-check-shell">
         <AppTopBar title={title} backHref={backHref} />
-        <section className="px-4 pt-4">
-          <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+        <section className="page-content">
+          <article role="status" className="auth-check rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
             <h2 className="font-headline text-2xl text-stitch-onSurface">
               {checking
                 ? isZh

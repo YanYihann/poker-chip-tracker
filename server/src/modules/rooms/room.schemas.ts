@@ -5,9 +5,13 @@ const roomCodePattern = /^\d{4}$/;
 export const createRoomSchema = z.object({
   mode: z.enum(["local", "online"]).optional(),
   maxPlayers: z.number().int().min(2).max(10).optional(),
-  startingStack: z.number().int().positive().optional(),
-  smallBlind: z.number().int().positive().optional(),
-  bigBlind: z.number().int().positive().optional()
+  startingStack: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+  smallBlind: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+  bigBlind: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional()
+}).refine((value) => (value.bigBlind ?? 200) >= (value.smallBlind ?? 100), {
+  message: "Big blind must be at least the small blind.", path: ["bigBlind"]
+}).refine((value) => (value.startingStack ?? 10000) >= (value.bigBlind ?? 200), {
+  message: "Starting chips must be at least the big blind.", path: ["startingStack"]
 });
 
 export const joinRoomSchema = z.object({

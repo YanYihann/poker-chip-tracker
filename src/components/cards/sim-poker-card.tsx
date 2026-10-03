@@ -80,7 +80,7 @@ export function SimPokerCard({
   isZh = true
 }: SimPokerCardProps) {
   const parsed = parseCardCode(card);
-  const toneClass = parsed?.isRed ? "text-[#bf1f2f]" : "text-[#1a1c21]";
+  const toneClass = parsed?.isRed ? "sim-card-red" : "sim-card-black";
   const sizeClass = SIZE_CLASS[size];
   const showBlankFace = !hidden && faceBlank;
   const showBack = hidden || (!parsed && !showBlankFace);
@@ -103,19 +103,17 @@ export function SimPokerCard({
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden border shadow-[0_5px_12px_rgba(2,6,23,0.32)]",
+        "sim-card relative shrink-0 overflow-hidden border",
         sizeClass.frame,
         showBack
-          ? "border-sky-300/45 bg-[linear-gradient(135deg,#0f766e_0%,#075985_100%)]"
-          : "border-white/80 bg-gradient-to-b from-white to-slate-100",
+          ? "sim-card-back"
+          : "sim-card-face",
         className
       )}
       aria-label={ariaLabel}
     >
       {showBack ? (
-        <div className="grid h-full w-full place-items-center text-[10px] font-black text-white/90">
-          {"\u2605"}
-        </div>
+        <div className="sim-card-back-pattern" />
       ) : showBlankFace || !parsed ? null : (
         <>
           <span

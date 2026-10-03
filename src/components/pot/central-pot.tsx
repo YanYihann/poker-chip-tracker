@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { Badge } from "@/components/ui/badge";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { CommunityBoard } from "./community-board";
 
@@ -25,6 +26,7 @@ export function CentralPot({
   handKey
 }: CentralPotProps) {
   const { isZh } = useLanguage();
+  const reduced = useReducedMotion();
   const shouldShowStatusBadges = showStatusBadges !== false;
 
   return (
@@ -38,9 +40,9 @@ export function CentralPot({
         <p className="font-label text-[10px] uppercase tracking-[0.28em] text-stitch-onSurfaceVariant">
           {isZh ? "\u603b\u5e95\u6c60" : "Total Pot"}
         </p>
-        <p className="mt-1 font-label tabular-nums text-[1.7rem] font-semibold tracking-tight text-stitch-primary sm:text-3xl">
+        <motion.p key={amountLabel} initial={reduced ? false : { scale: 0.9, y: 4 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 420, damping: 22 }} className="mt-1 font-label tabular-nums text-[1.7rem] font-semibold tracking-tight text-stitch-primary sm:text-3xl">
           {amountLabel}
-        </p>
+        </motion.p>
         {shouldShowStatusBadges ? (
           <div className="relative z-10 mt-1 grid w-full grid-cols-2 gap-1.5 transform-gpu">
             <Badge

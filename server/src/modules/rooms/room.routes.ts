@@ -107,6 +107,9 @@ function sendRoomError(error: unknown, res: Response): void {
     case "INVALID_BLINDS":
       res.status(400).json({ message: "Invalid blind settings." });
       return;
+    case "UNIFORM_BUY_IN":
+      res.status(409).json({ message: "Starting chips are fixed by the host for every player." });
+      return;
     case "HAND_LOCKED":
       res.status(409).json({ message: "Hand is locked." });
       return;

@@ -64,6 +64,19 @@ export function getSeatCoordinates(playerCount: number): SeatCoordinate[] {
   });
 }
 
+export function getPlayerSeatCoordinates(
+  players: readonly Pick<TableSeatPlayer, "seatIndex" | "seatCount">[]
+): SeatCoordinate[] {
+  return players.map((player, index) => {
+    const coordinates = getSeatCoordinates(player.seatCount ?? players.length);
+    return coordinates[player.seatIndex ?? index];
+  });
+}
+
+export function getAutoSeatIndices(playerCount: number): number[] {
+  return Array.from({ length: playerCount }, (_, index) => Math.floor(index * MAX_PLAYERS / playerCount));
+}
+
 export function buildPlaceholderPlayers(playerCount: number): TableSeatPlayer[] {
   const safeCount = clampPlayerCount(playerCount);
 

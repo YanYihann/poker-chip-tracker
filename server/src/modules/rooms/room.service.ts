@@ -1,6 +1,7 @@
-﻿import { prisma } from "../../lib/prisma.js";
+import { prisma } from "../../lib/prisma.js";
 
 import { performance } from "node:perf_hooks";
+import { createRoomSchema } from "./room.schemas.js";
 
 import { Prisma } from "@prisma/client";
 
@@ -908,7 +909,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
   });
 
   const mePlayer = sortedPlayers.find((player) => player.userId === currentUserId) ?? null;
-  const allReady = players.length > 0 && players.every((player) => player.isReady);
+  const allReady = players.length > 0 && players.every((player) => player.seatIndex !== null);
 
   const currentBet = streetCode === "PREFLOP" && gameStatus === "in-progress" ? Math.max(getCurrentBet(sortedPlayers), toNumber(room.bigBlind)) : getCurrentBet(sortedPlayers);
   const activePlayer = sortedPlayers.find((player) => player.seatIndex === activeSeat) ?? null;
@@ -1936,8 +1937,9 @@ export async function createRoom(input: {
   smallBlind?: number;
   bigBlind?: number;
 }): Promise<RoomState> {
+  createRoomSchema.parse(input);
   const roomCode = await generateUniqueRoomCode();
-  const maxPlayers = input.maxPlayers ?? 6;
+  const maxPlayers = input.maxPlayers ?? 4;
   const startingStack = BigInt(input.startingStack ?? 10000);
   const smallBlind = BigInt(input.smallBlind ?? 100);
   const bigBlind = BigInt(input.bigBlind ?? 200);
@@ -1976,75 +1978,46 @@ export async function createRoom(input: {
   return buildRoomState(room, input.hostUserId);
 }
 
+/** Serialize waiting-room mutations with start so seats cannot change during dealing. */
+async function lockRoom(tx: Prisma.TransactionClient, roomCode: string) {
+  await tx.$queryRaw`SELECT id FROM game_rooms WHERE room_code = ${normalizeRoomCode(roomCode)} FOR UPDATE`;
+  const room = await tx.gameRoom.findUnique({
+    where: { roomCode: normalizeRoomCode(roomCode) }, include: { roomPlayers: true }
+  });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  return room;
+}
+
 export async function joinRoomByCode(input: {
   roomCode: string;
   userId: string;
   displayName?: string;
 }): Promise<RoomState> {
   const roomCode = normalizeRoomCode(input.roomCode);
-  const room = await fetchRoomByCode(roomCode);
-
-  if (!room) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
-
-  const activePlayers = room.roomPlayers.filter((player) => !player.leftAt);
-  const member = activePlayers.find((player) => player.userId === input.userId);
-
-  if (!member) {
-    if (room.status !== "WAITING" && !room.allowJoinAfterStart) {
-      throw new Error("ROOM_NOT_JOINABLE");
-    }
-
-    if (activePlayers.length >= room.maxPlayers) {
-      throw new Error("ROOM_FULL");
-    }
-
-    const shouldAssignSeatImmediately = true;
-    let nextSeat: number | null = null;
-    if (shouldAssignSeatImmediately) {
-      const usedSeats = new Set(activePlayers.map((player) => player.seatIndex).filter((seat) => seat !== null));
-      for (let i = 0; i < room.maxPlayers; i += 1) {
-        if (!usedSeats.has(i)) {
-          nextSeat = i;
-          break;
-        }
-      }
-
-      if (nextSeat === null) {
-        throw new Error("ROOM_FULL");
-      }
-    }
-
-    const displayName = await resolveDisplayName(input.userId, input.displayName);
-
-    await prisma.roomPlayer.create({
-      data: {
-        roomId: room.id,
-        userId: input.userId,
-        displayName,
-        seatIndex: nextSeat,
-        stack: room.startingStack,
-        totalBuyIn: room.startingStack,
-        isHost: false,
-        isReady: false,
-        isConnected: true
-      }
-    });
-  } else {
-    await prisma.roomPlayer.update({
-      where: { id: member.id },
-      data: {
+  const displayName = await resolveDisplayName(input.userId, input.displayName);
+  await prisma.$transaction(async (tx) => {
+    const room = await lockRoom(tx, roomCode);
+    const activePlayers = room.roomPlayers.filter((player) => !player.leftAt);
+    const member = room.roomPlayers.find((player) => player.userId === input.userId);
+    if (member && !member.leftAt) {
+      await tx.roomPlayer.update({ where: { id: member.id }, data: {
         isConnected: true,
-        leftAt: null
-      }
-    });
-  }
-
+        ...(room.status === "WAITING" ? { isReady: member.seatIndex !== null, stack: room.startingStack, totalBuyIn: room.startingStack } : {})
+      }});
+      return;
+    }
+    if (room.status !== "WAITING") throw new Error("ROOM_NOT_JOINABLE");
+    if (activePlayers.length >= room.maxPlayers) throw new Error("ROOM_FULL");
+    const used = new Set(activePlayers.map((player) => player.seatIndex));
+    const seatIndex = Array.from({ length: room.maxPlayers }, (_, index) => index).find((seat) => !used.has(seat));
+    if (seatIndex === undefined) throw new Error("ROOM_FULL");
+    const data = { displayName, seatIndex, stack: room.startingStack, totalBuyIn: room.startingStack,
+      isReady: true, isConnected: true, leftAt: null };
+    if (member) await tx.roomPlayer.update({ where: { id: member.id }, data });
+    else await tx.roomPlayer.create({ data: { ...data, roomId: room.id, userId: input.userId, isHost: false } });
+  });
   const next = await fetchRoomByCode(roomCode);
-  if (!next) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
+  if (!next) throw new Error("ROOM_NOT_FOUND");
   return buildRoomState(next, input.userId);
 }
 
@@ -2091,130 +2064,57 @@ export async function getRoomActionPatchByCode(roomCode: string): Promise<RoomAc
 }
 
 export async function setPlayerReadyByRoomCode(input: {
-  roomCode: string;
-  userId: string;
-  isReady: boolean;
+  roomCode: string; userId: string; isReady: boolean;
 }): Promise<RoomState> {
-  const room = await fetchRoomByCode(input.roomCode);
-
-  if (!room) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
-
-  const member = room.roomPlayers.find((player) => player.userId === input.userId && !player.leftAt);
-
-  if (!member) {
-    throw new Error("NOT_A_MEMBER");
-  }
-
-  if (room.status !== "WAITING") {
-    throw new Error("ROOM_NOT_WAITING");
-  }
-
-  await prisma.roomPlayer.update({
-    where: { id: member.id },
-    data: { isReady: input.isReady }
+  // Compatibility for older clients: seated players are always automatically ready.
+  await prisma.$transaction(async (tx) => {
+    const room = await lockRoom(tx, input.roomCode);
+    const member = room.roomPlayers.find((p) => p.userId === input.userId && !p.leftAt);
+    if (!member) throw new Error("NOT_A_MEMBER");
+    if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
+    await tx.roomPlayer.update({ where: { id: member.id }, data: { isReady: member.seatIndex !== null } });
   });
-
   const next = await fetchRoomByCode(input.roomCode);
-  if (!next) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
+  if (!next) throw new Error("ROOM_NOT_FOUND");
   return buildRoomState(next, input.userId);
 }
 
 export async function setPlayerSeatByRoomCode(input: {
-  roomCode: string;
-  userId: string;
-  seatIndex: number | null;
+  roomCode: string; userId: string; seatIndex: number | null;
 }): Promise<RoomState> {
-  const room = await fetchRoomByCode(input.roomCode);
-
-  if (!room) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
-
-  const member = room.roomPlayers.find((player) => player.userId === input.userId && !player.leftAt);
-  if (!member) {
-    throw new Error("NOT_A_MEMBER");
-  }
-
-  if (room.status !== "WAITING") {
-    throw new Error("ROOM_NOT_WAITING");
-  }
-
-  if (input.seatIndex !== null && (input.seatIndex < 0 || input.seatIndex >= room.maxPlayers)) {
-    throw new Error("INVALID_SEAT");
-  }
-
-  if (
-    input.seatIndex !== null &&
-    room.roomPlayers.some(
-      (player) =>
-        !player.leftAt &&
-        player.id !== member.id &&
-        player.seatIndex !== null &&
-        player.seatIndex === input.seatIndex
-    )
-  ) {
-    throw new Error("SEAT_TAKEN");
-  }
-
-  const seatChanged = member.seatIndex !== input.seatIndex;
-
-  await prisma.roomPlayer.update({
-    where: { id: member.id },
-    data: {
-      seatIndex: input.seatIndex,
-      isReady: seatChanged ? false : member.isReady
+  await prisma.$transaction(async (tx) => {
+    const room = await lockRoom(tx, input.roomCode);
+    const member = room.roomPlayers.find((p) => p.userId === input.userId && !p.leftAt);
+    if (!member) throw new Error("NOT_A_MEMBER");
+    if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
+    if (input.seatIndex === null || !Number.isInteger(input.seatIndex) || input.seatIndex < 0 || input.seatIndex >= room.maxPlayers) {
+      throw new Error("INVALID_SEAT");
     }
+    if (room.roomPlayers.some((p) => !p.leftAt && p.id !== member.id && p.seatIndex === input.seatIndex)) {
+      throw new Error("SEAT_TAKEN");
+    }
+    await tx.roomPlayer.update({ where: { id: member.id }, data: { seatIndex: input.seatIndex, isReady: true } });
   });
-
   const next = await fetchRoomByCode(input.roomCode);
-  if (!next) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
+  if (!next) throw new Error("ROOM_NOT_FOUND");
   return buildRoomState(next, input.userId);
 }
 
 export async function setPlayerBuyInByRoomCode(input: {
-  roomCode: string;
-  userId: string;
-  buyIn: number;
+  roomCode: string; userId: string; buyIn: number;
 }): Promise<RoomState> {
-  const room = await fetchRoomByCode(input.roomCode);
-
-  if (!room) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
-
-  const member = room.roomPlayers.find((player) => player.userId === input.userId && !player.leftAt);
-
-  if (!member) {
-    throw new Error("NOT_A_MEMBER");
-  }
-
-  if (room.status !== "WAITING") {
-    throw new Error("ROOM_NOT_WAITING");
-  }
-
-  if (!Number.isInteger(input.buyIn) || input.buyIn <= 0) {
-    throw new Error("ILLEGAL_ACTION");
-  }
-
-  await prisma.roomPlayer.update({
-    where: { id: member.id },
-    data: {
-      stack: BigInt(input.buyIn),
-      totalBuyIn: BigInt(input.buyIn),
-      isReady: false
-    }
+  await prisma.$transaction(async (tx) => {
+    const room = await lockRoom(tx, input.roomCode);
+    const member = room.roomPlayers.find((p) => p.userId === input.userId && !p.leftAt);
+    if (!member) throw new Error("NOT_A_MEMBER");
+    if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
+    if (!Number.isSafeInteger(input.buyIn) || BigInt(input.buyIn) !== room.startingStack) throw new Error("UNIFORM_BUY_IN");
+    await tx.roomPlayer.update({ where: { id: member.id }, data: {
+      stack: room.startingStack, totalBuyIn: room.startingStack, isReady: member.seatIndex !== null
+    }});
   });
-
   const next = await fetchRoomByCode(input.roomCode);
-  if (!next) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
+  if (!next) throw new Error("ROOM_NOT_FOUND");
   return buildRoomState(next, input.userId);
 }
 
@@ -2225,32 +2125,17 @@ export async function updateRoomBlindsByCode(input: {
   bigBlind: number;
 }): Promise<RoomState> {
   const roomCode = normalizeRoomCode(input.roomCode);
-  const room = await fetchRoomByCode(roomCode);
-
-  if (!room) {
-    throw new Error("ROOM_NOT_FOUND");
-  }
-
-  if (room.hostUserId !== input.userId) {
-    throw new Error("HOST_ONLY");
-  }
-
-  if (room.status !== "WAITING") {
-    throw new Error("ROOM_NOT_WAITING");
-  }
-
-  if (input.smallBlind <= 0 || input.bigBlind <= 0 || input.bigBlind < input.smallBlind) {
-    throw new Error("INVALID_BLINDS");
-  }
-
-  await prisma.gameRoom.update({
-    where: {
-      id: room.id
-    },
-    data: {
-      smallBlind: BigInt(input.smallBlind),
-      bigBlind: BigInt(input.bigBlind)
+  await prisma.$transaction(async (tx) => {
+    const room = await lockRoom(tx, roomCode);
+    if (room.hostUserId !== input.userId) throw new Error("HOST_ONLY");
+    if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
+    if (!Number.isSafeInteger(input.smallBlind) || !Number.isSafeInteger(input.bigBlind) ||
+        input.smallBlind <= 0 || input.bigBlind < input.smallBlind || BigInt(input.bigBlind) > room.startingStack) {
+      throw new Error("INVALID_BLINDS");
     }
+    await tx.gameRoom.update({ where: { id: room.id }, data: {
+      smallBlind: BigInt(input.smallBlind), bigBlind: BigInt(input.bigBlind)
+    }});
   });
 
   const next = await fetchRoomByCode(roomCode);
@@ -2262,16 +2147,7 @@ export async function updateRoomBlindsByCode(input: {
 
 async function startFirstHand(roomCode: string, hostUserId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    const room = (await tx.gameRoom.findUnique({
-      where: { roomCode },
-      include: {
-        roomPlayers: true
-      }
-    })) as RoomRecord | null;
-
-    if (!room) {
-      throw new Error("ROOM_NOT_FOUND");
-    }
+    const room = await lockRoom(tx, roomCode);
 
     if (room.hostUserId !== hostUserId) {
       throw new Error("HOST_ONLY");
@@ -2282,11 +2158,13 @@ async function startFirstHand(roomCode: string, hostUserId: string): Promise<voi
     }
 
     const activePlayers = getSeatedActivePlayers(room.roomPlayers);
-    const readyPlayers = activePlayers.filter((player) => player.isReady);
-
-    if (readyPlayers.length < 2 || readyPlayers.length !== activePlayers.length) {
-      throw new Error("ROOM_NOT_READY");
-    }
+    const members = room.roomPlayers.filter((player) => !player.leftAt);
+    if (activePlayers.length < 2) throw new Error("ROOM_NOT_READY");
+    if (activePlayers.length !== members.length) throw new Error("SEAT_SELECTION_INCOMPLETE");
+    // Enforce the room buy-in even for waiting rooms created by an older client.
+    await tx.roomPlayer.updateMany({ where: { roomId: room.id, leftAt: null }, data: {
+      stack: room.startingStack, totalBuyIn: room.startingStack, isReady: true
+    }});
     const hostPlayer = activePlayers.find((player) => player.userId === hostUserId);
     if (!hostPlayer || hostPlayer.seatIndex === null) {
       throw new Error("NOT_A_MEMBER");
