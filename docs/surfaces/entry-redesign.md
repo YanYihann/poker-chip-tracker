@@ -48,6 +48,10 @@ English-default deployment `dpl_DTxnXEySBamAJm5LemfEoanQtfCa` is READY at https:
 
 The documenter wrote current DESIGN.md and schema-v2 sidecar before its turn failed on usage limits. The parent completed the document verification inline: 28 color metadata keys match normative frontmatter; ten self-contained component previews exist; retired celadon metadata is absent; profile columns and the waiting 1024px breakpoint match source. Reduced-motion caveats are recorded rather than canonized. This substituted documentation check does not claim extra browser coverage.
 
+## Lobby footer removal — 2026-10-03
+
+At the user's request, the lobby's bottom History and Profile links are removed along with their unused footer styles. The header navigation and account entry remain the existing routes to those functions.
+
 ## Completion checks — 2026-10-02
 
 The independent reviewer returned `fix` for one authentication error stripe. Its verdict pass returned `ship`, scoring that fix resolved from the updated error screenshot; this scope does not certify motion feel from still images. All seven review captures were valid. No generated or copied Balatro assets ship.

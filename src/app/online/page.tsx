@@ -29,7 +29,6 @@ function OnlineModePageContent() {
         <Link href="/rooms/join" className="game-menu-button menu-join"><span>{isZh ? "加入房间" : "JOIN ROOM"}<small>{isZh ? "输入 4 位房间码" : "Enter a 4-digit room code"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
         <Link href="/local" className="game-menu-button menu-local"><span>{isZh ? "本地记分" : "LOCAL GAME"}<small>{isZh ? "实体牌 · 单设备 · 无需登录" : "Physical cards · One device · No account"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
       </div>
-      <div className="game-menu-footer"><Link href="/history">{isZh ? "牌局记录" : "History"}</Link><Link href="/profile">{isZh ? "个人资料" : "Profile"}</Link></div>
     </section>
   </PageShell>;
 }
