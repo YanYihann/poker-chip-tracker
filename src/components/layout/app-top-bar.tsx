@@ -12,6 +12,7 @@ import { Plus } from "@phosphor-icons/react/dist/csr/Plus";
 import { PokerChip } from "@phosphor-icons/react/dist/csr/PokerChip";
 import { Users } from "@phosphor-icons/react/dist/csr/Users";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { AudioSettings } from "@/components/audio/audio-settings";
 import { fetchProfile } from "@/features/auth/api";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/table-layout";
 
@@ -45,6 +46,7 @@ export function AppTopBar({ title, playerCount, onPlayerCountChange, backHref }:
         </Link>)}
       </nav>}
       <div className="app-nav-tools">
+        <AudioSettings />
         <button type="button" className="language-switch" onClick={toggleLocale} aria-label={isZh ? "Switch to English" : "切换中文"}>
           <Globe size={18} aria-hidden="true" /><span>{isZh ? "EN" : "中文"}</span>
         </button>

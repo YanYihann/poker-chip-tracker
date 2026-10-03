@@ -52,6 +52,10 @@ The documenter wrote current DESIGN.md and schema-v2 sidecar before its turn fai
 
 At the user's request, the lobby's bottom History and Profile links are removed along with their unused footer styles. The header navigation and account entry remain the existing routes to those functions.
 
+## Sound controls — 2026-10-04
+
+The header exposes independent Button sounds and Background music switches in a compact sound popover. Both start off and persist locally. Audio unlocks only after a user gesture, stays continuous across routes, pauses while the page is hidden, and respects either mute immediately. Original synthesized chip clicks and a quiet 96 BPM instrumental loop use Web Audio without external assets or dependencies. The controls remain available in local mode without an account or API.
+
 ## Completion checks — 2026-10-02
 
 The independent reviewer returned `fix` for one authentication error stripe. Its verdict pass returned `ship`, scoring that fix resolved from the updated error screenshot; this scope does not certify motion feel from still images. All seven review captures were valid. No generated or copied Balatro assets ship.

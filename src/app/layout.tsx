@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Bungee } from "next/font/google";
 
 import { LanguageProvider } from "@/components/i18n/language-provider";
+import { AudioProvider } from "@/components/audio/audio-provider";
 import "./globals.css";
 
 const bodyFont = Manrope({
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en-US">
       <body className={`${bodyFont.variable} ${labelFont.variable}`}>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider><AudioProvider>{children}</AudioProvider></LanguageProvider>
       </body>
     </html>
   );

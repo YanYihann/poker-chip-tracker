@@ -39,6 +39,16 @@ input::placeholder { color:var(--muted); opacity:.75; }
 .app-nav a[aria-current=page] { color:var(--accent); background:var(--stitch-surface-container-lowest); box-shadow:0 3px 0 var(--button-depth); }
 .app-nav-tools { display:flex; align-items:center; gap:16px; margin-left:auto; }
 .app-nav + .app-nav-tools { margin-left:0; }
+.audio-settings { position:relative; }
+.audio-trigger { display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:6px; color:var(--muted); }
+.audio-trigger:hover,.audio-trigger[aria-expanded=true] { background:var(--panel); color:var(--accent); }
+.audio-settings-panel { position:absolute; top:calc(100% + 12px); right:0; width:260px; padding:16px; border-radius:8px; background:var(--panel); box-shadow:0 8px 20px rgb(0 0 0 / 30%); }
+.audio-settings-title { margin:0 0 8px; font-family:var(--font-label),var(--font-apple-zh); font-size:16px; color:var(--text); }
+.audio-option { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:48px; padding:8px; border-radius:6px; font-size:13px; color:var(--text); }
+.audio-option:hover { background:var(--stitch-surface-container-high); }
+.audio-state { min-width:40px; padding:4px 8px; border-radius:4px; background:var(--stitch-surface-container-lowest); color:var(--muted); font-size:12px; font-weight:800; text-align:center; }
+.audio-option[aria-checked=true] .audio-state { background:var(--accent); color:var(--accent-foreground); }
+.audio-unavailable { margin:8px 0 0; font-size:12px; color:var(--muted); }
 .language-switch { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:8px; font-size:12px; color:var(--muted); }
 .profile-avatar { display:flex; align-items:center; justify-content:center; width:44px; height:44px; overflow:hidden; border-radius:6px; background:var(--stitch-surface-container-high); color:var(--accent); font-weight:700; }
 .nav-signin { min-height:44px; display:flex; align-items:center; padding:8px 20px; background:var(--panel); box-shadow:0 3px 0 var(--button-depth); border-radius:6px; font-size:14px; white-space:nowrap; }
@@ -236,6 +246,7 @@ input::placeholder { color:var(--muted); opacity:.75; }
  .app-nav-row { min-height:68px; flex-wrap:wrap; gap:0; padding:12px 0; }
  .app-brand { font-size:16px; }
  .app-nav-tools,.app-nav + .app-nav-tools { margin-left:auto; gap:8px; }
+ .audio-settings-panel { position:fixed; top:72px; right:16px; width:min(260px,calc(100vw - 32px)); }
  .app-nav { order:3; width:100%; margin:12px 0 0; justify-content:space-between; gap:4px; }
  .app-nav a { flex:1; justify-content:center; padding:8px 6px; font-size:13px; }
  .app-nav a svg { width:17px; }
@@ -297,6 +308,8 @@ input::placeholder { color:var(--muted); opacity:.75; }
  .app-brand { font-size:14px; gap:6px; }
  .app-brand svg { width:26px; }
  .language-switch { padding:4px; }
+ .app-nav-tools,.app-nav + .app-nav-tools { gap:4px; }
+ .nav-signin { padding-inline:8px; font-size:12px; }
  .auth-form-area,.room-form-fields > form { padding-inline:20px; }
  .game-mode-options button { display:block; text-align:left; }
  .game-mode-options p + p { margin-top:6px; }
