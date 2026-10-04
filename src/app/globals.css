@@ -278,7 +278,6 @@ input::placeholder { color:var(--muted); opacity:.75; }
 .action-panel [data-action=fold] { background:var(--game-red); color:#fff5e8; border-color:transparent; }
 .action-panel [data-action=call],.action-panel [data-action=check] { background:var(--game-blue); color:#fff5e8; border-color:transparent; }
 .action-panel .utility-actions { justify-content:flex-start; }
-.amount-control-label { display:block; font-size:13px; color:var(--muted); margin:16px 0 8px; }
 .turn-status { min-height:44px; border:1px solid var(--stitch-surface-bright); border-radius:5px; }
 .settlement-dialog { max-height:calc(100dvh - 48px); overflow-y:auto; background:var(--panel); border-radius:8px; }
 .settlement-dialog button { min-height:44px; }
@@ -385,7 +384,6 @@ input::placeholder { color:var(--muted); opacity:.75; }
  .history-shell .content-grid > a > p:last-child { font-size:20px; margin-top:12px; }
  .table-body { padding:10px 0 24px; }
  .poker-table-wrap { margin-block:12px 24px; padding-inline:4px; }
- .amount-control-label { margin-top:12px; }
  .action-panel .action-grid > button > span:last-child { font-size:14px; }
  .action-panel .utility-actions button { font-size:12px; padding-inline:10px; }
  .central-pot-content > p:nth-child(2) { color:var(--text); }
@@ -454,7 +452,9 @@ input::placeholder { color:var(--muted); opacity:.75; }
  padding: max(4px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));
 }
 .mobile-table > .app-top-bar { display:none; }
-.mobile-table-back { display:grid; place-items:center; flex:0 0 44px; width:44px; min-height:44px; border:1px solid var(--stitch-surface-bright); border-radius:6px; background:var(--panel); color:var(--text); font-size:24px; }
+.mobile-table-back { display:grid; place-items:center; flex:0 0 44px; width:44px; min-height:44px; color:var(--text); }
+.mobile-back-face { display:grid; place-items:center; width:32px; height:32px; border:1px solid var(--stitch-surface-bright); border-radius:5px; background:var(--panel); }
+.mobile-back-face svg { display:block; }
 .mobile-table .table-body { display:flex; flex-direction:column; flex:1; min-height:0; padding:0; gap:4px; overflow:hidden; }
 .mobile-table .table-body > *,.mobile-table .online-hand-settlement-view > * { margin:0; }
 .mobile-table .poker-table-wrap { flex:1; width:100%; min-height:0; max-width:none; margin:0; padding:0; }
@@ -477,8 +477,8 @@ input::placeholder { color:var(--muted); opacity:.75; }
 .mobile-table .poker-felt:is([data-seat-count="2"],[data-seat-count="4"]) .seat-ledger p[data-long-stack] { font-size:12px; }
 .mobile-table .seat-ledger p:nth-child(3),.mobile-table .seat-ledger p:nth-child(4) { grid-column:2/span 2; grid-row:3; font-size:9px; line-height:9px; }
 .mobile-table .seat-ledger:has(p:nth-child(4)) p:nth-child(3) { display:none; }
-.mobile-table .seat-status { grid-row:1; align-self:start; }
-.mobile-table .seat-status .seat-position-badge { padding:0 2px; font-size:8px; line-height:11px; border-radius:2px; }
+.mobile-table .seat-status { grid-row:1; align-self:center; }
+.mobile-table .seat-status .seat-position-badge { display:inline-flex; align-items:center; justify-content:center; min-height:16px; padding:1px 3px; font-family:var(--font-body),var(--font-apple-zh); font-size:8px; line-height:1; text-align:center; border-radius:2px; }
 .mobile-table .active-seat-label { display:none; }
 .mobile-table .seat-hole-cards { grid-row:1/span 3; position:relative; width:18px; height:32px; }
 .mobile-table .seat-hole-cards .sim-card { width:16px; height:24px; }
@@ -516,7 +516,6 @@ input::placeholder { color:var(--muted); opacity:.75; }
 .mobile-table .utility-actions button { flex:1; min-width:0; height:44px; padding:2px 4px; font:600 11px/1.15 var(--font-body); }
 .mobile-table .previous-action-hint { margin-top:4px; padding:0 2px; font-size:10px; line-height:14px; }
 .mobile-table .amount-control { margin-top:4px; }
-.mobile-table .amount-control-label { margin:0 0 2px; font-size:10px; line-height:12px; }
 .mobile-table .amount-control > div { padding:0; gap:4px; border:0; background:none; }
 .mobile-table .amount-control > p { font-size:9px; line-height:12px; margin-top:2px; }
 .mobile-table .action-panel .action-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin-top:4px; }

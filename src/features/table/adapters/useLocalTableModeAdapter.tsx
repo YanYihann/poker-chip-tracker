@@ -312,7 +312,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
         const value = Math.min(maxWager, Math.max(controller.minRaiseTo, Number(amountInput || controller.minRaiseTo) + delta));
         setAmountInput(String(value)); controller.setActionAmount(value);
       },
-      helperText: `${isZh ? "本轮下注总额" : "Total wager this round"} ${controller.minRaiseTo}–${maxWager}${amountValid ? "" : isZh ? " · 请输入范围内的整数" : " · Enter a whole number in range"}`
+      errorText: amountValid ? undefined : `${isZh ? "请输入范围内的整数" : "Enter a whole number in range"}: ${controller.minRaiseTo}–${maxWager}`
     } : null,
     settlement: setupMode
       ? null

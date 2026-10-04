@@ -89,8 +89,10 @@ export function getMobileSeatCoordinates(
   // The first render precedes ResizeObserver. Keep that frame on the felt.
   const xInset = (seatWidth / 2 + 3) / (width > 0 ? width : 320) * 100;
   const yInset = (seatHeight / 2 + 3) / (height > 0 ? height : 240) * 100;
+  // Pull heads-up seats inward while reserving 112px for the compact pot/board.
+  const headsUpInset = Math.max(yInset, Math.min(14, 50 - (seatHeight + 112) / (2 * (height > 0 ? height : 240)) * 100));
   const points = Array.from({ length: count }, (_, index) => {
-    if (count === 2) return { xPercent: 50, yPercent: index === 0 ? 100 - yInset : yInset };
+    if (count === 2) return { xPercent: 50, yPercent: index === 0 ? 100 - headsUpInset : headsUpInset };
     const left = index < leftCount;
     const row = left ? leftCount - 1 - index : index - leftCount;
     const rows = left ? leftCount : rightCount;

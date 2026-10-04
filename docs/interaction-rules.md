@@ -41,3 +41,7 @@
 
 - Active phone tables hide navigation and device tabs, retaining only Back. Table, private cards and actions fit the visible viewport in portrait and landscape without page scrolling; setup and menus still scroll normally. Long settlement reports scroll inside their dialogs.
 - Fullscreen is opportunistic during an entry gesture or first table interaction. Unsupported/denied requests do not block play; manual exit is respected and Back restores navigation, scrolling and table-owned fullscreen.
+
+- Active wager controls omit the visible round-total label and routine range/minimum hints, retain an accessible label, and show validation errors when needed.
+- Phone Back has a 32px face and centered arrow inside its 44px touch target. Blind badge text is centered. Heads-up seats move inward only when the pot/board remains clear.
+- Every synced-room participant sees chip-to-pot feedback for server-confirmed debits, including calls that advance a street and all-ins settled in the same response. Loading, repeated polling and standalone payouts do not replay wagers.

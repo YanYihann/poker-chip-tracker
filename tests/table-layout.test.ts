@@ -6,6 +6,19 @@ const selectionCoordinates = getPlayerSeatCoordinates(
   Array.from({ length: MAX_PLAYERS }, (_, seatIndex) => ({ seatIndex, seatCount: MAX_PLAYERS }))
 );
 
+test("heads-up phone seats sit inward and leave the central pot and board clear", () => {
+  const players = [{ seatIndex: 0, seatCount: 2 }, { seatIndex: 1, seatCount: 2 }];
+  for (const height of [230, 258, 350, 580]) {
+    const points = getMobileSeatCoordinates(players, 357, height, 156, 56);
+    assert.equal(points[0].xPercent, 50);
+    assert.equal(points[1].xPercent, 50);
+    assert.ok(Math.abs(points[0].yPercent + points[1].yPercent - 100) < 1e-10);
+    assert.ok(points[1].yPercent / 100 * height >= 31);
+    assert.ok((50 - points[1].yPercent) / 100 * height >= 84 - 0.01);
+    if (height >= 350) assert.equal(points[1].yPercent, 14);
+  }
+});
+
 test("mobile rails fit 2–10 seats and the central board inside small portrait and landscape tables", () => {
   for (const [width, height] of [[302, 258], [357, 350], [412, 580], [292, 230], [391, 275], [568, 290]]) {
     for (let count = 2; count <= 10; count++) {

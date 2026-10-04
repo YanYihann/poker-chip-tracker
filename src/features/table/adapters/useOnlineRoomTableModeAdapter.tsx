@@ -21,6 +21,8 @@ import {
 import type { TableModeAdapter } from "@/features/table/mode/types";
 import { getRoomSocket } from "@/features/rooms/realtime";
 import { buildPlaceholderPlayers } from "@/lib/table-layout";
+import { getRoomChipMotions } from "@/features/table/room-chip-motion";
+import { useMotionStore } from "@/store/useMotionStore";
 import { fetchFinishedRoomSession } from "@/features/auth/api";
 import { SessionEndConfirmation } from "@/components/settlement/session-end-confirmation";
 import { summarizeOnlineSession, type SessionSummary } from "@/features/settlement/session-summary";
@@ -368,6 +370,20 @@ export function useOnlineRoomTableModeAdapter(
   const [sessionSummaryLoading, setSessionSummaryLoading] = useState(false);
   const [sessionSummaryError, setSessionSummaryError] = useState<string | null>(null);
   const summaryRequestRef = useRef(0);
+
+  const previousMotionRoomRef = useRef<RoomState | null>(null);
+
+  useEffect(() => {
+    previousMotionRoomRef.current = null;
+    useMotionStore.getState().clearAll();
+    return () => { useMotionStore.getState().clearAll(); };
+  }, [roomCode]);
+
+  useEffect(() => {
+    const previous = previousMotionRoomRef.current;
+    previousMotionRoomRef.current = roomState;
+    getRoomChipMotions(previous, roomState).forEach(useMotionStore.getState().emit);
+  }, [roomState]);
 
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
@@ -908,10 +924,7 @@ export function useOnlineRoomTableModeAdapter(
               const base = Number.isFinite(current) ? current : 0;
               const next = Math.max(0, base + delta);
               setActionAmountInput(next === 0 ? "" : String(next));
-            },
-            helperText: `${isZh ? "最小下注" : "Min Bet"}: ${game.minBet} | ${
-              isZh ? "最小加注增量" : "Min Raise Delta"
-            }: ${game.minRaiseDelta}`
+            }
           }
         : null,
     banner: error

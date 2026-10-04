@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "@phosphor-icons/react/dist/csr/ArrowLeft";
 import { useMobileTableViewport } from "./use-mobile-table-viewport";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -77,7 +78,7 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
         compactViewport ? "mobile-table" : ""
       ].join(" ")}
     >
-      {compactViewport && <Link className="mobile-table-back" href={adapter.backHref ?? "/online"} aria-label={isZh ? "返回" : "Back"}><span aria-hidden="true">←</span></Link>}
+      {compactViewport && <Link className="mobile-table-back" href={adapter.backHref ?? "/online"} aria-label={isZh ? "返回" : "Back"}><span className="mobile-back-face" aria-hidden="true"><ArrowLeft size={18} /></span></Link>}
       <AppTopBar
         title={adapter.title}
         playerCount={adapter.playerCount}

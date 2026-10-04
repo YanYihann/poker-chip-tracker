@@ -30,7 +30,7 @@ export type TableModeAmountControl = {
   value: string;
   onValueChange: (next: string) => void;
   onStep: (delta: number) => void;
-  helperText?: string;
+  errorText?: string;
 };
 
 export type TableModeSettlementPlayer = {

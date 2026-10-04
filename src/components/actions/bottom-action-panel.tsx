@@ -23,7 +23,7 @@ type AmountControlModel = {
   value: string;
   onValueChange: (next: string) => void;
   onStep: (delta: number) => void;
-  helperText?: string;
+  errorText?: string;
 };
 
 type BottomActionPanelProps = {
@@ -78,7 +78,7 @@ export function BottomActionPanel({
 
       {amountControl ? (
         <div className="amount-control mt-1.5 sm:mt-2">
-          <label htmlFor="wager-amount" className="amount-control-label">{isZh ? "本轮下注总额" : "Total wager this round"}</label>
+          <label htmlFor="wager-amount" className="sr-only">{isZh ? "本轮下注总额" : "Total wager this round"}</label>
           <div className="grid grid-cols-5 gap-1 rounded-lg border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1 sm:rounded-xl">
             <button
               type="button"
@@ -119,8 +119,8 @@ export function BottomActionPanel({
             </button>
           </div>
 
-          {amountControl.helperText ? (
-            <p className="mt-1 px-1 text-[10px] text-stitch-onSurfaceVariant">{amountControl.helperText}</p>
+          {amountControl.errorText ? (
+            <p role="alert" className="mt-1 px-1 text-[10px] text-stitch-tertiary">{amountControl.errorText}</p>
           ) : null}
         </div>
       ) : null}
