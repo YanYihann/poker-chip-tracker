@@ -13,7 +13,7 @@ test("both server-backed modes archive two hands once and expose settlement to e
   process.env.DATABASE_URL_DIRECT = databaseUrl;
   const { prisma } = await import("../server/src/lib/prisma.js");
   const rooms = await import("../server/src/modules/rooms/room.service.js");
-  const { getSessionDetailByRoomCode } = await import("../server/src/modules/profile/profile.service.js");
+  const { getSessionDetailByRoomCode, getProfile, getRecentSessions, resetProfileHistory } = await import("../server/src/modules/profile/profile.service.js");
   const prefix = randomUUID();
   const users = await Promise.all(Array.from({ length: 4 }, (_, i) => prisma.user.create({ data: {
     email: `${prefix}-${i}@example.test`, passwordHash: "integration-test-no-login", profile: { create: { username: `settlement-${i}` } }
@@ -65,6 +65,42 @@ test("both server-backed modes archive two hands once and expose settlement to e
         }
       }
       await assert.rejects(getSessionDetailByRoomCode({ userId: outsider.id, roomCode }), /SESSION_FORBIDDEN/);
+    });
+    await t.test("mode-specific personal totals and history reset keep other players' settlements intact", async () => {
+      const before = await getProfile(host.id);
+      assert.equal(before.byMode.online.sessions, 1);
+      assert.equal(before.byMode.local.sessions, 1);
+      assert.equal(before.totals.sessions, 2);
+      assert.equal(BigInt(before.totals.net), BigInt(before.byMode.local.net) + BigInt(before.byMode.online.net));
+      assert.equal("totalAssets" in before, false);
+      const local = await getRecentSessions(host.id, "local");
+      const online = await getRecentSessions(host.id, "online");
+      assert.deepEqual(local.map((row) => row.mode), ["local"]);
+      assert.deepEqual(online.map((row) => row.mode), ["online"]);
+      const peerBefore = await getProfile(guest.id);
+      const reset = await resetProfileHistory(host.id);
+      assert.deepEqual(reset.totals, { sessions: 0, hands: 0, profit: "0", loss: "0", net: "0" });
+      assert.equal((await getProfile(host.id)).byMode.local.sessions, 0);
+      assert.deepEqual(await getRecentSessions(host.id), []);
+      assert.deepEqual(await getProfile(guest.id), peerBefore);
+      await assert.rejects(getSessionDetailByRoomCode({ userId: host.id, roomCode: local[0].roomCode }), /SESSION_FORBIDDEN/);
+      const peerReport = await getSessionDetailByRoomCode({ userId: guest.id, roomCode: local[0].roomCode });
+      assert.equal(peerReport.players.length, 3, "the resetting player remains in other participants' reports");
+      assert.ok(peerReport.players.some((player) => player.userId === host.id));
+      const created = await rooms.createRoom({ hostUserId: host.id, mode: "local", maxPlayers: 2, startingStack: 2000, smallBlind: 100, bigBlind: 200 });
+      roomIds.push(created.room.id);
+      const roomCode = created.room.code;
+      await rooms.joinRoomByCode({ roomCode, userId: guest.id });
+      await rooms.startRoomByHost({ roomCode, hostUserId: host.id });
+      const active = (await rooms.getRoomStateByCode(roomCode, guest.id))!;
+      assert.equal(active.room.mode, "local");
+      await rooms.applyPlayerActionByRoomCode({ roomCode, userId: active.game!.activePlayerUserId!, actionType: "fold" });
+      const showdown = (await rooms.getRoomStateByCode(roomCode, host.id))!;
+      await rooms.settleHandByRoomCode({ roomCode, userId: host.id, winnerUserIds: showdown.game!.eligibleWinnerUserIds });
+      await rooms.decideNextHandByRoomCode({ roomCode, userId: host.id, continueSession: false });
+      assert.equal((await getProfile(host.id)).totals.sessions, 1, "sessions finished after reset count normally");
+      assert.equal((await getRecentSessions(host.id, "local")).length, 1);
+      assert.equal((await getRecentSessions(host.id, "online")).length, 0);
     });
   } finally {
     await prisma.gameRoom.deleteMany({ where: { id: { in: roomIds } } });

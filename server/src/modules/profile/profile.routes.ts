@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
 import { requireAuth } from "../auth/session.middleware.js";
 import { roomCodeParamSchema } from "../rooms/room.schemas.js";
 import { sessionIdParamSchema, updateProfileSchema } from "./profile.schemas.js";
-import { getProfile, getRecentSessions, getSessionDetail, getSessionDetailByRoomCode, updateProfile } from "./profile.service.js";
+import { getProfile, getRecentSessions, getSessionDetail, getSessionDetailByRoomCode, resetProfileHistory, updateProfile } from "./profile.service.js";
 
 function sendValidationError(error: ZodError, res: Response): void {
   res.status(400).json({
@@ -55,11 +55,20 @@ export function createProfileRouter() {
 
   router.get("/sessions", requireAuth, async (req: Request, res: Response) => {
     try {
-      const sessions = await getRecentSessions(req.authSession!.userId);
+      const mode = z.enum(["local", "online"]).optional().parse(req.query.mode);
+      const sessions = await getRecentSessions(req.authSession!.userId, mode);
       res.status(200).json({ sessions });
-    } catch {
+    } catch (error) {
+      if (error instanceof ZodError) { sendValidationError(error, res); return; }
       res.status(500).json({ message: "Unable to load recent sessions." });
     }
+  });
+
+  router.post("/reset", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const profile = await resetProfileHistory(req.authSession!.userId);
+      res.status(200).json({ profile });
+    } catch { res.status(500).json({ message: "Unable to reset history. Please try again." }); }
   });
 
   router.get("/sessions/:sessionId", requireAuth, async (req: Request, res: Response) => {

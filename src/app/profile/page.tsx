@@ -7,24 +7,25 @@ import { useRouter } from "next/navigation";
 import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
+import { HistoryResetConfirmation } from "@/components/settlement/history-reset-confirmation";
+import { includeDeviceSessions } from "@/features/auth/profile-totals";
+import { useArchiveStore } from "@/store/useArchiveStore";
+import { useSessionStore } from "@/store/useSessionStore";
 import {
   fetchCurrentUser,
   fetchProfile,
-  fetchRecentSessions,
+  resetAllSessions,
   logoutAccount,
   updateProfile,
-  type RecentSession
+  type ProfilePayload
 } from "@/features/auth/api";
 
 function formatMoney(value: string, locale: AppLocale): string {
-  const amount = Number(value);
-  if (Number.isNaN(amount)) {
-    return "$0";
-  }
+  const amount = BigInt(value);
   const formatted = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
     maximumFractionDigits: 0
-  }).format(Math.abs(amount));
-  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
+  }).format(amount < 0n ? -amount : amount);
+  return amount < 0n ? `−${formatted}` : amount > 0n ? `+${formatted}` : formatted;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -87,7 +88,7 @@ async function buildAvatarDataUrl(file: File): Promise<string> {
 
 function ProfilePageContent() {
   const router = useRouter();
-  const { isZh, localeTag, locale, setLocale } = useLanguage();
+  const { isZh, locale, setLocale } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -99,18 +100,19 @@ function ProfilePageContent() {
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarDirty, setAvatarDirty] = useState(false);
-  const [sessions, setSessions] = useState<RecentSession[]>([]);
+  const [profileData, setProfileData] = useState<ProfilePayload | null>(null);
+  const [userId, setUserId] = useState("");
+  const archives = useArchiveStore((state) => state.entries);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetDone, setResetDone] = useState(false);
+  const stats = useMemo(() => profileData ? includeDeviceSessions(profileData, userId, archives.flatMap((entry) => entry.summary ? [entry.summary] : [])) : null, [profileData, userId, archives]);
 
   const [saving, setSaving] = useState(false);
   const [avatarProcessing, setAvatarProcessing] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const [totalAssets, setTotalAssets] = useState("10000");
-  const [totals, setTotals] = useState({
-    sessions: 0,
-    hands: 0,
-    profit: "0",
-    loss: "0"
-  });
+  useEffect(() => { useArchiveStore.getState().hydrate(); }, []);
 
   useEffect(() => {
     let active = true;
@@ -118,10 +120,9 @@ function ProfilePageContent() {
       setLoading(true);
       setLoadError(null);
       try {
-        const [me, profile, recent] = await Promise.all([
+        const [me, profile] = await Promise.all([
           fetchCurrentUser(),
-          fetchProfile(),
-          fetchRecentSessions()
+          fetchProfile()
         ]);
 
         if (!active) {
@@ -131,9 +132,8 @@ function ProfilePageContent() {
         setUsername(profile.username);
         setAvatarUrl(profile.avatarUrl ?? "");
         setAvatarDirty(false);
-        setTotalAssets(profile.totalAssets);
-        setTotals(profile.totals);
-        setSessions(recent);
+        setUserId(me.id);
+        setProfileData(profile);
       } catch (loadError) {
         if (!active) {
           return;
@@ -205,7 +205,34 @@ function ProfilePageContent() {
 
         {!loading && !loadError ? (
           <div className="profile-layout">
-            <div className="profile-column">
+            <div className="profile-column profile-results-column">
+            <article className="profile-net-panel rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl">{isZh ? "总盈亏" : "Total P/L"}</h2>
+              <p className={`mt-3 break-words text-4xl font-bold tabular-nums ${Number(stats?.totals.net) < 0 ? "text-stitch-tertiary" : "text-stitch-mint"}`}>{formatMoney(stats?.totals.net ?? "0", locale)}</p>
+              <p className="mt-2 text-xs text-stitch-onSurfaceVariant">{isZh ? "筹码由系统银行按牌局发放。" : "Starting chips are issued by the system bank each session."}</p>
+            </article>
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-2xl">{isZh ? "牌局总览" : "Session overview"}</h2>
+              <div className="profile-mode-totals">
+                {(["online", "local"] as const).map((mode) => <section key={mode} aria-labelledby={`profile-${mode}-title`}>
+                  <h3 id={`profile-${mode}-title`}>{mode === "online" ? (isZh ? "线上" : "Online") : (isZh ? "本地" : "Local")}</h3>
+                  <dl>
+                    <div><dt>{isZh ? "牌局" : "Sessions"}</dt><dd>{stats?.byMode[mode].sessions ?? 0}</dd></div>
+                    <div><dt>{isZh ? "手数" : "Hands"}</dt><dd>{stats?.byMode[mode].hands ?? 0}</dd></div>
+                    <div className="profile-mode-net"><dt>{isZh ? "盈亏" : "P/L"}</dt><dd className={Number(stats?.byMode[mode].net) < 0 ? "text-stitch-tertiary" : "text-stitch-mint"}>{formatMoney(stats?.byMode[mode].net ?? "0", locale)}</dd></div>
+                  </dl>
+                </section>)}
+              </div>
+              <p className="mt-3 text-xs text-stitch-onSurfaceVariant">{isZh ? "单设备牌局按你选择的座位计入，此设备保存的记录也包含在内。" : "Single-device results use your selected seat and are saved on this device."}</p>
+            </article>
+            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
+              <h2 className="font-headline text-xl">{isZh ? "重置牌局" : "Reset sessions"}</h2>
+              <p className="mt-2 text-sm text-stitch-onSurfaceVariant">{isZh ? "清空线上、本地盈亏和历史记录。" : "Clear online and local P/L and history."}</p>
+              <button type="button" className="mt-4 min-h-11 rounded-xl border border-stitch-tertiary/50 px-4 text-sm font-semibold text-stitch-tertiary" onClick={() => { setResetError(null); setResetOpen(true); setResetDone(false); }}>{isZh ? "重置所有牌局" : "Reset all sessions"}</button>
+              {resetDone && <p role="status" className="mt-3 text-sm text-stitch-mint">{isZh ? "盈亏和历史记录已清空。" : "Totals and history cleared."}</p>}
+            </article>
+            </div>
+            <div className="profile-column profile-identity-column">
             <article className="min-w-0 rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -400,88 +427,19 @@ function ProfilePageContent() {
               </div>
             </article>
             </div>
-            <div className="profile-column">
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u603b\u8d44\u4ea7" : "Total Assets"}</h2>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u521d\u59cb\u8d44\u4ea7 $10,000\uff0c\u4f1a\u968f\u724c\u5c40\u76c8\u4e8f\u53d8\u5316\u3002" : "Starts at $10,000 and changes with your session results."}
-              </p>
-              <p className="mt-3 break-words text-3xl font-bold tabular-nums text-stitch-mint">{formatMoney(totalAssets, locale)}</p>
-            </article>
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u724c\u5c40\u603b\u89c8" : "Session Totals"}</h2>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5f52\u6863\u724c\u5c40\u5df2\u4e0e\u670d\u52a1\u5668\u540c\u6b65\u3002" : "Archived game sessions are synced from server."}
-              </p>
-              <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5">
-                <div className="min-w-0">
-                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u724c\u5c40\u6570" : "Sessions"}</dt>
-                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-onSurface">{totals.sessions}</dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u603b\u624b\u6570" : "Hands"}</dt>
-                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-onSurface">{totals.hands}</dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u76c8\u5229" : "Profit"}</dt>
-                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-mint">{formatMoney(totals.profit, locale)}</dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-sm text-stitch-onSurfaceVariant">{isZh ? "\u4e8f\u635f" : "Loss"}</dt>
-                  <dd className="mt-1 break-words text-2xl font-semibold tabular-nums text-stitch-tertiary">{formatMoney(totals.loss, locale)}</dd>
-                </div>
-              </dl>
-            </article>
-            <article className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-headline text-2xl text-stitch-onSurface">{isZh ? "\u4e2a\u4eba\u5386\u53f2" : "Profile History"}</h2>
-                <Link
-                  href="/history"
-                  className="shrink-0 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-1.5 text-xs text-stitch-onSurfaceVariant"
-                >
-                  {isZh ? "\u67e5\u770b\u5168\u90e8" : "View All"}
-                </Link>
-              </div>
-              <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-                {isZh ? "\u5df2\u5b8c\u6210\u724c\u5c40\u4f1a\u5173\u8054\u5230\u4f60\u7684\u8d26\u6237\u3002" : "Completed sessions are linked to your profile."}
-              </p>
-
-              {sessions.length === 0 ? (
-                <p className="mt-4 text-sm text-stitch-onSurfaceVariant">
-                  {isZh ? "\u6682\u65e0\u724c\u5c40\u8bb0\u5f55\u3002" : "No sessions yet."}
-                </p>
-              ) : (
-                <ul className="mt-3 divide-y divide-stitch-outlineVariant/30">
-                  {sessions.map((session) => (
-                    <li key={session.sessionId}>
-                      <Link
-                        href={`/history/${session.sessionId}`}
-                        className="block py-4 transition-colors hover:text-stitch-primary [overflow-wrap:anywhere]"
-                      >
-                        <p className="text-sm font-semibold">
-                          {isZh ? "\u623f\u95f4" : "Room"} {session.roomCode}
-                        </p>
-                        <time dateTime={session.endedAtIso} className="mt-1 block text-xs text-stitch-onSurfaceVariant">
-                          {new Date(session.endedAtIso).toLocaleString(localeTag)}
-                        </time>
-                        <p className="mt-2 text-xs tabular-nums text-stitch-onSurfaceVariant">
-                          {isZh ? "\u8d77\u59cb" : "Start"} {formatMoney(session.startStack, locale)} -&gt; {isZh ? "\u7ed3\u675f" : "End"}{" "}
-                          {formatMoney(session.endStack, locale)}
-                        </p>
-                        <p className="text-xs tabular-nums text-stitch-onSurfaceVariant">
-                          {isZh ? "\u624b\u6570" : "Hands"}: {session.handsPlayed}/{session.totalHands} | {isZh ? "\u76c8\u4e8f" : "P/L"}:{" "}
-                          {formatMoney(session.profitLoss, locale)}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-            </div>
           </div>
         ) : null}
       </section>
+      <HistoryResetConfirmation isOpen={resetOpen} busy={resetBusy} error={resetError} onCancel={() => setResetOpen(false)} onConfirm={() => {
+        setResetBusy(true); setResetError(null);
+        void resetAllSessions().then((profile) => {
+          useArchiveStore.getState().clearEntries();
+          const session = useSessionStore.getState();
+          if (session.ledger?.endedAtIso) session.applySnapshot({ ...session, ledger: undefined,
+            players: session.players.map((player) => ({ ...player, stack: session.ledger?.startingPlayers.find((entry) => entry.id === player.id)?.stack ?? 2000 })) });
+          setProfileData(profile); setResetOpen(false); setResetDone(true);
+        }).catch((error) => setResetError(error instanceof Error ? error.message : (isZh ? "重置失败，请重试。" : "Reset failed. Please try again."))).finally(() => setResetBusy(false));
+      }} />
     </main>
   );
 }

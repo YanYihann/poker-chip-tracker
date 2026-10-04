@@ -87,6 +87,7 @@ model Profile {
   totalHands    Int      @default(0) @map("total_hands")
   totalProfit   BigInt   @default(0) @map("total_profit")
   totalLoss     BigInt   @default(0) @map("total_loss")
+  historyResetAt DateTime? @map("history_reset_at") @db.Timestamptz(6)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)

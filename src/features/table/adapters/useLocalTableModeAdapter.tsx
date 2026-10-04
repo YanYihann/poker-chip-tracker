@@ -17,6 +17,7 @@ import { useMotionStore } from "@/store/useMotionStore";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useSettlementStore } from "@/store/useSettlementStore";
 import type { Player, TableActionType } from "@/types/domain";
+import { fetchCurrentUser, type AuthUser } from "@/features/auth/api";
 
 const STREET_LABELS: Record<AppLocale, Record<TableModeAdapter["street"], string>> = {
   zh: {
@@ -104,7 +105,7 @@ function setActingStatus(players: Player[], actingPlayerId: string | null): Play
   });
 }
 
-function startLocalSession(): boolean {
+function startLocalSession(owner?: { userId: string; playerId: string }): boolean {
   const sessionStore = useSessionStore.getState();
   const handStore = useHandStore.getState();
   const bettingStore = useBettingStore.getState();
@@ -121,6 +122,7 @@ function startLocalSession(): boolean {
   const reseatedPlayers: Player[] = players.map((player, index) => ({
     ...player,
     seatIndex: seatOrder[index],
+    isHero: owner ? player.id === owner.playerId : player.isHero,
     currentBet: 0,
     totalInvestedThisHand: 0,
     status: player.stack <= 0 ? "all-in" : "waiting"
@@ -137,7 +139,7 @@ function startLocalSession(): boolean {
     startedAtIso: new Date().toISOString(),
     dealerSeatIndex,
     players: withActingStatus,
-    ledger: createLocalLedger(withActingStatus)
+    ledger: { ...createLocalLedger(withActingStatus), owner }
   });
   handStore.resetForNewHand(actionOrder);
   bettingStore.resetForNewHand();
@@ -152,6 +154,14 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
   const controller = useTableController();
   const { locale, isZh } = useLanguage();
   const [setupMode, setSetupMode] = useState(() => !useSessionStore.getState().ledger);
+  const [account, setAccount] = useState<AuthUser | null>(null);
+  const [mySeat, setMySeat] = useState("player-1");
+  useEffect(() => {
+    let active = true;
+    void fetchCurrentUser().then((user) => { if (active) setAccount(user); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const ownerPlayerId = controller.players.some((player) => player.id === mySeat) ? mySeat : controller.players[0]?.id;
   const [amountInput, setAmountInput] = useState("400");
   const ledger = useSessionStore((state) => state.ledger);
   const archivedEntries = useArchiveStore((state) => state.entries);
@@ -205,13 +215,20 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
               className="h-11 min-w-0 rounded-xl border border-stitch-outlineVariant/35 bg-stitch-surfaceContainerHigh px-3 text-sm" />
           </div>)}
         </div>
+        {account && <label className="mt-4 block text-sm text-stitch-onSurfaceVariant">
+          {isZh ? "我的座位" : "My seat"}
+          <select className="mt-1 h-11 w-full rounded-xl bg-stitch-surfaceContainerHigh px-3 text-stitch-onSurface" value={ownerPlayerId ?? ""} onChange={(event) => setMySeat(event.target.value)}>
+            {controller.players.map((player, index) => <option key={player.id} value={player.id}>{index + 1} · {player.name}</option>)}
+          </select>
+          <small className="mt-1 block">{isZh ? `此座位的盈亏计入 ${account.username}。` : `This seat’s P/L is recorded for ${account.username}.`}</small>
+        </label>}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
             disabled={controller.resumeAvailable || controller.players.some((p) => !p.name.trim() || p.stack < 1)}
             onClick={() => {
-              if (startLocalSession()) {
+              if (startLocalSession(account && ownerPlayerId ? { userId: account.id, playerId: ownerPlayerId } : undefined)) {
                 setSetupMode(false);
               }
             }}

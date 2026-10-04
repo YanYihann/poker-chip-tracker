@@ -38,16 +38,19 @@ export function SettlementModalPlaceholder({
   onQuickSplit
 }: SettlementModalProps) {
   const { isZh } = useLanguage();
-  const defaultSelection = useMemo(() => players.slice(0, 1).map((player) => player.id), [players]);
+  const eligibleIds = JSON.stringify(players.map((player) => player.id));
+  const defaultSelection = useMemo<string[]>(() => (JSON.parse(eligibleIds) as string[]).slice(0, 1), [eligibleIds]);
   const [selectedIds, setSelectedIds] = useState<string[]>(defaultSelection);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedIds(defaultSelection);
     }
-  }, [isOpen, defaultSelection]);
+  }, [isOpen, defaultSelection, potLabel]);
 
   const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
     if (!isOpen) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -55,7 +58,7 @@ export function SettlementModalPlaceholder({
     const focusable = () => Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]') ?? []);
     focusable()[0]?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
       if (event.key !== "Tab") return;
       const nodes = focusable();
       if (!nodes.length) return;
@@ -66,7 +69,7 @@ export function SettlementModalPlaceholder({
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onKey);
     return () => { document.body.style.overflow = oldOverflow; document.removeEventListener("keydown", onKey); previous?.focus(); };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -81,7 +84,7 @@ export function SettlementModalPlaceholder({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="结算弹窗"
+        aria-label={isZh ? "结算弹窗" : "Settlement tool"}
         className="settlement-dialog w-full max-w-[460px] rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5 shadow-[0_18px_48px_rgba(0,0,0,0.6)]"
       >
         <div className="flex items-center justify-between gap-2">

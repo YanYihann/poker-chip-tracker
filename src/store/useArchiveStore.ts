@@ -29,7 +29,8 @@ export const useArchiveStore = create<ArchiveStore>((set, get) => ({
     });
   },
   addEntry: (entry) => {
-    const nextEntries = [entry, ...get().entries].slice(0, 200);
+    let draftCount = 0;
+    const nextEntries = [entry, ...get().entries].filter((item) => Boolean(item.summary) || ++draftCount <= 200);
     saveArchiveSessions(nextEntries);
     set({ entries: nextEntries, hydrated: true });
   },

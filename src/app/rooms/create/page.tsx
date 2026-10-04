@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { OnlineAuthGate } from "@/components/auth/online-auth-gate";
 import { useLanguage } from "@/components/i18n/language-provider";
@@ -17,8 +17,9 @@ function clampPlayers(value: number): number {
 
 function CreateRoomPageContent() {
   const router = useRouter();
+  const search = useSearchParams();
   const { isZh } = useLanguage();
-  const [mode, setMode] = useState<GameMode>("online");
+  const [mode, setMode] = useState<GameMode>(() => search?.get("mode") === "local" ? "local" : "online");
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [startingStack, setStartingStack] = useState(10000);
   const [smallBlind, setSmallBlind] = useState(100);
@@ -31,7 +32,7 @@ function CreateRoomPageContent() {
     && maxPlayers >= 2 && maxPlayers <= 10 && bigBlind >= smallBlind && startingStack >= bigBlind;
 
   return (
-    <PageShell title={isZh ? "创建房间" : "Create a room"} backHref="/online" className="room-form-shell">
+    <PageShell title={isZh ? "创建房间" : "Create a room"} backHref={mode === "local" ? "/local?devices=multiple" : "/online"} className="room-form-shell">
       <div className="room-form-layout">
         <div className="room-form-fields">
         <form className="rounded-3xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-5"
@@ -178,8 +179,8 @@ function CreateRoomPageContent() {
 
 export default function CreateRoomPage() {
   return (
-    <OnlineAuthGate title="Create Mode" backHref="/online">
+    <Suspense fallback={null}><OnlineAuthGate title="Create Mode" backHref="/online">
       <CreateRoomPageContent />
-    </OnlineAuthGate>
+    </OnlineAuthGate></Suspense>
   );
 }

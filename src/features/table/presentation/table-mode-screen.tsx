@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BottomActionPanel } from "@/components/actions/bottom-action-panel";
 import { useMusicScene } from "@/components/audio/audio-provider";
@@ -13,6 +13,7 @@ import type { TableModeAdapter } from "@/features/table/mode/types";
 
 type TableModeScreenProps = {
   adapter: TableModeAdapter;
+  headerContent?: ReactNode;
 };
 
 const BANNER_CLASS_BY_TONE: Record<NonNullable<TableModeAdapter["banner"]>["tone"], string> = {
@@ -20,7 +21,7 @@ const BANNER_CLASS_BY_TONE: Record<NonNullable<TableModeAdapter["banner"]>["tone
   warning: "border-stitch-tertiary/35 bg-stitch-tertiary/10 text-stitch-tertiary"
 };
 
-export function TableModeScreen({ adapter }: TableModeScreenProps) {
+export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps) {
   useMusicScene(adapter.musicScene ?? "table");
   const { isZh, localeTag } = useLanguage();
   const showActionPanel = adapter.showActionPanel !== false;
@@ -80,6 +81,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
       />
 
       <section className="table-body space-y-4 px-4 pb-4 pt-4">
+        {headerContent}
         {adapter.banner ? (
           <article
             className={[

@@ -26,7 +26,7 @@ function SessionDetailPageContent() {
     return () => { active = false; };
   }, [sessionId]);
   return <main className="app-shell history-detail-shell">
-    <AppTopBar title={isZh ? "最终结算" : "Session settlement"} backHref="/history" />
+    <AppTopBar title={isZh ? "最终结算" : "Session settlement"} backHref={detail?.session.mode === "local" ? "/history/local" : "/history/online"} />
     <section className="page-content session-history-report">
       {loading && <p role="status" className="session-empty">{isZh ? "正在加载结算…" : "Loading settlement…"}</p>}
       {error && <p role="alert" className="session-empty">{error}</p>}

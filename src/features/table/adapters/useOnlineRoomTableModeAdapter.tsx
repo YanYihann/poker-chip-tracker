@@ -523,7 +523,8 @@ export function useOnlineRoomTableModeAdapter(
       return;
     }
     if (roomStatus === "cancelled") router.replace("/rooms/join");
-  }, [roomCode, roomState?.room.status, router]);
+    else if (roomState?.room.mode && roomState.room.mode !== variant) router.replace(`/${roomState.room.mode}?room=${encodeURIComponent(roomCode)}`);
+  }, [roomCode, roomState?.room.status, roomState?.room.mode, variant, router]);
 
   const legalActions = useMemo<OnlineActionType[]>(
     () => (game?.isMyTurn && game.status === "in-progress" ? game.legalActions : []),
@@ -974,6 +975,7 @@ export function useOnlineRoomTableModeAdapter(
       ? null
       : {
       isOpen: settlementOpen,
+      potLabel,
       players: settlementPlayers,
       canUndo: false,
       canReopen: false,

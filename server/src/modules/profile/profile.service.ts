@@ -1,25 +1,12 @@
 import { prisma } from "../../lib/prisma.js";
 
-export async function getProfile(userId: string): Promise<{
-  username: string;
-  avatarUrl: string | null;
-  totalAssets: string;
-  totals: {
-    sessions: number;
-    hands: number;
-    profit: string;
-    loss: string;
-  };
-}> {
+export async function getProfile(userId: string) {
   const profile = await prisma.profile.findUnique({
     where: { userId },
     select: {
       username: true,
       avatarUrl: true,
-      totalSessions: true,
-      totalHands: true,
-      totalProfit: true,
-      totalLoss: true
+      historyResetAt: true
     }
   });
 
@@ -27,19 +14,32 @@ export async function getProfile(userId: string): Promise<{
     throw new Error("PROFILE_NOT_FOUND");
   }
 
-  const totalAssets = BigInt(10000) + profile.totalProfit - profile.totalLoss;
+  const rows = await prisma.playerSessionStat.findMany({
+    where: { userId, gameSession: profile.historyResetAt ? { finishedAt: { gt: profile.historyResetAt } } : undefined },
+    select: { handsPlayed: true, profitLoss: true, room: { select: { gameMode: true } } }
+  });
+  const summarize = (items: typeof rows) => {
+    const profit = items.reduce((sum, row) => sum + (row.profitLoss > 0n ? row.profitLoss : 0n), 0n);
+    const loss = items.reduce((sum, row) => sum + (row.profitLoss < 0n ? -row.profitLoss : 0n), 0n);
+    return { sessions: items.length, hands: items.reduce((sum, row) => sum + row.handsPlayed, 0),
+      profit: profit.toString(), loss: loss.toString(), net: (profit - loss).toString() };
+  };
 
   return {
     username: profile.username,
     avatarUrl: profile.avatarUrl,
-    totalAssets: totalAssets.toString(),
-    totals: {
-      sessions: profile.totalSessions,
-      hands: profile.totalHands,
-      profit: profile.totalProfit.toString(),
-      loss: profile.totalLoss.toString()
-    }
+    historyResetAtIso: profile.historyResetAt?.toISOString() ?? null,
+    totals: summarize(rows),
+    byMode: { online: summarize(rows.filter((row) => row.room.gameMode === "online")), local: summarize(rows.filter((row) => row.room.gameMode === "local")) }
   };
+}
+
+export async function resetProfileHistory(userId: string) {
+  // Keep shared settlement records intact for the other participants.
+  await prisma.profile.update({ where: { userId }, data: {
+    historyResetAt: new Date(), totalSessions: 0, totalHands: 0, totalProfit: 0n, totalLoss: 0n
+  } });
+  return getProfile(userId);
 }
 
 export async function updateProfile(
@@ -81,10 +81,11 @@ export async function updateProfile(
   };
 }
 
-export async function getRecentSessions(userId: string): Promise<
+export async function getRecentSessions(userId: string, mode?: "local" | "online"): Promise<
   Array<{
     sessionId: string;
     roomCode: string;
+    mode: "local" | "online";
     startedAtIso: string;
     endedAtIso: string;
     totalHands: number;
@@ -94,8 +95,10 @@ export async function getRecentSessions(userId: string): Promise<
     profitLoss: string;
   }>
 > {
+  const profile = await prisma.profile.findUnique({ where: { userId }, select: { historyResetAt: true } });
   const rows = await prisma.playerSessionStat.findMany({
-    where: { userId },
+    where: { userId, room: mode ? { gameMode: mode } : undefined,
+      gameSession: profile?.historyResetAt ? { finishedAt: { gt: profile.historyResetAt } } : undefined },
     select: {
       handsPlayed: true,
       profitLoss: true,
@@ -109,7 +112,8 @@ export async function getRecentSessions(userId: string): Promise<
           finishedAt: true,
           room: {
             select: {
-              roomCode: true
+              roomCode: true,
+              gameMode: true
             }
           }
         }
@@ -126,6 +130,7 @@ export async function getRecentSessions(userId: string): Promise<
   return rows.map((row: (typeof rows)[number]) => ({
     sessionId: row.gameSession.id,
     roomCode: row.gameSession.room.roomCode,
+    mode: row.gameSession.room.gameMode === "local" ? "local" : "online",
     startedAtIso: row.gameSession.startedAt.toISOString(),
     endedAtIso: row.gameSession.finishedAt.toISOString(),
     totalHands: row.gameSession.totalHands,
@@ -149,6 +154,7 @@ export async function getSessionDetail(input: {
   session: {
     id: string;
     roomCode: string;
+    mode: "local" | "online";
     startedAtIso: string;
     endedAtIso: string;
     totalHands: number;
@@ -191,7 +197,8 @@ export async function getSessionDetail(input: {
       finishedAt: true,
       room: {
         select: {
-          roomCode: true
+          roomCode: true,
+          gameMode: true
         }
       },
       playerStats: {
@@ -206,7 +213,8 @@ export async function getSessionDetail(input: {
               email: true,
               profile: {
                 select: {
-                  username: true
+                  username: true,
+                  historyResetAt: true
                 }
               }
             }
@@ -225,7 +233,7 @@ export async function getSessionDetail(input: {
 
   const me = record.playerStats.find((stat) => stat.userId === input.userId);
 
-  if (!me) {
+  if (!me || (me.user.profile?.historyResetAt && record.finishedAt <= me.user.profile.historyResetAt)) {
     throw new Error("SESSION_FORBIDDEN");
   }
 
@@ -264,6 +272,7 @@ export async function getSessionDetail(input: {
     session: {
       id: record.id,
       roomCode: record.room.roomCode,
+      mode: record.room.gameMode === "local" ? "local" : "online",
       startedAtIso: record.startedAt.toISOString(),
       endedAtIso: record.finishedAt.toISOString(),
       totalHands: record.totalHands

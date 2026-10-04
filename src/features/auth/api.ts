@@ -16,21 +16,19 @@ export type AuthUser = {
   avatarUrl: string | null;
 };
 
+export type SessionTotals = { sessions: number; hands: number; profit: string; loss: string; net: string };
 export type ProfilePayload = {
   username: string;
   avatarUrl: string | null;
-  totalAssets: string;
-  totals: {
-    sessions: number;
-    hands: number;
-    profit: string;
-    loss: string;
-  };
+  historyResetAtIso: string | null;
+  totals: SessionTotals;
+  byMode: Record<"online" | "local", SessionTotals>;
 };
 
 export type RecentSession = {
   sessionId: string;
   roomCode: string;
+  mode: "local" | "online";
   startedAtIso: string;
   endedAtIso: string;
   totalHands: number;
@@ -44,6 +42,7 @@ export type SessionDetail = {
   session: {
     id: string;
     roomCode: string;
+    mode?: "local" | "online";
     startedAtIso: string;
     endedAtIso: string;
     totalHands: number;
@@ -152,9 +151,14 @@ export async function updateProfile(input: {
   return result.profile;
 }
 
-export async function fetchRecentSessions(): Promise<RecentSession[]> {
-  const result = await apiRequest<{ sessions: RecentSession[] }>("/api/profile/sessions");
+export async function fetchRecentSessions(mode?: "local" | "online"): Promise<RecentSession[]> {
+  const result = await apiRequest<{ sessions: RecentSession[] }>(`/api/profile/sessions${mode ? `?mode=${mode}` : ""}`);
   return result.sessions;
+}
+
+export async function resetAllSessions(): Promise<ProfilePayload> {
+  const result = await apiRequest<{ profile: ProfilePayload }>("/api/profile/reset", { method: "POST" });
+  return result.profile;
 }
 
 export async function fetchSessionDetail(sessionId: string): Promise<SessionDetail> {

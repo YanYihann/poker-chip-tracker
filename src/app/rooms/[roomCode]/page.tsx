@@ -53,8 +53,8 @@ function WaitingRoomPageContent() {
   }, [roomCode, attempt]);
 
   useEffect(() => {
-    if (roomState?.room.status === "active" || roomState?.room.status === "finished") router.replace(`/online?room=${encodeURIComponent(roomCode)}`);
-  }, [roomState?.room.status, roomCode, router]);
+    if (roomState?.room.status === "active" || roomState?.room.status === "finished") router.replace(`/${roomState.room.mode === "local" ? "local" : "online"}?room=${encodeURIComponent(roomCode)}`);
+  }, [roomState?.room.status, roomState?.room.mode, roomCode, router]);
 
   async function selectSeat(seatIndex: number) {
     if (pending) return;

@@ -298,3 +298,9 @@ Source-only caveats, not canonized rules: reduced-motion CSS still permits the s
 ### Final settlement report
 
 Final settlement is a read surface within the existing felt/charcoal theme. A native modal lists transfers first, then player totals, then collapsed hand disclosures. Gross pot collection and signed net change are distinct. The report uses tabular body numerals and compact headings; phone totals become labeled three-column groups beneath each player name. A sticky close control remains visible while the report scrolls. End-session confirmation focuses Keep playing before the irreversible End & save action. Reports can be reopened from local archives or online session history. Desktop and 390px phone layouts, default collapsed details, expanded hand tables, Escape/focus restoration, and local reload persistence have been verified in the browser.
+
+## Profile results and room modes
+
+Operate surface: retain felt green, charcoal panels, cream Bungee headings and gold controls. Put one signed net P/L figure above an Online/Local comparison in the right profile column; retain the identity form in the left column. Remove assets and the profile history list. Signed numbers and explicit P/L labels distinguish gains/losses beyond color. Place Reset all sessions in a separate compact panel with a confirmation focused on Cancel.
+
+Use a consistent 44px mode navigation for Single device/Multiple devices and Local history/Online history. Local multi-device entry states the physical-card workflow and login/network requirement, with direct create/join actions. On mobile, put results before profile editing so net P/L and both modes are immediately visible. Preserve the existing table seat geometry.

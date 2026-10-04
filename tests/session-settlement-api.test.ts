@@ -41,5 +41,7 @@ test("finished-room settlement API allows every participant, denies outsiders an
     assert.equal((await fetch(`${base}/1234/session`)).status, 401);
     assert.equal((await fetch(`${base}/9999/session`, { headers: { "x-test-user": "host" } })).status, 404);
     assert.equal((await fetch(`${base}/invalid/session`, { headers: { "x-test-user": "host" } })).status, 400);
+    assert.equal((await fetch(`${base.replace(/\/rooms$/, "")}/reset`, { method: "POST" })).status, 401);
+    assert.equal((await fetch(`${base.replace(/\/rooms$/, "")}/sessions?mode=invalid`, { headers: { "x-test-user": "host" } })).status, 400);
   } finally { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
 });

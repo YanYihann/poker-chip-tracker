@@ -8,11 +8,13 @@ export type SessionSummary = {
   startedAtIso: string;
   endedAtIso: string;
   historyComplete: boolean;
+  owner?: { userId: string; playerId: string };
   players: Array<{ id: string; name: string; startStack: number; endStack: number; netChange: number; handsWon: number }>;
   hands: SessionHandRecord[];
 };
 export type LocalSessionLedger = {
   historyComplete: boolean;
+  owner?: { userId: string; playerId: string };
   startingPlayers: Array<{ id: string; name: string; stack: number }>;
   hands: SessionHandRecord[];
   handStartStacks: Record<string, number>;
@@ -42,6 +44,7 @@ export function summarizeLocalSession(input: { sessionId: string; sessionName: s
   return {
     id: input.sessionId, name: input.sessionName, startedAtIso: input.startedAtIso,
     endedAtIso: input.ledger.endedAtIso ?? new Date().toISOString(), historyComplete: input.ledger.historyComplete,
+    owner: input.ledger.owner,
     hands: input.ledger.hands,
     players: input.ledger.startingPlayers.map((start) => {
       const player = input.players.find((p) => p.id === start.id);

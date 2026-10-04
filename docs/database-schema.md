@@ -187,3 +187,9 @@ Constraints:
 - The frontend should never directly mutate final room or hand state without a server response.
 - Realtime events should broadcast room updates, player readiness changes, active turn changes, hand stage changes, bet updates, settlement updates, and room completion.
 - If the app uses Prisma, map these tables into Prisma models closely.
+## Personal results and history reset
+
+- Profiles have no personal bankroll or total assets. Each room issues its configured starting chips from the system bank; session net remains end chips minus issued chips.
+- `profiles.history_reset_at` is nullable timestamptz. Personal totals and history include sessions with finished_at strictly after this marker. Totals are derived from archived player statistics, grouped by room game_mode (online/local), instead of a fabricated $10,000 balance.
+- POST /api/profile/reset uses the authenticated user ID, sets the marker and zeros the legacy aggregate columns. Completed shared session/hand records remain available to the other participants. Reset users cannot reopen their cleared session detail links. Active rooms remain intact and later completed sessions count normally.
+- GET /api/profile/sessions?mode=local|online filters by room mode before ordering/limiting the result.

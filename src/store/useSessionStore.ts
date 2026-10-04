@@ -9,7 +9,7 @@ function buildMockPlayers(playerCount: number): Player[] {
 
   const basePlayers = Array.from({ length: safeCount }, (_, index) => ({
     id: `player-${index + 1}`,
-    name: `玩家 ${index+1}`,
+    name: `Player ${index+1}`,
     seatIndex: index,
     stack: 2000,
     currentBet: 0,
