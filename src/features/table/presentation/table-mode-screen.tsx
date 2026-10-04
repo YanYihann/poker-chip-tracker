@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useMobileTableViewport } from "./use-mobile-table-viewport";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BottomActionPanel } from "@/components/actions/bottom-action-panel";
@@ -24,6 +26,7 @@ const BANNER_CLASS_BY_TONE: Record<NonNullable<TableModeAdapter["banner"]>["tone
 export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps) {
   useMusicScene(adapter.musicScene ?? "table");
   const { isZh, localeTag } = useLanguage();
+  const compactViewport = useMobileTableViewport(adapter.isPlaying ?? false);
   const showActionPanel = adapter.showActionPanel !== false;
   const resume = adapter.resume;
   const prevStreetStateRef = useRef<{ handKey: string; street: TableModeAdapter["street"] } | null>(null);
@@ -70,9 +73,11 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
     <main
       className={[
         "table-workspace mx-auto min-h-dvh w-full bg-stitch-background",
-        showActionPanel ? "has-actions" : "pb-8"
+        showActionPanel ? "has-actions" : "pb-8",
+        compactViewport ? "mobile-table" : ""
       ].join(" ")}
     >
+      {compactViewport && <Link className="mobile-table-back" href={adapter.backHref ?? "/online"} aria-label={isZh ? "返回" : "Back"}><span aria-hidden="true">←</span></Link>}
       <AppTopBar
         title={adapter.title}
         playerCount={adapter.playerCount}
@@ -81,11 +86,11 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
       />
 
       <section className="table-body space-y-4 px-4 pb-4 pt-4">
-        {headerContent}
+        {!compactViewport && headerContent}
         {adapter.banner ? (
           <article
             className={[
-              "rounded-2xl border p-3 text-xs",
+              "table-banner rounded-2xl border p-3 text-xs",
               BANNER_CLASS_BY_TONE[adapter.banner.tone]
             ].join(" ")}
           >
@@ -127,10 +132,11 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
         ) : null}
 
         {adapter.mainContent ? (
-          adapter.mainContent
+          typeof adapter.mainContent === "function" ? adapter.mainContent(compactViewport) : adapter.mainContent
         ) : (
           <>
             <PokerTable
+              compactViewport={compactViewport}
               centerContent={adapter.tableCenterContent}
               players={adapter.players}
               potLabel={adapter.potLabel}
@@ -148,7 +154,7 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
               </article>
             ) : null}
             {streetRevealPrompt ? (
-              <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-3 text-sm font-semibold text-stitch-onSurface">
+              <article className="street-reveal-prompt rounded-xl bg-stitch-surfaceContainerHigh px-3 py-3 text-sm font-semibold text-stitch-onSurface">
                 {streetRevealPrompt === "flop"
                   ? isZh
                     ? "翻牌提示：请翻开3张公共牌"
@@ -169,6 +175,7 @@ export function TableModeScreen({ adapter, headerContent }: TableModeScreenProps
 
       {showActionPanel ? (
         <BottomActionPanel
+          compactViewport={compactViewport}
           mainActions={adapter.mainActions}
           utilityActions={adapter.utilityActions}
           canOpenSettlement={adapter.canOpenSettlement}

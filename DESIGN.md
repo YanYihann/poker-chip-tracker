@@ -215,10 +215,10 @@ The frontmatter spacing scale is the shared rhythm. Component-specific gaps and 
 - The desktop game menu is a 1080px maximum composition with 1.2fr / 1fr columns and a 72px gap. Title and five-card fan accompany three vertically stacked choices. Below 768px it becomes one column; action width is capped at 420px. This composition belongs to the lobby, not every page.
 - Authentication is a single centered panel capped at 440px, with 32px inner padding or 24px on phones. It has no split story panel. Room forms are capped at 540px; game-mode choices stack on phones.
 - At 1024px and wider, table play uses a flexible table column plus a 320px action column, separated by 28px. Actions stick 24px below the viewport top.
-- Below 1024px, the action panel stays in normal document flow after the table, capped at 520px. Bottom padding respects the safe area.
+- Below 1024px, setup remains in normal flow. Active phone tables use a fixed visible viewport with safe-area padding: Back, table, then actions; landscape phones put actions in a 250px right column.
 - Felt uses a 4:5 aspect ratio and a 440px wrapper on compact layouts, switching to 1.8:1 and an 820px wrapper on desktop.
 - Seat cards use a horizontal layout: avatar or revealed cards on the left, the name and chip ledger in the middle, and position/action flags on the right. Avatars remain visible at dense tables; seven or more seats use smaller avatars and tighter padding.
-- Table height responds to measured seat and center content. Narrow tables (felt width below 640px) rotate four/eight-seat layouts to leave the middle clear, reserve the largest gap between seat rows for the pot/board, and separate crowded same-row cards. Cards stay inside the felt; chip animation uses the same adjusted coordinates. Dense tables can require vertical scrolling to preserve all information. Phone pot content narrows to 190px in compact tables.
+- Table height responds to measured seat and center content. Narrow tables (felt width below 640px) rotate four/eight-seat layouts to leave the middle clear, reserve the largest gap between seat rows for the pot/board, and separate crowded same-row cards. Cards stay inside the felt; chip animation uses the same adjusted coordinates. This measured-height layout remains on desktop and setup screens. Active phones use two clockwise rails with evenly spaced seats, a reserved center column for pot/board, and 44px seat ledgers (56px on two- and four-player tables); the page never scrolls.
 - Profile uses two independent vertical columns in a 0.9fr / 1.1fr grid with 24px gaps; they stack below 768px with 16px gaps. Article padding is 24px, reduced to 20px on phones. Each column follows its own content height.
 - Waiting rooms pair a flexible table with a 300px settings column and a 32px gap. Settings move below the table below 1024px. The table centers the room code and copy control, with available seats around its perimeter. Its felt retains a 440px minimum height, increasing for compact seat layouts.
 - History content is capped at 960px. Settlement dialogs scroll internally at a maximum height of viewport height minus 48px.
@@ -269,7 +269,7 @@ Muted route links gain a charcoal hover background. Active routes have gold text
 
 ### Seats and action panel
 
-Seat ledgers separate name, stack, wager and result; acting seats use a gold border and labeled flag. Compact seats preserve the dealt cards and reduce decorative content. The panel orders utility controls, wager input, betting actions and settlement. Desktop action grids use two columns; phone actions follow the table in document order.
+Seat ledgers separate name, stack, wager and result; acting seats use a gold border and labeled flag. Compact seats preserve the dealt cards and reduce decorative content. The panel orders utility controls, wager input, betting actions and settlement. Desktop action grids use two columns. Active portrait phones use one row of betting actions beneath the table; landscape phones use a right column. All controls retain 44px targets.
 
 Waiting rooms reuse the felt and seat ledgers. Empty seats are explicit controls for moving to an available position; occupied seats retain the player identity. The centered code and copy control identify the room, while the adjacent settings panel summarizes uniform starting chips and blinds and exposes the host's start action. Seat assignment remains visible when play begins. Defaults and readiness behavior belong to the surface brief and application rules.
 
@@ -281,7 +281,7 @@ Waiting rooms reuse the felt and seat ledgers. Empty seats are explicit controls
 - **Do** keep concise action labels, explicit field labels and visible keyboard focus.
 - **Do** preserve local scoring without an account and distinguish scoring-only rooms from server-dealt play.
 - **Do** allow dense tables to grow vertically while keeping cards and game state readable.
-- **Do** keep phone actions in normal document flow and desktop actions in the right sidebar.
+- **Do** keep active phone tables and actions inside one visible viewport; retain normal scrolling for setup and menus, and internal scrolling for report dialogs.
 - **Do** tie card, pot and chip movement to entry or actual state changes and respect reduced motion.
 
 ### Don't:
@@ -303,4 +303,8 @@ Final settlement is a read surface within the existing felt/charcoal theme. A na
 
 Operate surface: retain felt green, charcoal panels, cream Bungee headings and gold controls. Put one signed net P/L figure above an Online/Local comparison in the right profile column; retain the identity form in the left column. Remove assets and the profile history list. Signed numbers and explicit P/L labels distinguish gains/losses beyond color. Place Reset all sessions in a separate compact panel with a confirmation focused on Cancel.
 
-Use a consistent 44px mode navigation for Single device/Multiple devices and Local history/Online history. Local multi-device entry states the physical-card workflow and login/network requirement, with direct create/join actions. On mobile, put results before profile editing so net P/L and both modes are immediately visible. Preserve the existing table seat geometry.
+Use a consistent 44px mode navigation for Single device/Multiple devices and Local history/Online history. Local multi-device entry states the physical-card workflow and login/network requirement, with direct create/join actions. On mobile, put results before profile editing so net P/L and both modes are immediately visible. Preserve desktop and setup seat geometry; active phones follow the viewport rules below.
+
+### Active phone tables
+
+Hide the complete top bar and device tabs during play; expose one 44px Back control. Track visualViewport height and safe areas without disabling user zoom. Seat names truncate with full titles; avatars/cards stay left, positions right. Wager editing uses an explicit numeric dialog with Cancel/Apply so the OS keyboard cannot displace betting controls. Hand results open in a modal on phones and retain the full inline view on desktop. Try document fullscreen during Start/Resume or the first table interaction, tolerate unsupported/denied requests, respect manual exit, and release table-owned fullscreen when leaving. Offline local, synced local, and online share the same viewport contract.

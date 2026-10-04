@@ -35,7 +35,7 @@ export function CentralPot({
     <section
       style={{ top: `${yPercent}%` }}
       className={[
-        "pointer-events-none absolute left-1/2 top-1/2 z-20 w-[calc(100%-2.2rem)] -translate-x-1/2 -translate-y-1/2",
+        "central-pot pointer-events-none absolute left-1/2 top-1/2 z-20 w-[calc(100%-2.2rem)] -translate-x-1/2 -translate-y-1/2",
         shouldShowStatusBadges ? "max-w-[228px] sm:max-w-[250px]" : "max-w-[248px] sm:max-w-[272px]"
       ].join(" ")}
     >
@@ -43,7 +43,7 @@ export function CentralPot({
         <p className="font-label text-[10px] uppercase tracking-[0.28em] text-stitch-onSurfaceVariant">
           {isZh ? "\u603b\u5e95\u6c60" : "Total Pot"}
         </p>
-        <motion.p key={amountLabel} initial={reduced ? false : { scale: 0.9, y: 4 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 420, damping: 22 }} className="mt-1 font-label tabular-nums text-[1.7rem] font-semibold tracking-tight text-stitch-primary sm:text-3xl">
+        <motion.p data-long-pot={amountLabel.length > 8 || undefined} key={amountLabel} initial={reduced ? false : { scale: 0.9, y: 4 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 420, damping: 22 }} className="mt-1 font-label tabular-nums text-[1.7rem] font-semibold tracking-tight text-stitch-primary sm:text-3xl">
           {amountLabel}
         </motion.p>
         {shouldShowStatusBadges ? (
@@ -65,6 +65,7 @@ export function CentralPot({
           </div>
         ) : null}
 
+        <p className="mobile-pot-street">{streetLabel}</p>
         <CommunityBoard
           street={street}
           handKey={handKey}

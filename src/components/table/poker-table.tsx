@@ -7,9 +7,10 @@ import { PlayerSeat } from "@/components/player/player-seat";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { CentralPot } from "@/components/pot/central-pot";
 import { TableMotionLayer } from "@/components/table/table-motion-layer";
-import { fitSeatCoordinates, getMinimumTableHeight, getPlayerSeatCoordinates, getPortraitTableLayout } from "@/lib/table-layout";
+import { fitSeatCoordinates, getMinimumTableHeight, getMobileSeatCoordinates, getPlayerSeatCoordinates, getPortraitTableLayout } from "@/lib/table-layout";
 
 type PokerTableProps = {
+  compactViewport?: boolean;
   centerContent?: ReactNode;
   players: TableSeatPlayer[];
   potLabel: string;
@@ -22,6 +23,7 @@ type PokerTableProps = {
 };
 
 export function PokerTable({
+  compactViewport = false,
   centerContent,
   players,
   potLabel,
@@ -40,13 +42,16 @@ export function PokerTable({
   const seatCount = players[0]?.seatCount ?? players.length;
   const portrait = tableSize.width > 0 && tableSize.width < 640;
   const portraitLayout = getPortraitTableLayout(seatCount);
-  const centerYPercent = portrait ? portraitLayout.centerYPercent : 50;
-  const seatCoordinates = useMemo(() => fitSeatCoordinates(
+  const centerYPercent = compactViewport ? 50 : portrait ? portraitLayout.centerYPercent : 50;
+  const seatCoordinates = useMemo(() => compactViewport ? getMobileSeatCoordinates(
+    players, tableSize.width, tableSize.height, tableSize.seatWidths[0] ?? 156,
+    Math.max(seatCount === 2 || seatCount === 4 ? 56 : 44, ...tableSize.seatHeights)
+  ) : fitSeatCoordinates(
     getPlayerSeatCoordinates(players, portrait ? portraitLayout.rotation : 0),
     tableSize.width, tableSize.seatWidths
-  ), [players, portrait, portraitLayout.rotation, tableSize.width, tableSize.seatWidths]);
+  ), [compactViewport, players, seatCount, portrait, portraitLayout.rotation, tableSize.width, tableSize.height, tableSize.seatWidths, tableSize.seatHeights]);
   const compactSeats = seatCount >= 7;
-  const minimumHeight = tableSize.seatWidths.length ? getMinimumTableHeight({
+  const minimumHeight = !compactViewport && tableSize.seatWidths.length ? getMinimumTableHeight({
     coordinates: seatCoordinates, tableWidth: tableSize.width,
     seatWidths: tableSize.seatWidths, seatHeights: tableSize.seatHeights,
     centerHeight: tableSize.centerHeight,
@@ -95,7 +100,8 @@ export function PokerTable({
       <div
         ref={tableRef}
         className="poker-felt relative overflow-visible"
-        style={{ minHeight: minimumHeight ? Math.max(portrait ? 480 : 400, minimumHeight) : undefined }}
+        data-seat-count={seatCount}
+        style={{ minHeight: !compactViewport && minimumHeight ? Math.max(portrait ? 480 : 400, minimumHeight) : undefined }}
       >
         <div className="poker-felt-inset absolute inset-[5%]" />
 

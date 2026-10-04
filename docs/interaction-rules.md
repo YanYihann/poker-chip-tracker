@@ -3,7 +3,7 @@
 ## Data Entry
 
 - Primary flows must be reachable within 1-2 taps/clicks.
-- Numeric input should open numeric keyboard on mobile.
+- Numeric inputs use the numeric keyboard on mobile setup forms. Active phone tables use a numeric dialog with Cancel/Apply to preserve the fixed betting controls.
 - Use clear labels for buy-in, rebuy, and cash-out.
 
 ## Feedback
@@ -38,3 +38,6 @@
 - Signed-in single-device operators select My seat before starting. Only that account-bound seat contributes to personal local P/L; anonymous and legacy records cannot be attributed by player name. These device results stay on that device.
 - Reset all sessions opens a native application dialog focused on Cancel. Escape/cancel leaves data intact. Confirm clears this account's completed room history and totals, plus this device's local archives; browser clearing runs only after API success. Other players' shared reports and active games are preserved. The reset marker suppresses older account-bound device totals on other devices after the next profile load.
 - Final device reports are retained independently of the 200-entry cap on intermediate hand records so personal totals do not drop when new hands are archived.
+
+- Active phone tables hide navigation and device tabs, retaining only Back. Table, private cards and actions fit the visible viewport in portrait and landscape without page scrolling; setup and menus still scroll normally. Long settlement reports scroll inside their dialogs.
+- Fullscreen is opportunistic during an entry gesture or first table interaction. Unsupported/denied requests do not block play; manual exit is respected and Back restores navigation, scrolling and table-owned fullscreen.

@@ -869,9 +869,10 @@ export function useOnlineRoomTableModeAdapter(
 
   return {
     mode: variant === "local" ? "local" : "online",
+    isPlaying: !!game,
     musicScene: game && roomState?.room.status === "active" ? "table" : "lobby",
     title,
-    backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
+    backHref: game ? (variant === "local" ? "/local?devices=multiple" : "/online") : roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,
     potLabel,
     boardCards: game?.boardCards ?? [],
@@ -1040,8 +1041,9 @@ export function useOnlineRoomTableModeAdapter(
           {isZh ? "正在同步牌桌..." : "Syncing table state..."}
         </p>
       </section>
-    ) : isSettledOnlineView && game ? (
+    ) : isSettledOnlineView && game ? (compactViewport) => (
       <OnlineHandSettlementView
+        compactViewport={compactViewport}
         players={tablePlayers}
         potLabel={potLabel}
         boardCards={game.boardCards}

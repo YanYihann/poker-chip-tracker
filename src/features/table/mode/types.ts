@@ -63,6 +63,7 @@ export type TableModeResumeModel = {
 
 export type TableModeAdapter = {
   mode: "local" | "online";
+  isPlaying?: boolean;
   musicScene?: "lobby" | "table";
   title: string;
   backHref?: string;
@@ -90,7 +91,7 @@ export type TableModeAdapter = {
   banner?: TableBannerModel | null;
   statusHint?: string | null;
   topActionHint?: string | null;
-  mainContent?: ReactNode;
+  mainContent?: ReactNode | ((compactViewport: boolean) => ReactNode);
   tableCenterContent?: ReactNode;
   supplementaryContent?: ReactNode;
   showActionPanel?: boolean;

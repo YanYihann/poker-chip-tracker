@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/cn";
+import { MobileWagerInput } from "./mobile-wager-input";
 
 type MainActionItem = {
   id: string;
@@ -26,6 +27,7 @@ type AmountControlModel = {
 };
 
 type BottomActionPanelProps = {
+  compactViewport?: boolean;
   mainActions: MainActionItem[];
   utilityActions: UtilityActionItem[];
   canOpenSettlement: boolean;
@@ -35,6 +37,7 @@ type BottomActionPanelProps = {
 };
 
 export function BottomActionPanel({
+  compactViewport = false,
   mainActions,
   utilityActions,
   canOpenSettlement,
@@ -68,13 +71,13 @@ export function BottomActionPanel({
       ) : null}
 
       {previousActionHint ? (
-        <article className="mt-1.5 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant sm:mt-2">
+        <article className="previous-action-hint mt-1.5 rounded-lg bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant sm:mt-2">
           {previousActionHint}
         </article>
       ) : null}
 
       {amountControl ? (
-        <div className="mt-1.5 sm:mt-2">
+        <div className="amount-control mt-1.5 sm:mt-2">
           <label htmlFor="wager-amount" className="amount-control-label">{isZh ? "本轮下注总额" : "Total wager this round"}</label>
           <div className="grid grid-cols-5 gap-1 rounded-lg border border-stitch-outlineVariant/30 bg-stitch-surfaceContainerHigh/90 p-1 sm:rounded-xl">
             <button
@@ -91,7 +94,7 @@ export function BottomActionPanel({
             >
               -50
             </button>
-            <input
+            {compactViewport ? <MobileWagerInput value={amountControl.value} onChange={amountControl.onValueChange} /> : <input
               id="wager-amount"
               type="text"
               inputMode="numeric"
@@ -99,7 +102,7 @@ export function BottomActionPanel({
               value={amountControl.value}
               onChange={(event) => amountControl.onValueChange(event.target.value)}
               className="h-11 min-w-0 w-full rounded-md border border-stitch-outlineVariant/35 bg-stitch-surfaceContainer px-1 text-center text-[13px] text-stitch-onSurface focus:border-stitch-primary/50 sm:h-11 sm:rounded-lg sm:text-sm"
-            />
+            />}
             <button
               type="button"
               className="h-11 min-w-0 rounded-md bg-stitch-mint/20 px-1 text-[10px] font-semibold text-stitch-mint transition hover:brightness-110 sm:h-11 sm:rounded-lg sm:text-[11px]"

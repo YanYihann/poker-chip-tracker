@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { SimPokerCard } from "@/components/cards/sim-poker-card";
@@ -9,6 +10,7 @@ import type { RoomState } from "@/features/rooms/api";
 type SettlementEntry = NonNullable<NonNullable<RoomState["game"]>["lastSettlement"]>["entries"][number];
 
 type OnlineHandSettlementViewProps = {
+  compactViewport?: boolean;
   players: TableSeatPlayer[];
   potLabel: string;
   boardCards: string[];
@@ -42,6 +44,7 @@ const HAND_RANK_LABELS = {
 } as const;
 
 export function OnlineHandSettlementView({
+  compactViewport = false,
   players,
   potLabel,
   boardCards,
@@ -51,23 +54,16 @@ export function OnlineHandSettlementView({
   const { isZh } = useLanguage();
   const rankLabels = HAND_RANK_LABELS[isZh ? "zh" : "en"];
 
-  return (
-    <section className="space-y-3">
-      <article className="rounded-2xl border border-stitch-primary/30 bg-stitch-primary/10 px-3 py-2 text-xs text-stitch-primary">
-        {isZh ? "本手已自动完成牌力结算。" : "This hand has been auto settled."}
-      </article>
-
-      <PokerTable
-        players={players}
-        potLabel={potLabel}
-        boardCards={boardCards}
-        streetLabel={isZh ? "结算" : "Settled"}
-        statusLabel={isZh ? "本手完成" : "Hand Complete"}
-        street="showdown"
-        handKey={handKey}
-      />
-
-      <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !resultsOpen) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [resultsOpen]);
+  const results = (
+    <article className="rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
         <p className="text-[11px] uppercase tracking-[0.12em] text-stitch-onSurfaceVariant">
           {isZh ? "本手结果" : "Hand Results"}
         </p>
@@ -119,6 +115,29 @@ export function OnlineHandSettlementView({
           })}
         </div>
       </article>
+  );
+
+  return (
+    <section className="online-hand-settlement-view space-y-3">
+      <article className="rounded-2xl border border-stitch-primary/30 bg-stitch-primary/10 px-3 py-2 text-xs text-stitch-primary">
+        {isZh ? "本手已自动完成牌力结算。" : "This hand has been auto settled."}
+      </article>
+
+      <PokerTable
+        compactViewport={compactViewport}
+        players={players}
+        potLabel={potLabel}
+        boardCards={boardCards}
+        streetLabel={isZh ? "结算" : "Settled"}
+        statusLabel={isZh ? "本手完成" : "Hand Complete"}
+        street="showdown"
+        handKey={handKey}
+      />
+
+      {compactViewport ? <><button type="button" className="hand-results-trigger button-secondary" onClick={() => setResultsOpen(true)}>{isZh ? "本手结果" : "Hand results"}</button>
+        <dialog ref={dialogRef} className="session-settlement-dialog" aria-labelledby="hand-results-title" onCancel={(event) => { event.preventDefault(); setResultsOpen(false); }}>
+          <header className="session-settlement-header"><h2 id="hand-results-title">{isZh ? "本手结果" : "Hand results"}</h2><button type="button" onClick={() => setResultsOpen(false)}>{isZh ? "关闭" : "Close"}</button></header>{results}
+        </dialog></> : results}
     </section>
   );
 }

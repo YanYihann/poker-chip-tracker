@@ -115,7 +115,7 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
 
         <div className="seat-ledger min-w-0">
           <p title={player.name} className="truncate text-xs font-body font-semibold text-stitch-onSurface">{player.name}</p>
-          <p title={player.stackLabel} className="truncate text-xs tabular-nums text-stitch-onSurfaceVariant">{player.stackLabel}</p>
+          <p data-long-stack={player.stackLabel.length > 8 || undefined} title={player.stackLabel} className="truncate text-xs tabular-nums text-stitch-onSurfaceVariant">{player.stackLabel}</p>
           {player.betLabel ? <p className="text-[10px] tabular-nums text-stitch-mint">{player.betLabel}</p> : null}
           {player.resultDeltaLabel ? (
             <p

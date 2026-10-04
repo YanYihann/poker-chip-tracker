@@ -1,10 +1,32 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fitSeatCoordinates, getMinimumTableHeight, getPlayerSeatCoordinates, getPortraitTableLayout, getSeatCoordinates, MAX_PLAYERS } from "../src/lib/table-layout";
+import { fitSeatCoordinates, getMinimumTableHeight, getMobileSeatCoordinates, getPlayerSeatCoordinates, getPortraitTableLayout, getSeatCoordinates, MAX_PLAYERS } from "../src/lib/table-layout";
 
 const selectionCoordinates = getPlayerSeatCoordinates(
   Array.from({ length: MAX_PLAYERS }, (_, seatIndex) => ({ seatIndex, seatCount: MAX_PLAYERS }))
 );
+
+test("mobile rails fit 2–10 seats and the central board inside small portrait and landscape tables", () => {
+  for (const [width, height] of [[302, 258], [357, 350], [412, 580], [292, 230], [391, 275], [568, 290]]) {
+    for (let count = 2; count <= 10; count++) {
+      const seatWidth = count === 2 || count === 4 ? Math.min(156, width / 2 - 8) : Math.min(140, width / 2 - 54);
+      const players = Array.from({ length: count }, (_, seatIndex) => ({ seatIndex, seatCount: count }));
+      const initial = getMobileSeatCoordinates(players, 0, 0, 156, count === 2 || count === 4 ? 56 : 44);
+      assert.ok(initial.every(({ xPercent, yPercent }) => xPercent > 0 && xPercent < 100 && yPercent > 0 && yPercent < 100), "seats stay on the felt before the first resize measurement");
+      const seatHeight = count === 2 || count === 4 ? 56 : 44;
+      const points = getMobileSeatCoordinates(players, width, height, seatWidth, seatHeight);
+      const boxes = points.map((p) => ({ x: p.xPercent / 100 * width, y: p.yPercent / 100 * height }));
+      for (let i = 0; i < count; i++) {
+        const a = boxes[i];
+        assert.ok(a.x - seatWidth / 2 >= 0 && a.x + seatWidth / 2 <= width);
+        assert.ok(a.y - seatHeight / 2 >= 0 && a.y + seatHeight / 2 <= height);
+        assert.ok(count === 2 || count === 4 ? Math.abs(a.y - height / 2) >= (seatHeight + 112) / 2 : Math.abs(a.x - width / 2) >= (seatWidth + 94) / 2);
+        for (const b of boxes.slice(i + 1)) assert.ok(Math.abs(a.x - b.x) >= seatWidth || Math.abs(a.y - b.y) >= seatHeight - 0.01);
+      }
+      assert.deepEqual(getMobileSeatCoordinates([players[0], players[count - 1]], width, height, seatWidth, seatHeight), [points[0], points[count - 1]], "leaving players preserve fixed seats");
+    }
+  }
+});
 
 for (const [scenario, seats] of [
   ["sparse seats in selection order", [7, 1, 4]],

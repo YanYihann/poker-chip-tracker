@@ -74,6 +74,34 @@ export function getPlayerSeatCoordinates(
   });
 }
 
+// Clockwise around two evenly spaced rails. Fixed room seats stay fixed even
+// if a player leaves; unlike the desktop ellipse, this never grows the viewport.
+export function getMobileSeatCoordinates(
+  players: readonly Pick<TableSeatPlayer, "seatIndex" | "seatCount">[],
+  width: number,
+  height: number,
+  seatWidth: number,
+  seatHeight: number
+): SeatCoordinate[] {
+  const count = clampPlayerCount(players[0]?.seatCount ?? players.length);
+  const leftCount = Math.ceil(count / 2);
+  const rightCount = count - leftCount;
+  // The first render precedes ResizeObserver. Keep that frame on the felt.
+  const xInset = (seatWidth / 2 + 3) / (width > 0 ? width : 320) * 100;
+  const yInset = (seatHeight / 2 + 3) / (height > 0 ? height : 240) * 100;
+  const points = Array.from({ length: count }, (_, index) => {
+    if (count === 2) return { xPercent: 50, yPercent: index === 0 ? 100 - yInset : yInset };
+    const left = index < leftCount;
+    const row = left ? leftCount - 1 - index : index - leftCount;
+    const rows = left ? leftCount : rightCount;
+    return {
+      xPercent: left ? xInset : 100 - xInset,
+      yPercent: rows === 1 ? 50 : yInset + row * (100 - 2 * yInset) / (rows - 1)
+    };
+  });
+  return players.map((player, index) => points[player.seatIndex ?? index]);
+}
+
 // Portrait tables reserve the widest vertical gap for the pot and board.
 export function getPortraitTableLayout(playerCount: number) {
   const safeCount = clampPlayerCount(playerCount);

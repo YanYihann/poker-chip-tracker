@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Bungee } from "next/font/google";
 
 import { LanguageProvider } from "@/components/i18n/language-provider";
@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   title: "PokerChip Ledger",
   description: "Chip accounting and settlement for Texas Hold'em sessions"
 };
+
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#143d33" };
 
 type RootLayoutProps = Readonly<{
   children: React.ReactNode;

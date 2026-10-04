@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { PokerTable } from "@/components/table/poker-table";
 import type { TableSeatPlayer } from "@/components/player/types";
+import { releaseTableFullscreen, requestTableFullscreen } from "@/lib/table-fullscreen";
 import { getRoom, getRoomSyncEpoch, setPlayerSeat, startRoom, type RoomState } from "@/features/rooms/api";
 import { getRoomSocket } from "@/features/rooms/realtime";
 
@@ -112,8 +113,8 @@ function WaitingRoomPageContent() {
             <p className="waiting-status" role="status">{roomState.players.length < 2 ? (isZh ? "至少 2 人即可开始" : "At least 2 players required") : (isZh ? "所有玩家已准备" : "All players ready")}</p>
             {roomState.me?.isHost ? <button className="button-primary w-full" disabled={!roomState.canStart || !!pending} onClick={async () => {
               setPending("start"); setError(null);
-              try { setRoomState(await startRoom(roomCode)); }
-              catch (cause) { setError(cause instanceof Error ? cause.message : isZh ? "开局失败，请重试。" : "Unable to start. Try again."); }
+              try { void requestTableFullscreen(); setRoomState(await startRoom(roomCode)); }
+              catch (cause) { releaseTableFullscreen(); setError(cause instanceof Error ? cause.message : isZh ? "开局失败，请重试。" : "Unable to start. Try again."); }
               finally { setPending(null); }
             }}>{pending === "start" ? (isZh ? "正在开局…" : "Starting…") : (isZh ? "开始游戏" : "Start game")}</button> : <p className="waiting-host-note">{isZh ? "等待房主开始，开局后自动进入牌桌。" : "Waiting for the host. The table opens automatically."}</p>}
           </> : roomState.room.status === "active" ? <p role="status">{isZh ? "正在进入牌桌…" : "Opening table…"}</p> : <><p>{isZh ? "房间已结束" : "Room closed"}</p><Link className="text-link" href="/online">{isZh ? "返回大厅" : "Back to lobby"}</Link></>}

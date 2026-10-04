@@ -1,5 +1,7 @@
 "use client";
 
+import { requestTableFullscreen } from "@/lib/table-fullscreen";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { SessionEndConfirmation } from "@/components/settlement/session-end-confirmation";
@@ -198,6 +200,17 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     }));
   }, [controller.actingPlayerId, controller.playerCount, controller.players, isZh, locale, setupMode]);
 
+  const startNewSession = () => {
+    const session = useSessionStore.getState();
+    session.applySnapshot({ ...session, sessionId: `local-${crypto.randomUUID()}`, ledger: undefined,
+      players: session.players.map((player) => ({ ...player, stack: ledger?.startingPlayers.find((p) => p.id === player.id)?.stack ?? 2000, currentBet: 0, totalInvestedThisHand: 0, status: "waiting" })) });
+    useHandStore.getState().resetForNewHand([]);
+    useBettingStore.getState().resetForNewHand();
+    useSettlementStore.getState().resetForNewHand();
+    useMotionStore.getState().clearAll();
+    setSetupMode(true);
+  };
+
   const setupContent =
     setupMode ? (
       <article className="local-setup rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
@@ -229,6 +242,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
             disabled={controller.resumeAvailable || controller.players.some((p) => !p.name.trim() || p.stack < 1)}
             onClick={() => {
               if (startLocalSession(account && ownerPlayerId ? { userId: account.id, playerId: ownerPlayerId } : undefined)) {
+                void requestTableFullscreen();
                 setSetupMode(false);
               }
             }}
@@ -236,26 +250,6 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
             {isZh ? "开始牌局" : "Start game"}
           </button>
         </div>
-      </article>
-    ) : finished ? (
-      <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
-        <button
-          type="button"
-          className="text-link font-semibold"
-          disabled={controller.status !== "settlement-confirmed"}
-          onClick={() => {
-            const session = useSessionStore.getState();
-            session.applySnapshot({ ...session, sessionId: `local-${crypto.randomUUID()}`, ledger: undefined,
-              players: session.players.map((player) => ({ ...player, stack: ledger?.startingPlayers.find((p) => p.id === player.id)?.stack ?? 2000, currentBet: 0, totalInvestedThisHand: 0, status: "waiting" })) });
-            useHandStore.getState().resetForNewHand([]);
-            useBettingStore.getState().resetForNewHand();
-            useSettlementStore.getState().resetForNewHand();
-            useMotionStore.getState().clearAll();
-            setSetupMode(true);
-          }}
-        >
-          {isZh ? "新牌局" : "New session"}
-        </button>
       </article>
     ) : null;
 
@@ -281,6 +275,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
 
   return {
     mode: "local",
+    isPlaying: !setupMode,
     musicScene: setupMode || finished ? "lobby" : "table",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
     backHref: "/online",
@@ -299,8 +294,8 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     handKey: `local-${controller.playerCount}-${controller.sessionName}`,
     status: controller.status,
     actingPlayerId: setupMode ? null : controller.actingPlayerId,
-    mainActions: setupMode || finished ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
-    utilityActions: setupMode ? [] : finished ? [{ id: "session-report", label: isZh ? "查看最终结算" : "View settlement", onPress: () => { setSelectedReport(lastSummary); setSessionReportOpen(true); } }] : [
+    mainActions: setupMode || finished ? [] : controller.mainActions.map((action) => ({ ...action, mainLabel: isZh ? action.mainLabel : action.topLabel, disabled: (action.id === "bet" || action.id === "raise") && !amountValid })),
+    utilityActions: setupMode ? [] : finished ? [{ id: "session-report", label: isZh ? "查看最终结算" : "View settlement", onPress: () => { setSelectedReport(lastSummary); setSessionReportOpen(true); } }, { id: "new-session", label: isZh ? "新牌局" : "New session", onPress: startNewSession }] : [
       ...controller.utilityActions.map((action) => ({ ...action, label: isZh ? action.label : ({ undo: "Undo", "next-hand": "Next hand", reopen: "Reopen hand", "edit-hand": "Edit hand", "end-hand": "End hand" }[action.id]) })),
       { id: "end-session", label: isZh ? "结束牌局" : "End session", disabled: controller.status !== "settlement-confirmed", onPress: () => setEndConfirmationOpen(true) }
     ],
@@ -337,7 +332,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     resume: {
       available: controller.resumeAvailable,
       savedAtIso: controller.resumeSavedAtIso,
-      onResume: () => {controller.resumeSession(); setSetupMode(false);},
+      onResume: () => {void requestTableFullscreen(); controller.resumeSession(); setSetupMode(false);},
       onDiscard: controller.discardResumeSnapshot
     },
     banner:
