@@ -14,6 +14,7 @@ type CentralPotProps = {
   showStatusBadges?: boolean;
   street: "preflop" | "flop" | "turn" | "river" | "showdown";
   handKey: string;
+  yPercent?: number;
 };
 
 export function CentralPot({
@@ -23,7 +24,8 @@ export function CentralPot({
   statusLabel,
   showStatusBadges = true,
   street,
-  handKey
+  handKey,
+  yPercent = 50
 }: CentralPotProps) {
   const { isZh } = useLanguage();
   const reduced = useReducedMotion();
@@ -31,6 +33,7 @@ export function CentralPot({
 
   return (
     <section
+      style={{ top: `${yPercent}%` }}
       className={[
         "pointer-events-none absolute left-1/2 top-1/2 z-20 w-[calc(100%-2.2rem)] -translate-x-1/2 -translate-y-1/2",
         shouldShowStatusBadges ? "max-w-[228px] sm:max-w-[250px]" : "max-w-[248px] sm:max-w-[272px]"

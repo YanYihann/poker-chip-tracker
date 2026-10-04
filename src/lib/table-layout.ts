@@ -51,12 +51,12 @@ export function clampPlayerCount(playerCount: number): number {
   return Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, playerCount));
 }
 
-export function getSeatCoordinates(playerCount: number): SeatCoordinate[] {
+export function getSeatCoordinates(playerCount: number, rotation = 0): SeatCoordinate[] {
   const safeCount = clampPlayerCount(playerCount);
   const step = (Math.PI * 2) / safeCount;
 
   return Array.from({ length: safeCount }, (_, seatIndex) => {
-    const angle = Math.PI / 2 + step * seatIndex;
+    const angle = Math.PI / 2 + rotation + step * seatIndex;
     const xPercent = 50 + Math.cos(angle) * 41;
     const yPercent = 50 + Math.sin(angle) * 34;
 
@@ -65,12 +65,67 @@ export function getSeatCoordinates(playerCount: number): SeatCoordinate[] {
 }
 
 export function getPlayerSeatCoordinates(
-  players: readonly Pick<TableSeatPlayer, "seatIndex" | "seatCount">[]
+  players: readonly Pick<TableSeatPlayer, "seatIndex" | "seatCount">[],
+  rotation = 0
 ): SeatCoordinate[] {
   return players.map((player, index) => {
-    const coordinates = getSeatCoordinates(player.seatCount ?? players.length);
+    const coordinates = getSeatCoordinates(player.seatCount ?? players.length, rotation);
     return coordinates[player.seatIndex ?? index];
   });
+}
+
+// Portrait tables reserve the widest vertical gap for the pot and board.
+export function getPortraitTableLayout(playerCount: number) {
+  const safeCount = clampPlayerCount(playerCount);
+  const rotation = safeCount % 4 === 0 ? Math.PI / safeCount : 0;
+  const rows = [...new Set(getSeatCoordinates(safeCount, rotation).map(({ yPercent }) => Math.round(yPercent * 1000) / 1000))].sort((a, b) => a - b);
+  const gaps = rows.slice(1).map((row, index) => ({ gap: row - rows[index], centerYPercent: (row + rows[index]) / 2 }));
+  gaps.sort((a, b) => b.gap - a.gap || Math.abs(a.centerYPercent - 50) - Math.abs(b.centerYPercent - 50));
+  return { rotation, centerYPercent: gaps[0].centerYPercent, rowGapPercent: gaps[0].gap };
+}
+
+export function fitSeatCoordinates(coordinates: readonly SeatCoordinate[], tableWidth: number, seatWidths: readonly number[]): SeatCoordinate[] {
+  if (tableWidth <= 0) return [...coordinates];
+  const fitted = coordinates.map((point, index) => {
+    const margin = ((seatWidths[index] ?? 0) / 2 + 4) / tableWidth * 100;
+    return { ...point, xPercent: Math.max(margin, Math.min(100 - margin, point.xPercent)) };
+  });
+  // Odd player counts share a top row. Keep these two cards apart on narrow tables.
+  for (let i = 0; i < fitted.length; i++) {
+    for (let j = i + 1; j < fitted.length; j++) {
+      if (Math.abs(fitted[i].yPercent - fitted[j].yPercent) > 0.01) continue;
+      const spacing = ((seatWidths[i] ?? 0) / 2 + (seatWidths[j] ?? 0) / 2 + 8) / tableWidth * 100;
+      if (Math.abs(fitted[i].xPercent - fitted[j].xPercent) >= spacing) continue;
+      const [left, right] = fitted[i].xPercent < fitted[j].xPercent ? [i, j] : [j, i];
+      fitted[left].xPercent = 50 - spacing / 2;
+      fitted[right].xPercent = 50 + spacing / 2;
+    }
+  }
+  return fitted;
+}
+
+export function getMinimumTableHeight({ coordinates, tableWidth, seatWidths, seatHeights, centerHeight = 0, centerRowGapPercent }: {
+  coordinates: readonly SeatCoordinate[];
+  tableWidth: number;
+  seatWidths: readonly number[];
+  seatHeights: readonly number[];
+  centerHeight?: number;
+  centerRowGapPercent?: number;
+}): number {
+  let height = centerHeight && centerRowGapPercent
+    ? (centerHeight + Math.max(0, ...seatHeights) + 24) / centerRowGapPercent * 100
+    : 0;
+  for (let i = 0; i < coordinates.length; i++) {
+    for (let j = i + 1; j < coordinates.length; j++) {
+      const horizontalDistance = Math.abs(coordinates[i].xPercent - coordinates[j].xPercent) / 100 * tableWidth;
+      const verticalDistance = Math.abs(coordinates[i].yPercent - coordinates[j].yPercent);
+      const widths = ((seatWidths[i] ?? 0) + (seatWidths[j] ?? 0)) / 2;
+      if (horizontalDistance < widths + 8 && verticalDistance > 0.01) {
+        height = Math.max(height, (((seatHeights[i] ?? 0) + (seatHeights[j] ?? 0)) / 2 + 8) / verticalDistance * 100);
+      }
+    }
+  }
+  return height;
 }
 
 export function buildPlaceholderPlayers(playerCount: number): TableSeatPlayer[] {

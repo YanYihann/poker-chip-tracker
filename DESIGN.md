@@ -201,8 +201,8 @@ Warm gold, distinct room colors and printed card tones sit on a deep green groun
 - **Title:** workspace titles use 24px, reduced to 21px on phones.
 - **Body:** task labels and concise supporting copy use 14px; some support copy uses 12–13px. Inputs retain 16px text.
 - **Control:** shared actions use 15px bold labels. Large menu controls use 25px, then 22px below 1024px and 21px below 768px.
-- **Badge / table detail:** badges use 10–11px; seat names use 12px. Seat amounts use 16px, 20px on desktop, 14px on phones and 13px at 360px or narrower. These dense sizes are not general body-text defaults.
-- Room-code inputs use 32px Bungee digits with 0.4em tracking. The waiting-table code uses 40px with 0.08em tracking, reduced to 32px below 768px. The desktop pot uses 42px. Amounts retain tabular numerals.
+- **Badge / table detail:** seat positions use 9px flags; seat names use 12px, or 11px at dense tables. Seat amounts use 18px on wide desktop tables, 16px for dense desktop tables and 14px Manrope in narrow tables to keep chip totals readable. These dense sizes are not general body-text defaults.
+- Room-code inputs use 32px Bungee digits with 0.4em tracking. The waiting-table code uses 40px with 0.08em tracking, reduced to 32px below 768px. The desktop pot uses 34px. Amounts retain tabular numerals.
 
 **The Readable Ledger Rule.** Keep names, balances and actions distinct; reserve dense type for the table's compact metadata.
 
@@ -217,8 +217,8 @@ The frontmatter spacing scale is the shared rhythm. Component-specific gaps and 
 - At 1024px and wider, table play uses a flexible table column plus a 320px action column, separated by 28px. Actions stick 24px below the viewport top.
 - Below 1024px, the action panel stays in normal document flow after the table, capped at 520px. Bottom padding respects the safe area.
 - Felt uses a 4:5 aspect ratio and a 440px wrapper on compact layouts, switching to 1.8:1 and an 820px wrapper on desktop.
-- Dense seats override the aspect ratio through minimum heights: compact seats require 440px; the eighth player-seat child triggers 580px, or 540px below 768px; compact seats with hole cards require 840px, or 800px below 768px. The last applicable rule wins. These are intentional information-preserving source constraints, not a promise that a whole dense table fits in one viewport.
-- Compact seats hide avatars, preserving hole cards, names, balances, positions and action state. Phone pot content narrows to 190px in compact tables.
+- Seat cards use a horizontal layout: avatar or revealed cards on the left, the name and chip ledger in the middle, and position/action flags on the right. Avatars remain visible at dense tables; seven or more seats use smaller avatars and tighter padding.
+- Table height responds to measured seat and center content. Narrow tables (felt width below 640px) rotate four/eight-seat layouts to leave the middle clear, reserve the largest gap between seat rows for the pot/board, and separate crowded same-row cards. Cards stay inside the felt; chip animation uses the same adjusted coordinates. Dense tables can require vertical scrolling to preserve all information. Phone pot content narrows to 190px in compact tables.
 - Profile uses two independent vertical columns in a 0.9fr / 1.1fr grid with 24px gaps; they stack below 768px with 16px gaps. Article padding is 24px, reduced to 20px on phones. Each column follows its own content height.
 - Waiting rooms pair a flexible table with a 300px settings column and a 32px gap. Settings move below the table below 1024px. The table centers the room code and copy control, with available seats around its perimeter. Its felt retains a 440px minimum height, increasing for compact seat layouts.
 - History content is capped at 960px. Settlement dialogs scroll internally at a maximum height of viewport height minus 48px.

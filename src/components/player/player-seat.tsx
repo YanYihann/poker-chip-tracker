@@ -43,12 +43,11 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
   const heroOrActive = player.isHero || player.isActive;
   const hasRevealedHoleCards = Boolean(player.revealedCards && player.revealedCards.length > 0);
   const positionLabel = player.positionLabel ? localizePositionLabel(player.positionLabel, isZh) : "";
-  const statusLabel = [positionLabel, player.isActive ? (isZh ? "行动中" : "Acting") : ""].filter(Boolean).join(" · ");
 
   if (player.isPlaceholder) {
     return (
       <article
-        className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+        className="poker-seat-anchor absolute z-20 -translate-x-1/2 -translate-y-1/2"
         style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
         aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
       >
@@ -77,11 +76,11 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
 
   return (
     <article
-      className={cn("player-seat absolute z-20 -translate-x-1/2 -translate-y-1/2", compact && "player-seat-compact")}
+      className={cn("poker-seat-anchor player-seat absolute z-20 -translate-x-1/2 -translate-y-1/2", compact && "player-seat-compact")}
       style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
       aria-label={`${player.name}${isZh ? "\u5ea7\u4f4d" : " seat"}`}
     >
-      <div className="player-seat-content flex flex-col items-center gap-1.5">
+      <div className={cn("player-seat-content seat-card", hasRevealedHoleCards && "seat-card-revealed", player.isActive && "seat-card-active")}>
         {hasRevealedHoleCards ? (
           <div className={cn("seat-hole-cards flex items-center gap-1", folded ? "opacity-45 grayscale" : "")}>
             {Array.from({ length: 2 }, (_, index) => (
@@ -114,8 +113,8 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           </div>
         )}
 
-        <div className={cn("seat-ledger rounded-xl bg-stitch-surfaceContainerHigh px-2 py-1 text-center shadow-[0_8px_20px_rgba(0,0,0,0.35)]", compact && "seat-ledger-compact", player.isActive && "seat-ledger-active")}>
-            <p title={player.name} className="truncate text-xs font-body font-semibold text-stitch-onSurface">{player.name}</p>
+        <div className="seat-ledger min-w-0">
+          <p title={player.name} className="truncate text-xs font-body font-semibold text-stitch-onSurface">{player.name}</p>
           <p title={player.stackLabel} className="truncate text-xs tabular-nums text-stitch-onSurfaceVariant">{player.stackLabel}</p>
           {player.betLabel ? <p className="text-[10px] tabular-nums text-stitch-mint">{player.betLabel}</p> : null}
           {player.resultDeltaLabel ? (
@@ -132,23 +131,15 @@ export function PlayerSeat({ player, xPercent, yPercent, compact = false }: Play
           ) : null}
         </div>
 
-        {(positionLabel || player.isActive) && <div className={cn("seat-status flex items-center justify-center gap-1.5", !compact && "flex-col")}>
-          {compact ? <span
-            className={cn("block max-w-full truncate", player.isActive ? "active-seat-label" : "seat-position-label", folded && "opacity-45")}
-            title={statusLabel}
-            aria-label={statusLabel}
-          >
-            {[positionLabel, player.isActive ? (isZh ? "行动" : "Act") : ""].filter(Boolean).join(" · ")}
-          </span> : <>
+        {(positionLabel || player.isActive) && <div className="seat-status flex flex-col items-end gap-1">
             {positionLabel && <Badge
               size="sm"
               variant={heroOrActive ? "mint" : "neutral"}
-              className={folded ? "opacity-45" : ""}
+              className={cn("seat-position-badge", folded && "opacity-45")}
             >
               {positionLabel}
             </Badge>}
-            {player.isActive && <span className="active-seat-label">{isZh ? "行动中" : "Acting"}</span>}
-          </>}
+            {player.isActive && <span className="active-seat-label" aria-label={isZh ? "行动中" : "Acting"}>{isZh ? "行动" : "Act"}</span>}
         </div>}
       </div>
     </article>
