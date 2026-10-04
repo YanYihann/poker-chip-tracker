@@ -89,6 +89,7 @@ export type TableModeAdapter = {
   statusHint?: string | null;
   topActionHint?: string | null;
   mainContent?: ReactNode;
+  tableCenterContent?: ReactNode;
   supplementaryContent?: ReactNode;
   showActionPanel?: boolean;
 };

@@ -73,10 +73,6 @@ export function getPlayerSeatCoordinates(
   });
 }
 
-export function getAutoSeatIndices(playerCount: number): number[] {
-  return Array.from({ length: playerCount }, (_, index) => Math.floor(index * MAX_PLAYERS / playerCount));
-}
-
 export function buildPlaceholderPlayers(playerCount: number): TableSeatPlayer[] {
   const safeCount = clampPlayerCount(playerCount);
 

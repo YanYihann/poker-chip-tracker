@@ -56,6 +56,10 @@ At the user's request, the lobby's bottom History and Profile links are removed 
 
 The header exposes independent Button sounds and Background music switches in a compact sound popover. Both now default on for first visits; saved manual mute choices persist. Audio unlocks after a user gesture, pauses while hidden, and respects either mute immediately. Original synthesized chip clicks and two distinct loops use Web Audio without external assets or dependencies: a quiet 96 BPM lobby track during setup/waiting and a 112 BPM minor-key bass/arpeggio track during play. Local seat confirmation and server-projected game presence select the play scene; leaving the table restores the lobby. Game updates do not restart the track. The current scene appears below Background music. Controls work locally without an account or API.
 
+## Local table seating — 2026-10-04
+
+Local setup now automatically seats exactly the selected player count around the felt. The count control regenerates the layout; player names/stacks appear before starting, and the ten-seat picker, Auto-seat and Clear controls are removed. Starting keeps the same evenly spaced positions. Resumed sparse seat indices retain their clockwise order on the count-sized layout. Online room seating retains its existing fixed-capacity selection behavior.
+
 ## Completion checks — 2026-10-02
 
 The independent reviewer returned `fix` for one authentication error stripe. Its verdict pass returned `ship`, scoring that fix resolved from the updated error screenshot; this scope does not certify motion feel from still images. All seven review captures were valid. No generated or copied Balatro assets ship.

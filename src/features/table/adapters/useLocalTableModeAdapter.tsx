@@ -7,7 +7,6 @@ import type { TableSeatPlayer } from "@/components/player/types";
 import { buildActionOrder, assignPositions } from "@/features/table/rules";
 import { startLocalHand, useTableController } from "@/features/table/useTableController";
 import type { TableModeAdapter } from "@/features/table/mode/types";
-import { getAutoSeatIndices, MAX_PLAYERS } from "@/lib/table-layout";
 import { useBettingStore } from "@/store/useBettingStore";
 import { useHandStore } from "@/store/useHandStore";
 import { useMotionStore } from "@/store/useMotionStore";
@@ -101,20 +100,16 @@ function setActingStatus(players: Player[], actingPlayerId: string | null): Play
   });
 }
 
-function applyLocalSeatSelection(seatOrder: number[]): boolean {
+function startLocalSession(): boolean {
   const sessionStore = useSessionStore.getState();
   const handStore = useHandStore.getState();
   const bettingStore = useBettingStore.getState();
   const settlementStore = useSettlementStore.getState();
 
   const players = [...sessionStore.players].sort((a, b) => a.seatIndex - b.seatIndex);
+  const seatOrder = players.map((_, index) => index);
 
-  if (players.length === 0 || seatOrder.length !== players.length) {
-    return false;
-  }
-
-  const uniqueSeats = new Set(seatOrder);
-  if (uniqueSeats.size !== seatOrder.length) {
+  if (players.length === 0) {
     return false;
   }
 
@@ -151,8 +146,7 @@ function applyLocalSeatSelection(seatOrder: number[]): boolean {
 export function useLocalTableModeAdapter(): TableModeAdapter {
   const controller = useTableController();
   const { locale, isZh } = useLanguage();
-  const [seatSelectionMode, setSeatSelectionMode] = useState(true);
-  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [setupMode, setSetupMode] = useState(true);
   const [amountInput, setAmountInput] = useState("400");
   const actingPlayer = controller.players.find((p) => p.id === controller.actingPlayerId);
   const maxWager = (actingPlayer?.stack ?? 0) + (actingPlayer?.currentBet ?? 0);
@@ -165,61 +159,26 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
   }, [controller.minRaiseTo, controller.actingPlayerId]);
 
   const players = useMemo<TableSeatPlayer[]>(() => {
-    if (seatSelectionMode) {
-      return Array.from({ length: MAX_PLAYERS }, (_, seatIndex) => {
-        const selectedOrder = selectedSeats.indexOf(seatIndex);
-        return {
-          id: `seat-picker-${seatIndex + 1}`,
-          name: `S${seatIndex + 1}`,
-          seatIndex,
-          seatCount: MAX_PLAYERS,
-          stackLabel: "",
-          isPlaceholder: true,
-          placeholderLabel: selectedOrder >= 0 ? String(selectedOrder + 1) : "+",
-          placeholderSelected: selectedOrder >= 0,
-          onPress: () => {
-            setSelectedSeats((current) => {
-              if (current.includes(seatIndex)) {
-                return current.filter((item) => item !== seatIndex);
-              }
-
-              if (current.length >= controller.playerCount) {
-                return current;
-              }
-
-              return [...current, seatIndex];
-            });
-          },
-          status: "waiting"
-        } satisfies TableSeatPlayer;
-      });
-    }
-
-    return controller.players.map((player) => ({
+    return [...controller.players].sort((a, b) => a.seatIndex - b.seatIndex).map((player, index) => ({
       id: player.id,
       name: player.name,
-      seatIndex: player.seatIndex,
-      seatCount: MAX_PLAYERS,
+      seatIndex: index,
+      seatCount: controller.playerCount,
       avatarUrl: player.avatar ?? null,
       stackLabel: formatCurrency(player.stack, locale),
-      betLabel: player.currentBet > 0 ? `${isZh ? "注" : "Bet"} ${formatCurrency(player.currentBet, locale)}` : undefined,
-      positionLabel: player.position,
+      betLabel: !setupMode && player.currentBet > 0 ? `${isZh ? "注" : "Bet"} ${formatCurrency(player.currentBet, locale)}` : undefined,
+      positionLabel: setupMode ? undefined : player.position,
       isHero: player.isHero,
-      isActive: player.id === controller.actingPlayerId,
-      status: player.status
+      isActive: !setupMode && player.id === controller.actingPlayerId,
+      status: setupMode ? "waiting" : player.status
     }));
-  }, [controller.actingPlayerId, controller.playerCount, controller.players, locale, seatSelectionMode, selectedSeats]);
+  }, [controller.actingPlayerId, controller.playerCount, controller.players, isZh, locale, setupMode]);
 
-  const seatSelectionContent =
-    seatSelectionMode ? (
+  const setupContent =
+    setupMode ? (
       <article className="local-setup rounded-2xl border border-stitch-outlineVariant/30 bg-stitch-surfaceContainer p-4">
         <p className="text-sm font-semibold text-stitch-onSurface">
           {isZh ? "牌局设置" : "Game setup"}
-        </p>
-        <p className="mt-1 text-xs text-stitch-onSurfaceVariant">
-          {isZh
-            ? `\u5728\u724c\u684c\u4e0a\u70b9\u51fb + \u9009\u62e9\u73b0\u5b9e\u5ea7\u4f4d\uff0c\u5df2\u9009 ${selectedSeats.length}/${controller.playerCount}`
-            : `Tap + on table seats to match real positions. Selected ${selectedSeats.length}/${controller.playerCount}`}
         </p>
         <div className="mt-4 space-y-2">
           <p className="text-xs text-stitch-onSurfaceVariant">{isZh ? "玩家姓名 / 起始筹码（盲注 100 / 200）" : "Player / Starting chips (blinds 100 / 200)"}</p>
@@ -233,29 +192,17 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           </div>)}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className="min-h-11 rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurface" onClick={() => setSelectedSeats(getAutoSeatIndices(controller.playerCount))}>{isZh ? "自动安排座位" : "Auto-seat"}</button>
           <button
             type="button"
             className="rounded-xl bg-stitch-primary px-3 py-2 text-xs font-semibold text-stitch-onPrimary disabled:opacity-50"
-            disabled={controller.resumeAvailable || selectedSeats.length !== controller.playerCount || controller.players.some((p) => !p.name.trim() || p.stack < 1)}
+            disabled={controller.resumeAvailable || controller.players.some((p) => !p.name.trim() || p.stack < 1)}
             onClick={() => {
-              if (selectedSeats.length !== controller.playerCount) {
-                return;
-              }
-
-              if (applyLocalSeatSelection(selectedSeats)) {
-                setSeatSelectionMode(false);
+              if (startLocalSession()) {
+                setSetupMode(false);
               }
             }}
           >
-            {isZh ? "确认入座，开始牌局" : "Take seats & play"}
-          </button>
-          <button
-            type="button"
-            className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant"
-            onClick={() => setSelectedSeats([])}
-          >
-            {isZh ? "\u6e05\u7a7a\u9009\u62e9" : "Clear"}
+            {isZh ? "开始牌局" : "Start game"}
           </button>
         </div>
       </article>
@@ -266,17 +213,16 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           className="font-semibold text-stitch-primary"
           disabled={controller.status !== "settlement-confirmed"}
           onClick={() => {
-            setSeatSelectionMode(true);
-            setSelectedSeats([]);
+            setSetupMode(true);
           }}
         >
-          {isZh ? "\u91cd\u65b0\u9009\u5ea7" : "Reselect Seats"}
+          {isZh ? "牌局设置" : "Game setup"}
         </button>
       </article>
     ) : null;
 
   const topActionHint = useMemo(() => {
-    if (seatSelectionMode) {
+    if (setupMode) {
       return null;
     }
 
@@ -293,16 +239,20 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     }
 
     return `Previous action: ${actorName} ${actionLabel}`;
-  }, [controller.lastActionPlayerName, controller.lastActionType, isZh, locale, seatSelectionMode]);
+  }, [controller.lastActionPlayerName, controller.lastActionType, isZh, locale, setupMode]);
 
   return {
     mode: "local",
-    musicScene: seatSelectionMode ? "lobby" : "table",
+    musicScene: setupMode ? "lobby" : "table",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
     backHref: "/online",
     playerCount: controller.playerCount,
-    onPlayerCountChange: seatSelectionMode && !controller.resumeAvailable ? (count) => {setSelectedSeats([]); controller.setPlayerCount(count);} : undefined,
+    onPlayerCountChange: setupMode && !controller.resumeAvailable ? controller.setPlayerCount : undefined,
     players,
+    tableCenterContent: setupMode ? <>
+      <p>{controller.playerCount} {isZh ? "人局" : "players"}</p>
+      <span>{isZh ? "盲注" : "Blinds"} 100 / 200</span>
+    </> : undefined,
     potLabel: formatCurrency(controller.pot, locale),
     boardCards: null,
     street: controller.street,
@@ -310,12 +260,12 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     statusLabel: STATUS_LABELS[locale][controller.status],
     handKey: `local-${controller.playerCount}-${controller.sessionName}`,
     status: controller.status,
-    actingPlayerId: seatSelectionMode ? null : controller.actingPlayerId,
-    mainActions: seatSelectionMode ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
-    utilityActions: seatSelectionMode ? [] : controller.utilityActions,
-    canOpenSettlement: seatSelectionMode ? false : controller.canOpenSettlement,
-    onOpenSettlement: seatSelectionMode ? () => undefined : controller.openSettlement,
-    amountControl: !seatSelectionMode && controller.mainActions.some((a) => a.id === "bet" || a.id === "raise") ? {
+    actingPlayerId: setupMode ? null : controller.actingPlayerId,
+    mainActions: setupMode ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
+    utilityActions: setupMode ? [] : controller.utilityActions,
+    canOpenSettlement: setupMode ? false : controller.canOpenSettlement,
+    onOpenSettlement: setupMode ? () => undefined : controller.openSettlement,
+    amountControl: !setupMode && controller.mainActions.some((a) => a.id === "bet" || a.id === "raise") ? {
       value: amountInput,
       onValueChange: (value) => {
         const cleaned = value.replace(/[^\d]/g, "");
@@ -327,7 +277,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
       },
       helperText: `${isZh ? "本轮下注总额" : "Total wager this round"} ${controller.minRaiseTo}–${maxWager}${amountValid ? "" : isZh ? " · 请输入范围内的整数" : " · Enter a whole number in range"}`
     } : null,
-    settlement: seatSelectionMode
+    settlement: setupMode
       ? null
       : {
           isOpen: controller.settlementOpen,
@@ -345,7 +295,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     resume: {
       available: controller.resumeAvailable,
       savedAtIso: controller.resumeSavedAtIso,
-      onResume: () => {controller.resumeSession(); setSeatSelectionMode(false);},
+      onResume: () => {controller.resumeSession(); setSetupMode(false);},
       onDiscard: controller.discardResumeSnapshot
     },
     banner:
@@ -357,17 +307,15 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
               : "A local snapshot was found. Resume or discard to continue autosave."
           }
         : null,
-    statusHint: !seatSelectionMode && controller.actingPlayerId ? `${isZh ? "轮到" : "Action on"} ${controller.players.find((p) => p.id === controller.actingPlayerId)?.name} · ${isZh ? "需跟注" : "To call"} ${controller.toCall}` : seatSelectionMode
-      ? isZh
-        ? "\u8bf7\u5148\u5728\u724c\u684c\u4e0a\u786e\u8ba4\u5ea7\u4f4d\uff0c\u518d\u8fdb\u5165\u64cd\u4f5c\u9636\u6bb5\u3002"
-        : "Confirm seats on the table before actions."
+    statusHint: !setupMode && controller.actingPlayerId ? `${isZh ? "轮到" : "Action on"} ${controller.players.find((p) => p.id === controller.actingPlayerId)?.name} · ${isZh ? "需跟注" : "To call"} ${controller.toCall}` : setupMode
+      ? null
       : controller.status === "in-progress" && !controller.actingPlayerId
         ? isZh
           ? "\u5f53\u524d\u6ca1\u6709\u53ef\u884c\u52a8\u73a9\u5bb6\u3002"
           : "No actionable player at the moment."
         : null,
     topActionHint,
-    supplementaryContent: seatSelectionContent,
-    showActionPanel: !seatSelectionMode
+    supplementaryContent: setupContent,
+    showActionPanel: !setupMode
   };
 }

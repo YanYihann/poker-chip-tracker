@@ -128,6 +128,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         ) : (
           <>
             <PokerTable
+              centerContent={adapter.tableCenterContent}
               players={adapter.players}
               potLabel={adapter.potLabel}
               boardCards={adapter.boardCards}
