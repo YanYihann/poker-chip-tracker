@@ -25,6 +25,7 @@ function OnlineModePageContent() {
       <div className="game-menu-title"><h2>TEXAS<br /><span>HOLD’EM</span></h2><p>{isZh ? "德州扑克 · 2–10 人" : "Texas Hold’em · 2–10 players"}</p></div>
       <EntryArt />
       <div className="game-menu-actions">
+        <Link href="/online/match" className="game-menu-button menu-match"><span>{isZh ? "随机匹配" : "QUICK MATCH"}<small>{isZh ? "双人对战 · 自动开局" : "Heads-up · Automatic start"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
         <Link href="/rooms/create" className="game-menu-button menu-host"><span>{isZh ? "创建房间" : "CREATE ROOM"}<small>{isZh ? "线上发牌 / 多人同步记分" : "Online play / synced scoring"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
         <Link href="/rooms/join" className="game-menu-button menu-join"><span>{isZh ? "加入房间" : "JOIN ROOM"}<small>{isZh ? "输入 4 位房间码" : "Enter a 4-digit room code"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>
         <Link href="/local" className="game-menu-button menu-local"><span>{isZh ? "本地记分" : "LOCAL GAME"}<small>{isZh ? "实体牌 · 单设备 · 无需登录" : "Physical cards · One device · No account"}</small></span><ArrowRight size={24} aria-hidden="true" /></Link>

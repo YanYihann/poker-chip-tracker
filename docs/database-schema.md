@@ -193,3 +193,9 @@ Constraints:
 - `profiles.history_reset_at` is nullable timestamptz. Personal totals and history include sessions with finished_at strictly after this marker. Totals are derived from archived player statistics, grouped by room game_mode (online/local), instead of a fabricated $10,000 balance.
 - POST /api/profile/reset uses the authenticated user ID, sets the marker and zeros the legacy aggregate columns. Completed shared session/hand records remain available to the other participants. Reset users cannot reopen their cleared session detail links. Active rooms remain intact and later completed sessions count normally.
 - GET /api/profile/sessions?mode=local|online filters by room mode before ordering/limiting the result.
+
+### matchmaking_tickets
+
+One transient queue/result record per account. `user_id` is the primary key and cascades on account deletion; `id` is a unique UUID identifying this search generation. `joined_at` supplies the waiting timer and `expires_at` is a renewable 30-second waiting lease. `room_id` references game_rooms with ON DELETE SET NULL; `matched_at` retains the completed-claim marker so deleting archived rooms cannot return a ticket to the queue. Index `(room_id, expires_at)` supports eligible-player lookup.
+
+Queue claims/cancellation use one transaction-scoped PostgreSQL advisory lock across server instances. Opponent and host selection use Node crypto randomness. Creating the room, joining both seats, dealing the first hand and assigning both tickets to the room happen in one transaction. No process-local queue or persistent WebSocket service is required.

@@ -1056,10 +1056,10 @@ function generateRoomCodeCandidate(): string {
   return code;
 }
 
-async function generateUniqueRoomCode(): Promise<string> {
+async function generateUniqueRoomCode(client: Prisma.TransactionClient = prisma): Promise<string> {
   for (let attempts = 0; attempts < 10; attempts += 1) {
     const candidate = generateRoomCodeCandidate();
-    const exists = await prisma.gameRoom.findUnique({
+    const exists = await client.gameRoom.findUnique({
       where: { roomCode: candidate },
       select: { id: true }
     });
@@ -1072,12 +1072,12 @@ async function generateUniqueRoomCode(): Promise<string> {
   throw new Error("ROOM_CODE_GENERATION_FAILED");
 }
 
-async function resolveDisplayName(userId: string, preferredName?: string): Promise<string> {
+async function resolveDisplayName(userId: string, preferredName?: string, client: Prisma.TransactionClient = prisma): Promise<string> {
   if (preferredName?.trim()) {
     return preferredName.trim();
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await client.user.findUnique({
     where: { id: userId },
     select: {
       email: true,
@@ -1929,24 +1929,24 @@ async function finalizeRoomAndArchive(input: {
   }
 }
 
-export async function createRoom(input: {
+async function createWaitingRoom(client: Prisma.TransactionClient, input: {
   hostUserId: string;
   mode?: RoomMode;
   maxPlayers?: number;
   startingStack?: number;
   smallBlind?: number;
   bigBlind?: number;
-}): Promise<RoomState> {
+}) {
   createRoomSchema.parse(input);
-  const roomCode = await generateUniqueRoomCode();
+  const roomCode = await generateUniqueRoomCode(client);
   const maxPlayers = input.maxPlayers ?? 4;
   const startingStack = BigInt(input.startingStack ?? 10000);
   const smallBlind = BigInt(input.smallBlind ?? 100);
   const bigBlind = BigInt(input.bigBlind ?? 200);
   const gameMode = input.mode === "local" ? "local" : "online";
-  const displayName = await resolveDisplayName(input.hostUserId);
+  const displayName = await resolveDisplayName(input.hostUserId, undefined, client);
 
-  await prisma.gameRoom.create({
+  return client.gameRoom.create({
     data: {
       roomCode,
       hostUserId: input.hostUserId,
@@ -1971,11 +1971,27 @@ export async function createRoom(input: {
     }
   });
 
-  const room = await fetchRoomByCode(roomCode);
-  if (!room) {
-    throw new Error("ROOM_CREATE_FAILED");
-  }
+}
+
+export async function createRoom(input: Parameters<typeof createWaitingRoom>[1]): Promise<RoomState> {
+  const created = await createWaitingRoom(prisma, input);
+  const room = await fetchRoomByCode(created.roomCode);
+  if (!room) throw new Error("ROOM_CREATE_FAILED");
   return buildRoomState(room, input.hostUserId);
+}
+
+// The queue and the first dealt hand commit together, never as partial rooms.
+export async function createMatchedRoom(tx: Prisma.TransactionClient, userIds: readonly [string, string], settings: { startingStack: number; smallBlind: number; bigBlind: number }) {
+  const [hostUserId, guestUserId] = userIds;
+  const room = await createWaitingRoom(tx, { hostUserId, mode: "online", maxPlayers: 2, ...settings });
+  const displayName = await resolveDisplayName(guestUserId, undefined, tx);
+  await tx.roomPlayer.create({ data: {
+    roomId: room.id, userId: guestUserId, displayName, seatIndex: 1,
+    stack: room.startingStack, totalBuyIn: room.startingStack,
+    isHost: false, isReady: true, isConnected: true
+  }});
+  await startNextHand({ tx, roomId: room.id, dealerSeatCandidate: 0 });
+  return room;
 }
 
 /** Serialize waiting-room mutations with start so seats cannot change during dealing. */

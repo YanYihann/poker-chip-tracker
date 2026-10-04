@@ -166,6 +166,7 @@ input::placeholder { color:var(--muted); opacity:.75; }
 .game-menu-button:hover { transform:translateY(-3px) rotate(-.5deg); box-shadow:0 10px 0 var(--button-depth),inset 0 2px 0 rgb(255 255 255 / 15%); filter:brightness(1.08); }
 .game-menu-button:hover svg { transform:translateX(4px); }
 .game-menu-button:active { transform:translateY(6px); box-shadow:0 1px 0 var(--button-depth); }
+.menu-match { background:var(--accent-strong); color:var(--accent-foreground); }
 .menu-host { background:var(--game-red); color:#fff5e8; }
 .menu-join { background:var(--game-blue); color:#fff5e8; }
 .menu-local { background:var(--accent); color:var(--accent-foreground); }
@@ -558,3 +559,16 @@ input::placeholder { color:var(--muted); opacity:.75; }
 @media (min-width:768px) and (max-width:1023px) and (max-height:600px), (max-width:767px) and (orientation:landscape) {
  .mobile-table .hand-results-trigger { position:absolute; top:max(4px,env(safe-area-inset-top)); left:60px; width:140px; height:44px; }
 }
+
+/* Matchmaking extends the lobby's charcoal controls and real game settings. */
+.match-panel { width:100%; max-width:480px; margin:24px auto; padding:24px; border:1px solid var(--stitch-surface-bright); border-radius:8px; background:var(--panel); box-shadow:0 5px 0 var(--button-depth); }
+.match-rules { margin:0; }
+.match-rules > div { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--stitch-surface-bright); }
+.match-rules dt { color:var(--muted); font-size:14px; }
+.match-rules dd { margin:0; color:var(--text); font-family:var(--font-label),var(--font-apple-zh); font-size:20px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.match-search-state { min-height:116px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; }
+.match-search-state p { margin:0; color:var(--muted); font-size:14px; }
+.match-search-state time { color:var(--accent); font-family:var(--font-body); font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; }
+.match-control { width:100%; min-height:48px; }
+.match-error { margin:0 0 16px; color:var(--stitch-tertiary); font-size:13px; }
+@media(max-width:600px) { .match-panel { margin:12px auto; padding:18px; } .match-rules dd { font-size:18px; } }

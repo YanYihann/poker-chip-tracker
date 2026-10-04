@@ -31,3 +31,9 @@ Use a disposable local PostgreSQL database whose name ends in `_test`. Apply `se
 ## Final settlement validation
 
 `npm test` also checks session net transfers, per-hand gross/net distinctions, split winners, local side-pot accumulation, snapshot restoration, undo/reopen, final archive idempotence, and the room-code report endpoint's authentication/participant guards. With the disposable local database configured as above, run `node --import tsx --test tests/session-settlement.integration.ts` to play and archive two hands in both server-backed modes. It verifies each participant's report, final balances, per-hand totals, concurrent finalization without double counting, host-only ending, locked finished rooms, and outsider rejection.
+
+## Matchmaking validation
+
+Production builds apply `20261004182000_matchmaking` before enabling /api/matchmaking. Matchmaking uses PostgreSQL leases and an advisory transaction lock, so different Vercel function instances share the same queue. It uses authenticated HTTP polling and requires no new environment variables or services.
+
+With the disposable `_test` database opt-in above, run `node --import tsx --test tests/matchmaking.integration.ts`. It checks anonymous requests, actual session authentication, published settings, ticket ownership, repeated same-account joins, stale cancellation, lease renewal/expiry, six concurrent players forming three rooms, one dealt hand per match, cancellation races, and finished/deleted room behavior. Test users and rooms are removed by the suite; do not run against a shared or production database.

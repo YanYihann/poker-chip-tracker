@@ -38,3 +38,7 @@ Working local and online flows, domain poker.yanyihan.top, automated rule tests.
 - Give local and online play equally legible paths.
 - Keep poker actions and game state understandable.
 - Preserve sessions and provide accessible controls.
+
+## Online random matching
+
+Signed-in players can use Quick match to find a random opponent. The first version matches two humans, each with 10,000 system-issued chips and 100/200 blinds. Both players enter a newly dealt online room automatically; no room code exchange or manual start is required. Waiting can be cancelled, and disconnected searches expire. Matched sessions use the existing online history, P/L and final report. Private room creation/joining and offline/synced local scoring remain available.

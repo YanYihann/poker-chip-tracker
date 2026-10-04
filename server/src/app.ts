@@ -7,6 +7,7 @@ import { attachAuthSession } from "./modules/auth/session.middleware.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createProfileRouter } from "./modules/profile/profile.routes.js";
 import { createRoomRouter } from "./modules/rooms/room.routes.js";
+import { createMatchmakingRouter } from "./modules/matchmaking/matchmaking.routes.js";
 import { registerHealthRoute } from "./routes/health.js";
 
 export function createApp() {
@@ -32,6 +33,7 @@ export function createApp() {
   app.use("/api/auth", createAuthRouter());
   app.use("/api/profile", createProfileRouter());
   app.use("/api/rooms", createRoomRouter());
+  app.use("/api/matchmaking", createMatchmakingRouter());
   registerHealthRoute(app);
 
   return app;

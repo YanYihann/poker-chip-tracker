@@ -75,6 +75,7 @@ model User {
   handResults        HandResult[]
   hostedSessions     GameSession[]       @relation("HostedSessions")
   playerSessionStats PlayerSessionStat[]
+  matchmakingTicket  MatchmakingTicket?
 
   @@map("users")
 }
@@ -135,9 +136,24 @@ model GameRoom {
   handResults         HandResult[]
   gameSession         GameSession?
   playerSessionStats  PlayerSessionStat[]
+  matchmakingTickets MatchmakingTicket[]
 
   @@index([hostUserId, status])
   @@map("game_rooms")
+}
+
+model MatchmakingTicket {
+  userId    String    @id @map("user_id") @db.Uuid
+  id        String    @unique @default(uuid()) @db.Uuid
+  roomId    String?   @map("room_id") @db.Uuid
+  matchedAt DateTime? @map("matched_at") @db.Timestamptz(6)
+  joinedAt  DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room      GameRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, expiresAt])
+  @@map("matchmaking_tickets")
 }
 
 model RoomPlayer {

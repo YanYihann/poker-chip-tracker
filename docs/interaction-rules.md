@@ -45,3 +45,11 @@
 - Active wager controls omit the visible round-total label and routine range/minimum hints, retain an accessible label, and show validation errors when needed.
 - Phone Back has a 32px face and centered arrow inside its 44px touch target. Blind badge text is centered. Heads-up seats move inward only when the pot/board remains clear.
 - Every synced-room participant sees chip-to-pot feedback for server-confirmed debits, including calls that advance a street and all-ins settled in the same response. Loading, repeated polling and standalone payouts do not replay wagers.
+
+## Online matchmaking
+
+- Lobby Quick match opens /online/match behind the existing sign-in gate. Find opponent explicitly joins a random heads-up queue; visiting the page alone does not start a new search.
+- Matched tables have two automatically ready seats, 10,000 system-issued chips per player, and blinds 100/200. The server deals the first hand atomically with both queue claims; both browsers go directly to /online?room=CODE. The randomly assigned host retains the existing next-hand/end-session controls.
+- Waiting shows real elapsed time and Cancel search. Leaving/pagehide cancels the current search; a 30-second lease removes disconnected candidates even if unload delivery fails. Heartbeats renew every 1.5 seconds after a response.
+- Cancel and pairing serialize: cancellation first removes the player; pairing first preserves the active room and redirects there. A stale ticket cannot cancel a newer search. Repeated requests and tabs cannot self-match or create duplicate matched rooms.
+- Revisiting Quick match resumes an active matched room. Finished/deleted rooms allow a new explicit search; history removal never silently requeues a player. Connection errors retry during an existing search; expiry requires Find opponent again.
