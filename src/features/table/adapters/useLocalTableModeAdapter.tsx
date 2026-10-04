@@ -297,6 +297,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
 
   return {
     mode: "local",
+    musicScene: seatSelectionMode ? "lobby" : "table",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
     backHref: "/online",
     playerCount: controller.playerCount,

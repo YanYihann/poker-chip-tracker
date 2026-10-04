@@ -1,29 +1,34 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { AUDIO_STORAGE_KEY, DEFAULT_AUDIO, PokerAudio, readAudioPreferences, type AudioPreferences } from "@/lib/audio";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { AUDIO_STORAGE_KEY, DEFAULT_AUDIO, PokerAudio, readAudioPreferences, type AudioPreferences, type MusicScene } from "@/lib/audio";
 
 const AudioSettingsContext = createContext<{
   preferences: AudioPreferences;
   available: boolean;
+  musicScene: MusicScene;
   toggle: (channel: keyof AudioPreferences) => void;
+  setScene: (scene: MusicScene) => void;
 } | null>(null);
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<AudioPreferences>({ ...DEFAULT_AUDIO });
   const [available, setAvailable] = useState(true);
+  const [musicScene, setMusicScene] = useState<MusicScene>("lobby");
   const engine = useRef<PokerAudio | null>(null);
   const current = useRef<AudioPreferences>({ ...DEFAULT_AUDIO });
+  const scene = useRef<MusicScene>("lobby");
 
   useEffect(() => {
     const player = new PokerAudio();
     engine.current = player;
     setAvailable(typeof window.AudioContext === "function");
     let restored = { ...DEFAULT_AUDIO };
-    try { restored = readAudioPreferences(localStorage.getItem(AUDIO_STORAGE_KEY)); } catch { /* Storage may be blocked; keep sound off. */ }
+    try { restored = readAudioPreferences(localStorage.getItem(AUDIO_STORAGE_KEY)); } catch { /* Use the defaults when storage is blocked. */ }
     current.current = restored;
     setPreferences(restored);
     player.configure(restored);
+    player.setScene(scene.current);
     const visibility = () => player.setVisible(document.visibilityState === "visible");
     const unlock = () => player.unlock();
     const click = (event: MouseEvent) => {
@@ -57,11 +62,25 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     if (channel === "effects" && next.effects) engine.current?.playClick();
   }
 
-  return <AudioSettingsContext.Provider value={{ preferences, available, toggle }}>{children}</AudioSettingsContext.Provider>;
+  const setScene = useCallback((next: MusicScene) => {
+    scene.current = next;
+    setMusicScene(next);
+    engine.current?.setScene(next);
+  }, []);
+
+  return <AudioSettingsContext.Provider value={{ preferences, available, musicScene, toggle, setScene }}>{children}</AudioSettingsContext.Provider>;
 }
 
 export function useAudioSettings() {
   const value = useContext(AudioSettingsContext);
   if (!value) throw new Error("Audio settings require AudioProvider");
   return value;
+}
+
+export function useMusicScene(scene: MusicScene) {
+  const { setScene } = useAudioSettings();
+  useEffect(() => {
+    setScene(scene);
+    return () => setScene("lobby");
+  }, [scene, setScene]);
 }

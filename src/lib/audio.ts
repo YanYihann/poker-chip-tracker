@@ -1,11 +1,15 @@
 export type AudioPreferences = { effects: boolean; music: boolean };
+export type MusicScene = "lobby" | "table";
 export const AUDIO_STORAGE_KEY = "pokerchip.audio";
-export const DEFAULT_AUDIO: AudioPreferences = { effects: false, music: false };
+export const DEFAULT_AUDIO: AudioPreferences = { effects: true, music: true };
 
 export function readAudioPreferences(value: string | null): AudioPreferences {
   try {
     const parsed = JSON.parse(value ?? "null");
-    return { effects: parsed?.effects === true, music: parsed?.music === true };
+    return {
+      effects: typeof parsed?.effects === "boolean" ? parsed.effects : DEFAULT_AUDIO.effects,
+      music: typeof parsed?.music === "boolean" ? parsed.music : DEFAULT_AUDIO.music
+    };
   } catch {
     return { ...DEFAULT_AUDIO };
   }
@@ -25,8 +29,9 @@ export function createClickSamples(sampleRate: number): Float32Array {
   return samples;
 }
 
-export function createMusicSamples(sampleRate: number): Float32Array {
-  const beat = 60 / 96;
+export function createMusicSamples(sampleRate: number, scene: MusicScene = "lobby"): Float32Array {
+  const table = scene === "table";
+  const beat = 60 / (table ? 112 : 96);
   const samples = new Float32Array(Math.round(sampleRate * beat * 32));
   function note(midi: number, start: number, duration: number, volume: number, bass = false) {
     const frequency = 440 * 2 ** ((midi - 69) / 12);
@@ -40,8 +45,12 @@ export function createMusicSamples(sampleRate: number): Float32Array {
       samples[(first + i) % samples.length] += tone * envelope * volume;
     }
   }
-  const chords = [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 55, 59, 62]];
-  const melody = [76, 72, 71, 67, 69, 72, 76, 74, 71, 74, 72, 67, 71, 67, 64, 67];
+  const chords = table
+    ? [[50, 53, 57, 60], [46, 50, 53, 57], [48, 52, 55, 58], [45, 49, 52, 55]]
+    : [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 55, 59, 62]];
+  const melody = table
+    ? [69, 65, 62, 64, 65, 69, 72, 69, 67, 64, 62, 60, 61, 64, 67, 64]
+    : [76, 72, 71, 67, 69, 72, 76, 74, 71, 74, 72, 67, 71, 67, 64, 67];
   for (let bar = 0; bar < 8; bar++) {
     const chord = chords[Math.floor(bar / 2)];
     const start = bar * beat * 4;
@@ -50,6 +59,13 @@ export function createMusicSamples(sampleRate: number): Float32Array {
     note(chord[0] - 5, start + beat * 2, beat * 1.4, 0.045, true);
     note(melody[bar * 2], start + beat, beat * 0.8, 0.032);
     note(melody[bar * 2 + 1], start + beat * 2.5, beat * 1.2, 0.028);
+    if (table) {
+      // A restrained bass pulse and offbeat arpeggio distinguish play from the lounge.
+      for (let pulse = 0; pulse < 4; pulse++) {
+        note(chord[pulse % chord.length] + 12, start + beat * (pulse + 0.5), beat * 0.4, 0.018);
+        note(chord[0] - 12, start + beat * pulse, beat * 0.45, 0.025, true);
+      }
+    }
   }
   return samples;
 }
@@ -59,7 +75,8 @@ export class PokerAudio {
   private effectsGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
   private musicSource: AudioBufferSourceNode | null = null;
-  private musicBuffer: AudioBuffer | null = null;
+  private musicBuffers: Partial<Record<MusicScene, AudioBuffer>> = {};
+  private scene: MusicScene = "lobby";
   private clickBuffer: AudioBuffer | null = null;
   private preferences = { ...DEFAULT_AUDIO };
   private visible = true;
@@ -69,6 +86,17 @@ export class PokerAudio {
 
   configure(preferences: AudioPreferences) {
     this.preferences = preferences;
+    this.sync();
+  }
+
+  setScene(scene: MusicScene) {
+    if (scene === this.scene) return;
+    this.scene = scene;
+    if (this.musicSource) {
+      this.musicSource.stop();
+      this.musicSource.disconnect();
+      this.musicSource = null;
+    }
     this.sync();
   }
 
@@ -123,9 +151,9 @@ export class PokerAudio {
       this.musicSource.disconnect();
       this.musicSource = null;
     } else if (this.preferences.music && !this.musicSource) {
-      this.musicBuffer ??= this.buffer(createMusicSamples(context.sampleRate));
+      this.musicBuffers[this.scene] ??= this.buffer(createMusicSamples(context.sampleRate, this.scene));
       this.musicSource = context.createBufferSource();
-      this.musicSource.buffer = this.musicBuffer;
+      this.musicSource.buffer = this.musicBuffers[this.scene]!;
       this.musicSource.loop = true;
       this.musicSource.connect(this.musicGain!);
       this.musicSource.start();

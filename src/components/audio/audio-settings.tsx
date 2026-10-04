@@ -8,7 +8,7 @@ import { useAudioSettings } from "./audio-provider";
 
 export function AudioSettings() {
   const { isZh } = useLanguage();
-  const { preferences, available, toggle } = useAudioSettings();
+  const { preferences, available, musicScene, toggle } = useAudioSettings();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -42,7 +42,9 @@ export function AudioSettings() {
       <p className="audio-settings-title">{isZh ? "声音" : "SOUND"}</p>
       {(["effects", "music"] as const).map((channel) => <button key={channel} type="button" className="audio-option"
         role="switch" aria-checked={preferences[channel]} disabled={!available} data-ui-sound="off" onClick={() => toggle(channel)}>
-        <span>{channel === "effects" ? isZh ? "按钮音效" : "Button sounds" : isZh ? "背景音乐" : "Background music"}</span>
+        <span>{channel === "effects" ? isZh ? "按钮音效" : "Button sounds" : isZh ? "背景音乐" : "Background music"}
+          {channel === "music" && <small className="audio-track">{musicScene === "table" ? isZh ? "对战" : "In play" : isZh ? "大厅" : "Lobby"}</small>}
+        </span>
         <span className="audio-state" aria-hidden="true">{preferences[channel] ? isZh ? "开" : "On" : isZh ? "关" : "Off"}</span>
       </button>)}
       {!available && <p className="audio-unavailable">{isZh ? "此浏览器不支持音频" : "Audio unavailable in this browser"}</p>}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { BottomActionPanel } from "@/components/actions/bottom-action-panel";
+import { useMusicScene } from "@/components/audio/audio-provider";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { SettlementModalPlaceholder } from "@/components/settlement/settlement-modal-placeholder";
@@ -19,6 +20,7 @@ const BANNER_CLASS_BY_TONE: Record<NonNullable<TableModeAdapter["banner"]>["tone
 };
 
 export function TableModeScreen({ adapter }: TableModeScreenProps) {
+  useMusicScene(adapter.musicScene ?? "table");
   const { isZh, localeTag } = useLanguage();
   const showActionPanel = adapter.showActionPanel !== false;
   const resume = adapter.resume;

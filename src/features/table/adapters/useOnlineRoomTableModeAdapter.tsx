@@ -876,6 +876,7 @@ export function useOnlineRoomTableModeAdapter(
 
   return {
     mode: variant === "local" ? "local" : "online",
+    musicScene: game && roomState?.room.status !== "waiting" ? "table" : "lobby",
     title,
     backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,

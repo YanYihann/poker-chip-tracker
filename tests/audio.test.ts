@@ -7,7 +7,7 @@ class TestAudioContext {
   currentTime = 0;
   state = "suspended";
   gains: { gain: { value: number }; connect: () => void }[] = [];
-  sources: { loop: boolean; stopped: boolean; start: () => void; stop: () => void; connect: () => void; disconnect: () => void }[] = [];
+  sources: { buffer: unknown; loop: boolean; stopped: boolean; start: () => void; stop: () => void; connect: () => void; disconnect: () => void }[] = [];
   destination = {};
   createGain() {
     const gain = { gain: { value: 1 }, connect() {} };
@@ -18,7 +18,7 @@ class TestAudioContext {
     return { length, sampleRate, getChannelData: () => new Float32Array(length) };
   }
   createBufferSource() {
-    const source = { loop: false, stopped: false, start() {}, stop() { this.stopped = true; }, connect() {}, disconnect() {} };
+    const source = { buffer: null as unknown, loop: false, stopped: false, start() {}, stop() { this.stopped = true; }, connect() {}, disconnect() {} };
     this.sources.push(source);
     return source;
   }
@@ -64,9 +64,10 @@ test("audio remains silent until a gesture, with independent controls and immedi
 
 test("default/invalid preferences and unsupported audio fail silently", () => {
   for (const input of [null, "bad json", "null", '{"effects":"true","music":1}']) {
-    assert.deepEqual(readAudioPreferences(input), { effects: false, music: false });
+    assert.deepEqual(readAudioPreferences(input), { effects: true, music: true });
   }
   assert.deepEqual(readAudioPreferences('{"effects":true,"music":false}'), { effects: true, music: false });
+  assert.deepEqual(readAudioPreferences('{"effects":false,"music":false}'), { effects: false, music: false }, "a saved mute must survive the new defaults");
   const audio = new PokerAudio(() => { throw new Error("Audio unavailable"); });
   audio.configure({ effects: true, music: true });
   assert.doesNotThrow(() => audio.playClick());
@@ -75,7 +76,7 @@ test("default/invalid preferences and unsupported audio fail silently", () => {
 
 test("synthesized music and click are finite, audible, unclipped and free of loop-edge jumps", () => {
   const sampleRate = 22050;
-  for (const samples of [createClickSamples(sampleRate), createMusicSamples(sampleRate)]) {
+  for (const samples of [createClickSamples(sampleRate), createMusicSamples(sampleRate), createMusicSamples(sampleRate, "table")]) {
     let peak = 0;
     let energy = 0;
     for (const sample of samples) {
@@ -87,4 +88,26 @@ test("synthesized music and click are finite, audible, unclipped and free of loo
     assert.ok(Math.sqrt(energy / samples.length) > 0.005);
     assert.ok(Math.abs(samples[0] - samples[samples.length - 1]) < 0.001);
   }
+});
+
+test("entering/leaving play replaces the track once, reuses it and never overrides mute", () => {
+  const context = new TestAudioContext();
+  const audio = new PokerAudio(() => context as unknown as AudioContext);
+  audio.unlock();
+  const lobby = context.sources[0];
+  audio.setScene("table");
+  assert.equal(lobby.stopped, true);
+  const table = context.sources[1];
+  assert.notEqual(lobby.buffer, table.buffer);
+  audio.setScene("table");
+  assert.equal(context.sources.length, 2, "game updates must not restart music");
+  audio.setScene("lobby");
+  assert.equal(table.stopped, true);
+  assert.equal(context.sources[2].buffer, lobby.buffer);
+  audio.configure({ music: false, effects: true });
+  audio.setScene("table");
+  assert.equal(context.sources.length, 3, "scene changes cannot unmute music");
+  audio.configure({ music: true, effects: true });
+  assert.equal(context.sources[3].buffer, table.buffer);
+  audio.dispose();
 });

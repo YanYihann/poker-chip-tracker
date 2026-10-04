@@ -54,7 +54,7 @@ At the user's request, the lobby's bottom History and Profile links are removed 
 
 ## Sound controls — 2026-10-04
 
-The header exposes independent Button sounds and Background music switches in a compact sound popover. Both start off and persist locally. Audio unlocks only after a user gesture, stays continuous across routes, pauses while the page is hidden, and respects either mute immediately. Original synthesized chip clicks and a quiet 96 BPM instrumental loop use Web Audio without external assets or dependencies. The controls remain available in local mode without an account or API.
+The header exposes independent Button sounds and Background music switches in a compact sound popover. Both now default on for first visits; saved manual mute choices persist. Audio unlocks after a user gesture, pauses while hidden, and respects either mute immediately. Original synthesized chip clicks and two distinct loops use Web Audio without external assets or dependencies: a quiet 96 BPM lobby track during setup/waiting and a 112 BPM minor-key bass/arpeggio track during play. Local seat confirmation and server-projected game presence select the play scene; leaving the table restores the lobby. Game updates do not restart the track. The current scene appears below Background music. Controls work locally without an account or API.
 
 ## Completion checks — 2026-10-02
 

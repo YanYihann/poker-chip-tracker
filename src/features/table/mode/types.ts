@@ -62,6 +62,7 @@ export type TableModeResumeModel = {
 
 export type TableModeAdapter = {
   mode: "local" | "online";
+  musicScene?: "lobby" | "table";
   title: string;
   backHref?: string;
   playerCount?: number;
