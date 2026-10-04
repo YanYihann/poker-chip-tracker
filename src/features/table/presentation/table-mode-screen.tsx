@@ -7,6 +7,7 @@ import { useMusicScene } from "@/components/audio/audio-provider";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { SettlementModalPlaceholder } from "@/components/settlement/settlement-modal-placeholder";
+import { SessionSettlementModal } from "@/components/settlement/session-settlement-modal";
 import { PokerTable } from "@/components/table/poker-table";
 import type { TableModeAdapter } from "@/features/table/mode/types";
 
@@ -139,8 +140,6 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
               handKey={adapter.handKey}
             />
 
-            {adapter.supplementaryContent ? adapter.supplementaryContent : null}
-
             {adapter.statusHint ? (
               <article role="status" className="turn-status rounded-xl bg-stitch-surfaceContainerHigh px-3 py-3 text-sm text-stitch-onSurfaceVariant">
                 {adapter.statusHint}
@@ -163,6 +162,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
             ) : null}
           </>
         )}
+        {adapter.supplementaryContent ? adapter.supplementaryContent : null}
       </section>
 
       {showActionPanel ? (
@@ -176,6 +176,7 @@ export function TableModeScreen({ adapter }: TableModeScreenProps) {
         />
       ) : null}
 
+      {adapter.sessionSettlement && <SessionSettlementModal {...adapter.sessionSettlement} />}
       {adapter.settlement ? (
         <SettlementModalPlaceholder
           isOpen={adapter.settlement.isOpen}

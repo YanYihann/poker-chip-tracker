@@ -4,6 +4,83 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Final session report: transfers, player totals, and collapsed hand records. */
+.session-settlement-dialog { width:min(880px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); margin:auto; padding:0; border:1px solid var(--stitch-surface-bright); border-radius:10px; background:var(--panel); color:var(--text); box-shadow:0 12px 0 var(--button-depth),0 24px 70px rgb(0 0 0 / 35%); overflow:auto; }
+.session-settlement-dialog::backdrop { background:rgb(5 20 15 / 80%); }
+.session-end-confirmation { width:min(480px,calc(100vw - 32px)); padding:24px; }
+.session-end-confirmation h2 { margin:0; font-size:22px; }
+.session-end-confirmation p { margin:16px 0 24px; font-size:14px; color:var(--muted); }
+.session-end-confirmation > div { display:flex; flex-wrap:wrap; gap:12px; }
+.session-settlement-header { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 24px; background:var(--panel); border-bottom:1px solid var(--stitch-surface-bright); }
+.session-settlement-header h2 { margin:0; font-size:22px; }
+.session-settlement-header button,.session-empty button { min-height:44px; padding:10px 18px; border-radius:5px; background:var(--stitch-surface-container-high); color:var(--text); font-size:13px; font-weight:800; }
+.session-settlement-content { padding:24px; font-size:14px; font-variant-numeric:tabular-nums; }
+.session-report-meta { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 24px; color:var(--muted); font-size:12px; }
+.session-report-meta strong { color:var(--text); font-size:14px; }
+.session-settlement-content section { margin-top:28px; }
+.session-settlement-content h3 { margin:0 0 12px; font-size:18px; }
+.session-section-caption { margin:-4px 0 14px; color:var(--muted); font-size:12px; line-height:1.7; }
+.session-report-note { padding:14px; background:var(--stitch-surface-container-high); border-left:3px solid var(--accent); color:var(--muted); font-size:13px; }
+.session-transfers,.session-player-results { list-style:none; padding:0; margin:0; }
+.session-transfers li { display:grid; grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) auto; align-items:center; gap:12px; padding:16px; background:var(--stitch-surface-container-lowest); border-bottom:1px solid var(--stitch-surface-bright); }
+.session-transfers li span { overflow-wrap:anywhere; }
+.session-transfers strong { color:var(--accent); font-size:19px; text-align:right; }
+.session-transfers small { display:block; font-size:10px; font-weight:500; color:var(--muted); }
+.session-player-head,.session-player-results li { display:grid; grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr)); gap:12px; align-items:center; }
+.session-player-head { padding:0 14px 8px; color:var(--muted); font-size:11px; }
+.session-player-head span:not(:first-child),.session-player-results li > div:not(:first-child) { text-align:right; }
+.session-player-results li { padding:14px; border-top:1px solid var(--stitch-surface-bright); }
+.session-player-results strong { display:block; font-size:16px; }
+.session-player-name strong { font-size:14px; overflow-wrap:anywhere; }
+.session-player-results small { color:var(--muted); font-size:11px; }
+.session-player-results li > div:not(:first-child) small { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.session-settlement-content [data-result=win] { color:var(--stitch-mint); }
+.session-settlement-content [data-result=loss] { color:var(--stitch-tertiary); }
+.session-hand { margin-top:8px; border:1px solid var(--stitch-surface-bright); border-radius:6px; }
+.session-hand summary { display:flex; align-items:center; gap:16px; min-height:64px; padding:14px; cursor:pointer; list-style:none; }
+.session-hand summary::-webkit-details-marker { display:none; }
+.session-hand summary:hover { background:var(--stitch-surface-container-high); }
+.session-hand-number { flex-shrink:0; font-weight:800; color:var(--accent); }
+.session-hand-winners { display:flex; flex-wrap:wrap; gap:4px 16px; min-width:0; overflow-wrap:anywhere; font-size:12px; }
+.session-hand-winners em { font-style:normal; white-space:nowrap; }
+.session-hand-chevron { margin-left:auto; flex-shrink:0; transition:transform 150ms; }
+.session-hand[open] .session-hand-chevron { transform:rotate(180deg); }
+.session-hand-details { padding:0 14px 14px; border-top:1px solid var(--stitch-surface-bright); }
+.session-hand-details p { margin:12px 0; color:var(--muted); font-size:12px; }
+.session-hand-scroll { overflow:auto; }
+.session-hand table { width:100%; border-collapse:collapse; font-size:12px; }
+.session-hand th,.session-hand td { padding:10px 8px; text-align:right; }
+.session-hand th:first-child { text-align:left; overflow-wrap:anywhere; }
+.session-hand thead th { color:var(--muted); font-weight:500; }
+.session-hand tbody tr { border-top:1px solid var(--stitch-surface-bright); }
+.session-empty { margin:0; padding:24px; color:var(--muted); font-size:14px; }
+.session-history-report { max-width:880px; margin:auto; background:var(--panel); border-radius:8px; }
+.local-session-history-entry { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; font-size:13px; }
+.local-session-history-entry button,.local-session-history-entry a { display:inline-flex; align-items:center; min-height:44px; padding:10px 14px; background:var(--panel); border-radius:5px; }
+.local-session-history { max-width:880px; margin:auto; }
+.local-session-history-row { display:flex; justify-content:space-between; align-items:center; gap:24px; width:100%; min-height:88px; padding:18px 24px; margin-bottom:12px; background:var(--panel); border-radius:6px; text-align:left; white-space:normal; }
+.local-session-history-row strong,.local-session-history-row small { display:block; }
+.local-session-history-row small { margin-top:5px; color:var(--muted); font-size:12px; }
+.local-session-history-row > span:last-child { font-size:13px; color:var(--accent); }
+@media(max-width:600px) {
+ .session-settlement-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }
+ .session-settlement-header { padding:12px 16px; gap:8px; }
+ .session-settlement-header h2 { font-size:17px; }
+ .session-settlement-content { padding:16px; }
+ .session-transfers li { gap:8px; padding:12px; grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) auto; font-size:12px; }
+ .session-transfers strong { font-size:16px; }
+ .session-player-head { display:none; }
+ .session-player-results li { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:14px 0; }
+ .session-player-name { grid-column:1/-1; }
+ .session-player-results li > div:not(:first-child) { text-align:left; }
+ .session-player-results li > div:not(:first-child) small { display:block; position:static; width:auto; height:auto; overflow:visible; clip-path:none; }
+ .session-hand summary { flex-wrap:wrap; gap:8px; position:relative; padding-right:34px; }
+ .session-hand-winners { flex-basis:100%; }
+ .session-hand-chevron { position:absolute; top:18px; right:12px; }
+ .session-hand th,.session-hand td { padding:10px 4px; font-size:11px; }
+ .local-session-history-row { padding:16px; gap:12px; }
+}
+
 :root {
  color-scheme:dark;
  --bg:var(--stitch-background); --surface:var(--stitch-surface); --panel:var(--stitch-surface-container);

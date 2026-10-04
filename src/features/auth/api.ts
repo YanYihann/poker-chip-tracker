@@ -161,3 +161,8 @@ export async function fetchSessionDetail(sessionId: string): Promise<SessionDeta
   const result = await apiRequest<{ session: SessionDetail }>(`/api/profile/sessions/${sessionId}`);
   return result.session;
 }
+
+export async function fetchFinishedRoomSession(roomCode: string): Promise<SessionDetail> {
+  const result = await apiRequest<{ session: SessionDetail }>(`/api/profile/rooms/${encodeURIComponent(roomCode)}/session`);
+  return result.session;
+}

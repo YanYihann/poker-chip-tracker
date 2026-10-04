@@ -136,6 +136,12 @@ export async function getRecentSessions(userId: string): Promise<
   }));
 }
 
+export async function getSessionDetailByRoomCode(input: { userId: string; roomCode: string }) {
+  const record = await prisma.gameSession.findFirst({ where: { room: { roomCode: input.roomCode } }, select: { id: true } });
+  if (!record) throw new Error("SESSION_NOT_FOUND");
+  return getSessionDetail({ userId: input.userId, sessionId: record.id });
+}
+
 export async function getSessionDetail(input: {
   userId: string;
   sessionId: string;

@@ -22,7 +22,8 @@ export function createTableSnapshotFromStores(): TableSnapshot {
       sessionName: session.sessionName,
       startedAtIso: session.startedAtIso,
       dealerSeatIndex: session.dealerSeatIndex,
-      players: clonePlayers(session.players)
+      players: clonePlayers(session.players),
+      ledger: session.ledger ? structuredClone(session.ledger) : undefined
     },
     hand: {
       street: hand.street,
@@ -52,7 +53,8 @@ export function createTableSnapshotFromStores(): TableSnapshot {
 export function applyTableSnapshot(snapshot: TableSnapshot): void {
   useSessionStore.getState().applySnapshot({
     ...snapshot.session,
-    players: clonePlayers(snapshot.session.players)
+    players: clonePlayers(snapshot.session.players),
+    ledger: snapshot.session.ledger ? structuredClone(snapshot.session.ledger) : undefined
   });
 
   useHandStore.getState().applySnapshot({

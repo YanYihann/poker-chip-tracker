@@ -23,6 +23,7 @@ import { useHandStore } from "@/store/useHandStore";
 import { useMotionStore } from "@/store/useMotionStore";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useSettlementStore } from "@/store/useSettlementStore";
+import { createLocalLedger, recordLocalPayout, summarizeLocalSession } from "@/features/settlement/session-summary";
 import type {
   ArchivedSessionRecord,
   AvailablePlayerAction,
@@ -312,7 +313,7 @@ function runAction(actionType: AvailablePlayerAction): void {
   const handStore = useHandStore.getState();
   const bettingStore = useBettingStore.getState();
 
-  if (handStore.status !== "in-progress") {
+  if (handStore.status !== "in-progress" || sessionStore.ledger?.endedAtIso) {
     return;
   }
 
@@ -466,6 +467,7 @@ function runAction(actionType: AvailablePlayerAction): void {
 }
 
 function runUndo(): void {
+  if (useSessionStore.getState().ledger?.endedAtIso) return;
   const snapshot = useHandStore.getState().popSnapshot();
 
   if (!snapshot) {
@@ -520,7 +522,7 @@ function runQuickSplit(winnerIds: string[]): void {
   const session = useSessionStore.getState();
   const betting = useBettingStore.getState();
   const settlement = useSettlementStore.getState();
-  if (hand.status !== "pre-settlement") return;
+  if (hand.status !== "pre-settlement" || session.ledger?.endedAtIso) return;
   const pot = getNextSettlementPot();
   if (!pot) return;
   const ids = [...new Set(winnerIds)];
@@ -535,6 +537,10 @@ function runQuickSplit(winnerIds: string[]): void {
     totalInvestedThisHand:Math.max(0,p.totalInvestedThisHand-(pot.participants.includes(p.id)?pot.contribution:0)),
     currentBet:0, status:p.status === "folded" ? "folded" : payouts[p.id] ? "winner" : "waiting"
   })));
+  if (session.ledger) {
+    const currentSession = useSessionStore.getState();
+    currentSession.applySnapshot({ ...currentSession, ledger: recordLocalPayout(session.ledger, currentSession.players, payouts, betting.pot - pot.amount === 0) });
+  }
   betting.setPot(betting.pot-pot.amount);
   betting.setCurrentBet(0);
   hand.setStatus(betting.pot-pot.amount === 0 ? "settlement-confirmed" : "pre-settlement");
@@ -545,13 +551,14 @@ function runQuickSplit(winnerIds: string[]): void {
 }
 
 function runReopenSettlement(): void {
-  if (useHandStore.getState().status !== "settlement-confirmed") return;
+  if (useHandStore.getState().status !== "settlement-confirmed" || useSessionStore.getState().ledger?.endedAtIso) return;
   runUndo();
   useSettlementStore.getState().openDialog();
 }
 
 export function startLocalHand(rotate = false): void {
   const session = useSessionStore.getState();
+  if (session.ledger?.endedAtIso) return;
   if (rotate) session.rotateDealer();
   const refreshed = useSessionStore.getState();
   const players: Player[] = refreshed.players.map((p) => ({...p,currentBet:0,totalInvestedThisHand:0,status:p.stack>0?"waiting":"folded"}));
@@ -568,7 +575,10 @@ export function startLocalHand(rotate = false): void {
   });
   const order = buildActionOrder(posted.filter((p) => p.status !== "folded"),funded[btn].seatIndex,"preflop");
   const positioned = assignLocalPositions(posted.filter((p) => p.status !== "folded"), funded[btn].seatIndex);
-  session.applySnapshot({...refreshed,dealerSeatIndex:funded[btn].seatIndex,players:setActingStatus(posted.map((p) => positioned.find((active) => active.id === p.id) ?? {...p,position:undefined}),order[0]??null)});
+  const ledger = refreshed.ledger ?? createLocalLedger(players, false);
+  session.applySnapshot({...refreshed,
+    ledger: { ...ledger, handStartStacks: Object.fromEntries(players.map((p) => [p.id, p.stack])), handPayouts: {} },
+    dealerSeatIndex:funded[btn].seatIndex,players:setActingStatus(posted.map((p) => positioned.find((active) => active.id === p.id) ?? {...p,position:undefined}),order[0]??null)});
   useHandStore.getState().resetForNewHand(order);
   useBettingStore.getState().resetForNewHand();
   useBettingStore.getState().setPot(posted.reduce((sum,p) => sum+p.currentBet,0));
@@ -577,6 +587,21 @@ export function startLocalHand(rotate = false): void {
   useMotionStore.getState().clearAll();
   requestedActionAmount = 0;
   settleRoundIfNeeded();
+}
+
+export function endLocalSession() {
+  const session = useSessionStore.getState();
+  if (useHandStore.getState().status !== "settlement-confirmed" || useBettingStore.getState().pot !== 0) return null;
+  const ledger = session.ledger ?? createLocalLedger(session.players, false);
+  if (ledger.endedAtIso) return summarizeLocalSession({ ...session, ledger });
+  const finishedLedger = { ...ledger, endedAtIso: new Date().toISOString() };
+  const summary = summarizeLocalSession({ ...session, ledger: finishedLedger });
+  useArchiveStore.getState().addEntry({ id: summary.id, sessionName: summary.name, endedAtIso: summary.endedAtIso,
+    playerCount: summary.players.length, totalPot: summary.hands.reduce((sum, hand) => sum + hand.potTotal, 0),
+    winners: summary.players.filter((p) => p.netChange > 0).map((p) => ({ playerId: p.id, name: p.name, amount: p.netChange })), summary });
+  session.applySnapshot({ ...session, ledger: finishedLedger });
+  clearLiveSession();
+  return summary;
 }
 
 function runSetPlayerCount(count: number): void {
@@ -693,6 +718,7 @@ export function useTableController(): TableStateModel {
 
     const flush = () => {
       const hand = useHandStore.getState();
+      if (useSessionStore.getState().ledger?.endedAtIso) return;
       if (!useSessionStore.getState().players.some((p) => p.totalInvestedThisHand > 0) && hand.historyStack.length === 0 && hand.status === "in-progress") return;
       saveLiveSession(createPersistedLiveSession());
     };

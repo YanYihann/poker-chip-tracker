@@ -172,3 +172,12 @@ The following transitions must be unit-testable:
 - Odd-chip distribution determinism
 - Undo/edit/reopen flows
 - Autosave/restore/archive lifecycle
+
+## Final session settlement
+- Ending a session is separate from settling a hand. The current hand must be fully settled and its pot empty before local users or the online host can end the session.
+- After confirmation, results are locked; all online participants can open the final settlement. Finished room links continue to the table/report instead of the join screen.
+- Each player's session net is final chips minus starting chips. Transfers connect players with negative net to players with positive net until every net is covered. Invalid or unbalanced totals do not produce a transfer plan.
+- Hands won counts a hand once when a player collects any pot, including a split or a side pot. A pot winner can still have zero or negative net for that hand.
+- Each hand records gross pot payouts, every player's net change, and hand-end chips. Local main/side pots accumulate into one record only after the final pot is paid; undo/reopen restores the ledger with the chips.
+- Local snapshots include the running session ledger. Ending saves one final report in local archives and removes the active snapshot. Older snapshots without a ledger are explicitly marked as incomplete; missing history is never reconstructed as fact.
+- Online reports use archived server session stats and settled hand results. The room-code report endpoint enforces the existing session participant check; authentication alone does not grant access.

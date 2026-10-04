@@ -27,3 +27,7 @@ Use a disposable local PostgreSQL database whose name ends in `_test`. Apply `se
 ## Rules validation
 
 `npm test` checks heads-up blinds and action order, the big blind's option, renewed action after raises, short all-in reopening rules, chip conservation, side-pot layers, refunds, odd chips, undo and repeated settlement protection. Rules follow [Poker TDA rules](https://www.pokertda.com/view-poker-tda-rules/), including rules 23, 36, 45 and 49. Local mode records a physical game and asks the operator to choose winners for each eligible pot; online mode evaluates dealt cards on the server.
+
+## Final settlement validation
+
+`npm test` also checks session net transfers, per-hand gross/net distinctions, split winners, local side-pot accumulation, snapshot restoration, undo/reopen, final archive idempotence, and the room-code report endpoint's authentication/participant guards. With the disposable local database configured as above, run `node --import tsx --test tests/session-settlement.integration.ts` to play and archive two hands in both server-backed modes. It verifies each participant's report, final balances, per-hand totals, concurrent finalization without double counting, host-only ending, locked finished rooms, and outsider rejection.

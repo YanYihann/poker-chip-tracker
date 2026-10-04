@@ -21,6 +21,9 @@ import {
 import type { TableModeAdapter } from "@/features/table/mode/types";
 import { getRoomSocket } from "@/features/rooms/realtime";
 import { buildPlaceholderPlayers } from "@/lib/table-layout";
+import { fetchFinishedRoomSession } from "@/features/auth/api";
+import { SessionEndConfirmation } from "@/components/settlement/session-end-confirmation";
+import { summarizeOnlineSession, type SessionSummary } from "@/features/settlement/session-summary";
 
 type OnlineActionType = NonNullable<RoomState["game"]>["legalActions"][number];
 type OnlineGameStatus = NonNullable<RoomState["game"]>["status"];
@@ -359,7 +362,12 @@ export function useOnlineRoomTableModeAdapter(
   const [actionAmountInput, setActionAmountInput] = useState("");
   const [settlementOpen, setSettlementOpen] = useState(false);
   const settledSyncHandRef = useRef<string | null>(null);
-  const roomFinishedRedirectedRef = useRef(false);
+  const [sessionReportOpen, setSessionReportOpen] = useState(false);
+  const [endConfirmationOpen, setEndConfirmationOpen] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+  const [sessionSummaryLoading, setSessionSummaryLoading] = useState(false);
+  const [sessionSummaryError, setSessionSummaryError] = useState<string | null>(null);
+  const summaryRequestRef = useRef(0);
 
   const game = useMemo(() => deriveGameForCurrentUser(roomState), [roomState]);
   const isHost = roomState?.me?.isHost ?? false;
@@ -372,7 +380,27 @@ export function useOnlineRoomTableModeAdapter(
   const actionCopy = ACTION_COPY[locale];
   const canSettle = Boolean(game?.status === "showdown" && isHost && !usesAutoEvaluator);
   const canOpenManualSettlement = canSettle;
-  const canStartNextHand = Boolean(game?.status === "settled" && isHost);
+  const roomFinished = roomState?.room.status === "finished";
+  const canStartNextHand = Boolean(game?.status === "settled" && isHost && roomState?.room.status === "active");
+
+  const loadSessionSummary = useCallback(async () => {
+    const request = ++summaryRequestRef.current;
+    setSessionSummaryLoading(true);
+    setSessionSummaryError(null);
+    try {
+      const detail = await fetchFinishedRoomSession(roomCode);
+      if (request === summaryRequestRef.current) setSessionSummary(summarizeOnlineSession(detail));
+    } catch (loadError) {
+      if (request === summaryRequestRef.current) setSessionSummaryError(loadError instanceof Error ? loadError.message : isZh ? "无法加载最终结算。" : "Unable to load settlement.");
+    } finally {
+      if (request === summaryRequestRef.current) setSessionSummaryLoading(false);
+    }
+  }, [roomCode, isZh]);
+
+  useEffect(() => {
+    if (roomFinished) void loadSessionSummary();
+    return () => { summaryRequestRef.current++; };
+  }, [roomFinished, loadSessionSummary]);
 
   useEffect(() => {
     if (!roomCode) {
@@ -488,29 +516,13 @@ export function useOnlineRoomTableModeAdapter(
   }, [game?.status]);
 
   useEffect(() => {
-    if (!roomCode) {
-      roomFinishedRedirectedRef.current = false;
-      return;
-    }
-
+    if (!roomCode) return;
     const roomStatus = roomState?.room.status;
     if (roomStatus === "waiting") {
       router.replace(`/rooms/${encodeURIComponent(roomCode)}`);
       return;
     }
-    const shouldRedirect = roomStatus === "finished" || roomStatus === "cancelled";
-
-    if (!shouldRedirect) {
-      roomFinishedRedirectedRef.current = false;
-      return;
-    }
-
-    if (roomFinishedRedirectedRef.current) {
-      return;
-    }
-
-    roomFinishedRedirectedRef.current = true;
-    router.replace("/rooms/join");
+    if (roomStatus === "cancelled") router.replace("/rooms/join");
   }, [roomCode, roomState?.room.status, router]);
 
   const legalActions = useMemo<OnlineActionType[]>(
@@ -696,6 +708,7 @@ export function useOnlineRoomTableModeAdapter(
   ]);
 
   const utilityActions = useMemo(() => {
+    if (roomFinished) return [{ id: "view-session-settlement", label: isZh ? "查看最终结算" : "View settlement", onPress: async () => { setSessionReportOpen(true); } }];
     const actions: Array<{
       id: string;
       label: string;
@@ -779,30 +792,8 @@ export function useOnlineRoomTableModeAdapter(
         },
         {
           id: "end-session",
-          label: isZh ? "结束牌局并归档" : "End Session & Archive",
-          onPress: async () => {
-            if (!roomCode || pendingAction || !canStartNextHand) {
-              return;
-            }
-
-            setPendingAction(true);
-            setError(null);
-
-            try {
-              const next = await decideNextHand(roomCode, false);
-              setRoomState(next);
-            } catch (endSessionError) {
-              setError(
-                endSessionError instanceof Error
-                  ? endSessionError.message
-                  : isZh
-                    ? "无法结束并归档当前牌局。"
-                    : "Unable to end and archive the current session."
-              );
-            } finally {
-              setPendingAction(false);
-            }
-          }
+          label: isZh ? "结束牌局" : "End session",
+          onPress: async () => { if (!pendingAction) setEndConfirmationOpen(true); }
         }
       );
     }
@@ -818,7 +809,8 @@ export function useOnlineRoomTableModeAdapter(
     mySeatIndex,
     pendingAction,
     roomCode,
-    roomState?.canStart
+    roomState?.canStart,
+    roomFinished
   ]);
 
   const showActionPanel = Boolean(game?.isMyTurn && game.status === "in-progress");
@@ -876,7 +868,7 @@ export function useOnlineRoomTableModeAdapter(
 
   return {
     mode: variant === "local" ? "local" : "online",
-    musicScene: game && roomState?.room.status !== "waiting" ? "table" : "lobby",
+    musicScene: game && roomState?.room.status === "active" ? "table" : "lobby",
     title,
     backHref: roomCode ? `/rooms/${roomCode}` : "/profile",
     players: tablePlayers,
@@ -892,6 +884,8 @@ export function useOnlineRoomTableModeAdapter(
     actingPlayerId: game?.activePlayerUserId ?? null,
     mainActions,
     utilityActions,
+    tableCenterContent: roomFinished ? <><p>{isZh ? "牌局已结束" : "Session ended"}</p>{sessionSummary && <span>{sessionSummary.hands.length} {isZh ? "手" : "hands"}</span>}</> : undefined,
+    sessionSettlement: { isOpen: sessionReportOpen, summary: sessionSummary, loading: sessionSummaryLoading, error: sessionSummaryError, onRetry: () => { void loadSessionSummary(); }, onClose: () => setSessionReportOpen(false) },
     canOpenSettlement: canOpenManualSettlement,
     onOpenSettlement: () => {
       if (canOpenManualSettlement) {
@@ -1053,10 +1047,14 @@ export function useOnlineRoomTableModeAdapter(
         settlementEntries={settlementEntries}
       />
     ) : undefined,
-    supplementaryContent:
-      variant === "online" && !isSettledOnlineView ? (
+    supplementaryContent: <><SessionEndConfirmation isOpen={endConfirmationOpen} onCancel={() => setEndConfirmationOpen(false)} onConfirm={() => {
+      setEndConfirmationOpen(false);
+      if (!roomCode || pendingAction || !canStartNextHand) return;
+      setPendingAction(true); setError(null);
+      void decideNextHand(roomCode, false).then(setRoomState).catch((cause) => setError(cause instanceof Error ? cause.message : isZh ? "无法结束牌局。" : "Unable to end session.")).finally(() => setPendingAction(false));
+    }} />{variant === "online" && !isSettledOnlineView && !roomFinished ? (
         <OnlineMyHoleCards cards={game?.myHoleCards ?? []} />
-      ) : null,
+      ) : null}</>,
     showActionPanel: shouldShowActionPanel
   };
 }

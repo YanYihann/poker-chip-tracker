@@ -56,7 +56,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     set({
       players,
-      dealerSeatIndex: 0
+      dealerSeatIndex: 0,
+      ledger: undefined
     });
   },
   rotateDealer: () => {
@@ -92,7 +93,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sessionName: slice.sessionName,
       startedAtIso: slice.startedAtIso,
       dealerSeatIndex: slice.dealerSeatIndex,
-      players: slice.players
+      players: slice.players,
+      ledger: slice.ledger
     });
   }
 }));

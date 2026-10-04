@@ -1,5 +1,6 @@
 ﻿export type PlayerId = string;
 export type SessionId = string;
+import type { LocalSessionLedger, SessionSummary } from "@/features/settlement/session-summary";
 
 export type Street = "preflop" | "flop" | "turn" | "river" | "showdown";
 
@@ -63,6 +64,7 @@ export type SessionSlice = {
   startedAtIso: string;
   dealerSeatIndex: number;
   players: Player[];
+  ledger?: LocalSessionLedger;
 };
 
 export type HandSlice = {
@@ -128,6 +130,7 @@ export type ArchivedSessionRecord = {
   totalPot: number;
   winners: Array<{ playerId: string; name: string; amount: number }>;
   note?: string;
+  summary?: SessionSummary;
 };
 
 export type PersistedLiveSession = {

@@ -3,8 +3,9 @@ import { Router } from "express";
 import { ZodError } from "zod";
 
 import { requireAuth } from "../auth/session.middleware.js";
+import { roomCodeParamSchema } from "../rooms/room.schemas.js";
 import { sessionIdParamSchema, updateProfileSchema } from "./profile.schemas.js";
-import { getProfile, getRecentSessions, getSessionDetail, updateProfile } from "./profile.service.js";
+import { getProfile, getRecentSessions, getSessionDetail, getSessionDetailByRoomCode, updateProfile } from "./profile.service.js";
 
 function sendValidationError(error: ZodError, res: Response): void {
   res.status(400).json({
@@ -86,6 +87,19 @@ export function createProfileRouter() {
       }
 
       res.status(500).json({ message: "Unable to load session detail." });
+    }
+  });
+
+  router.get("/rooms/:roomCode/session", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { roomCode } = roomCodeParamSchema.parse(req.params);
+      const session = await getSessionDetailByRoomCode({ userId: req.authSession!.userId, roomCode });
+      res.status(200).json({ session });
+    } catch (error) {
+      if (error instanceof ZodError) { sendValidationError(error, res); return; }
+      if (error instanceof Error && error.message === "SESSION_NOT_FOUND") { res.status(404).json({ message: "Session not found." }); return; }
+      if (error instanceof Error && error.message === "SESSION_FORBIDDEN") { res.status(403).json({ message: "You do not have access to this session." }); return; }
+      res.status(500).json({ message: "Unable to load session settlement." });
     }
   });
 

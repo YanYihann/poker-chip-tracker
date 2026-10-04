@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { TableSeatPlayer } from "@/components/player/types";
+import type { SessionSettlementModel } from "@/components/settlement/session-settlement-modal";
 import type { HandStatus, PlayerStatus, Street } from "@/types/domain";
 
 export type TableBannerTone = "info" | "warning";
@@ -84,6 +85,7 @@ export type TableModeAdapter = {
   onOpenSettlement: () => void;
   amountControl?: TableModeAmountControl | null;
   settlement?: TableModeSettlementModel | null;
+  sessionSettlement?: SessionSettlementModel | null;
   resume?: TableModeResumeModel;
   banner?: TableBannerModel | null;
   statusHint?: string | null;

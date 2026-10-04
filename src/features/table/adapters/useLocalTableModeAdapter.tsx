@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { SessionEndConfirmation } from "@/components/settlement/session-end-confirmation";
 
 import { useLanguage, type AppLocale } from "@/components/i18n/language-provider";
 import type { TableSeatPlayer } from "@/components/player/types";
 import { buildActionOrder, assignPositions } from "@/features/table/rules";
-import { startLocalHand, useTableController } from "@/features/table/useTableController";
+import { endLocalSession, startLocalHand, useTableController } from "@/features/table/useTableController";
+import { createLocalLedger, summarizeLocalSession, type SessionSummary } from "@/features/settlement/session-summary";
+import { useArchiveStore } from "@/store/useArchiveStore";
 import type { TableModeAdapter } from "@/features/table/mode/types";
 import { useBettingStore } from "@/store/useBettingStore";
 import { useHandStore } from "@/store/useHandStore";
@@ -128,11 +132,12 @@ function startLocalSession(): boolean {
   const withActingStatus = setActingStatus(withPositions, actingPlayerId);
 
   sessionStore.applySnapshot({
-    sessionId: sessionStore.sessionId,
+    sessionId: `local-${crypto.randomUUID()}`,
     sessionName: sessionStore.sessionName,
-    startedAtIso: sessionStore.startedAtIso,
+    startedAtIso: new Date().toISOString(),
     dealerSeatIndex,
-    players: withActingStatus
+    players: withActingStatus,
+    ledger: createLocalLedger(withActingStatus)
   });
   handStore.resetForNewHand(actionOrder);
   bettingStore.resetForNewHand();
@@ -146,8 +151,17 @@ function startLocalSession(): boolean {
 export function useLocalTableModeAdapter(): TableModeAdapter {
   const controller = useTableController();
   const { locale, isZh } = useLanguage();
-  const [setupMode, setSetupMode] = useState(true);
+  const [setupMode, setSetupMode] = useState(() => !useSessionStore.getState().ledger);
   const [amountInput, setAmountInput] = useState("400");
+  const ledger = useSessionStore((state) => state.ledger);
+  const archivedEntries = useArchiveStore((state) => state.entries);
+  const [sessionReportOpen, setSessionReportOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<SessionSummary | null>(null);
+  const [endConfirmationOpen, setEndConfirmationOpen] = useState(false);
+  const finished = Boolean(ledger?.endedAtIso);
+  const lastSummary = useMemo(() => ledger?.endedAtIso
+    ? summarizeLocalSession({ ...useSessionStore.getState(), ledger })
+    : archivedEntries.find((entry) => entry.summary)?.summary ?? null, [ledger, archivedEntries]);
   const actingPlayer = controller.players.find((p) => p.id === controller.actingPlayerId);
   const maxWager = (actingPlayer?.stack ?? 0) + (actingPlayer?.currentBet ?? 0);
   const amountValid = amountInput !== "" && Number.isSafeInteger(Number(amountInput)) && Number(amountInput) >= controller.minRaiseTo && Number(amountInput) <= maxWager;
@@ -206,17 +220,24 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           </button>
         </div>
       </article>
-    ) : controller.status === "settlement-confirmed" ? (
+    ) : finished ? (
       <article className="rounded-xl bg-stitch-surfaceContainerHigh px-3 py-2 text-xs text-stitch-onSurfaceVariant">
         <button
           type="button"
-          className="font-semibold text-stitch-primary"
+          className="text-link font-semibold"
           disabled={controller.status !== "settlement-confirmed"}
           onClick={() => {
+            const session = useSessionStore.getState();
+            session.applySnapshot({ ...session, sessionId: `local-${crypto.randomUUID()}`, ledger: undefined,
+              players: session.players.map((player) => ({ ...player, stack: ledger?.startingPlayers.find((p) => p.id === player.id)?.stack ?? 2000, currentBet: 0, totalInvestedThisHand: 0, status: "waiting" })) });
+            useHandStore.getState().resetForNewHand([]);
+            useBettingStore.getState().resetForNewHand();
+            useSettlementStore.getState().resetForNewHand();
+            useMotionStore.getState().clearAll();
             setSetupMode(true);
           }}
         >
-          {isZh ? "牌局设置" : "Game setup"}
+          {isZh ? "新牌局" : "New session"}
         </button>
       </article>
     ) : null;
@@ -243,7 +264,7 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
 
   return {
     mode: "local",
-    musicScene: setupMode ? "lobby" : "table",
+    musicScene: setupMode || finished ? "lobby" : "table",
     title: isZh ? "\u672c\u5730\u6a21\u5f0f\u724c\u684c" : "Local Mode Table",
     backHref: "/online",
     playerCount: controller.playerCount,
@@ -261,9 +282,13 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
     handKey: `local-${controller.playerCount}-${controller.sessionName}`,
     status: controller.status,
     actingPlayerId: setupMode ? null : controller.actingPlayerId,
-    mainActions: setupMode ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
-    utilityActions: setupMode ? [] : controller.utilityActions,
-    canOpenSettlement: setupMode ? false : controller.canOpenSettlement,
+    mainActions: setupMode || finished ? [] : controller.mainActions.map((action) => action.id === "bet" || action.id === "raise" ? {...action,disabled:!amountValid} : action),
+    utilityActions: setupMode ? [] : finished ? [{ id: "session-report", label: isZh ? "查看最终结算" : "View settlement", onPress: () => { setSelectedReport(lastSummary); setSessionReportOpen(true); } }] : [
+      ...controller.utilityActions.map((action) => ({ ...action, label: isZh ? action.label : ({ undo: "Undo", "next-hand": "Next hand", reopen: "Reopen hand", "edit-hand": "Edit hand", "end-hand": "End hand" }[action.id]) })),
+      { id: "end-session", label: isZh ? "结束牌局" : "End session", disabled: controller.status !== "settlement-confirmed", onPress: () => setEndConfirmationOpen(true) }
+    ],
+    canOpenSettlement: setupMode || finished ? false : controller.canOpenSettlement,
+    sessionSettlement: { isOpen: sessionReportOpen, summary: selectedReport, onClose: () => setSessionReportOpen(false) },
     onOpenSettlement: setupMode ? () => undefined : controller.openSettlement,
     amountControl: !setupMode && controller.mainActions.some((a) => a.id === "bet" || a.id === "raise") ? {
       value: amountInput,
@@ -315,7 +340,14 @@ export function useLocalTableModeAdapter(): TableModeAdapter {
           : "No actionable player at the moment."
         : null,
     topActionHint,
-    supplementaryContent: setupContent,
+    supplementaryContent: <><SessionEndConfirmation isOpen={endConfirmationOpen} onCancel={() => setEndConfirmationOpen(false)} onConfirm={() => {
+      setEndConfirmationOpen(false);
+      const summary = endLocalSession();
+      if (summary) { setSelectedReport(summary); setSessionReportOpen(true); }
+    }} />{setupContent}{setupMode && lastSummary ? <article className="local-session-history-entry">
+      <button type="button" onClick={() => { setSelectedReport(lastSummary); setSessionReportOpen(true); }}>{isZh ? "上场结算" : "Previous settlement"}</button>
+      <Link href="/history/local">{isZh ? "本地历史" : "Local history"}</Link>
+    </article> : finished ? <article className="local-session-history-entry"><Link href="/history/local">{isZh ? "本地历史" : "Local history"}</Link></article> : null}</>,
     showActionPanel: !setupMode
   };
 }

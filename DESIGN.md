@@ -294,3 +294,7 @@ Waiting rooms reuse the felt and seat ledgers. Empty seats are explicit controls
 - **Don't** add looping ornamental motion or delay a game-state update for an animation.
 
 Source-only caveats, not canonized rules: reduced-motion CSS still permits the secondary button's active translation; reduced-motion chip fades retain their event delay. These are implementation details for review, not patterns to propagate. No browser or end-to-end validation was performed by this documentation pass.
+
+### Final settlement report
+
+Final settlement is a read surface within the existing felt/charcoal theme. A native modal lists transfers first, then player totals, then collapsed hand disclosures. Gross pot collection and signed net change are distinct. The report uses tabular body numerals and compact headings; phone totals become labeled three-column groups beneath each player name. A sticky close control remains visible while the report scrolls. End-session confirmation focuses Keep playing before the irreversible End & save action. Reports can be reopened from local archives or online session history. Desktop and 390px phone layouts, default collapsed details, expanded hand tables, Escape/focus restoration, and local reload persistence have been verified in the browser.
