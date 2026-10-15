@@ -20,7 +20,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-287A54)](LICENSE)
 
-<img src="docs/assets/online-table-demo.gif" alt="线上牌桌操作演示" width="380" />
+<img src="docs/assets/pokerchip-ledger-demo.gif" alt="新版英文演示：大厅、三人匹配、准备开局、线上对战与牌力结算" width="900" />
+
+[观看清晰版视频](docs/assets/pokerchip-ledger-demo.mp4)
 
 </div>
 

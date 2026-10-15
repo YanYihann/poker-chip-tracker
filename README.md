@@ -20,7 +20,9 @@ Track chips at a physical table, share a scoring room, or play a server-dealt ga
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-287A54)](LICENSE)
 
-<img src="docs/assets/online-table-demo.gif" alt="Animated demonstration of the online poker table" width="380" />
+<img src="docs/assets/pokerchip-ledger-demo.gif" alt="Current English demo: lobby, three-player matching, readiness, online play, and hand results" width="900" />
+
+[Watch the full-resolution video](docs/assets/pokerchip-ledger-demo.mp4)
 
 </div>
 
