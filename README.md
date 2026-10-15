@@ -1,219 +1,236 @@
 <a id="readme-top"></a>
 
 <div align="center">
+  <a href="https://poker.yanyihan.top/">
+    <img src="public/icons/poker-chip-192.png" alt="PokerChip Ledger logo" width="88" height="88" />
+  </a>
 
 # PokerChip Ledger
 
-**德州扑克 Home Game 的计分、牌局同步与结算工具。**
+**One table for home-game scoring and online Texas Hold’em.**
 
-本地快速开局，或通过房间码进行服务端权威的多人联机牌局。
+Track chips at a physical table, share a scoring room, or play a server-dealt game with friends.
 
-[Open app](https://poker.yanyihan.top/) · [Documentation](docs/) · [Report Bug](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=bug) · [Request Feature](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=enhancement)
+**English** · [简体中文](README.zh-CN.md)
+
+[Open app](https://poker.yanyihan.top/) · [Documentation](docs/README.md) · [Report a bug](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=bug) · [Request a feature](https://github.com/YanYihann/poker-chip-tracker/issues/new?labels=enhancement)
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![Socket.IO](https://img.shields.io/badge/Socket.IO-realtime-010101?logo=socketdotio&logoColor=white)](https://socket.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Prisma-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-287A54)](LICENSE)
+
+<img src="docs/assets/online-table-demo.gif" alt="Animated demonstration of the online poker table" width="380" />
 
 </div>
 
-## Overview
+<details>
+<summary>Table of contents</summary>
 
-PokerChip Ledger covers a home-game session from table creation and buy-ins through player actions, showdown settlement, session archiving, and personal history. It supports two modes:
+- [About the project](#about-the-project)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Getting started](#getting-started)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Development and deployment](#development-and-deployment)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
-- **Local mode:** fast manual scorekeeping for an in-person table.
-- **Online mode:** room-code access with server-authoritative state; HTTP polling on Vercel and Socket.IO on standalone servers.
+</details>
 
-> PokerChip Ledger is a scorekeeping utility. It does not process wagers, payments, or real-money gaming.
+## About the project
 
-## Demo
+PokerChip Ledger brings seating, betting actions, pots, hand results, and session reports into a shared table interface. Record a physical game on one device, synchronize scorekeeping across devices, or play online with server-side dealing and hand evaluation.
 
-<p align="center">
-  <img src="docs/assets/online-table-demo.gif" alt="PokerChip Ledger online table demo" width="380" />
-</p>
+| Experience | Account | Cards and settlement | State lives in |
+| --- | --- | --- | --- |
+| Local scoring | Not required | Physical cards; operator selects winners for each pot | Browser storage |
+| Synced scoring | Required | Physical cards; host confirms winners | Server and PostgreSQL |
+| Online play | Required | Server deals cards and evaluates winners | Server and PostgreSQL |
+
+Local scoring works without the API after its page has loaded. Online rooms require a running backend and database. The interface supports English and Simplified Chinese; new visits default to English and remember the selected language in the browser.
+
+The app tracks virtual chips and game results; it does not process payments or real-money transactions.
 
 ## Features
 
-| Area | Capability |
-| --- | --- |
-| Table setup | Create a table, assign seats, and record buy-ins |
-| Hand actions | Fold, check, call, bet, raise, and all-in |
-| Settlement | Showdown settlement and balance calculation |
-| Local play | Browser-based manual game tracking |
-| Online rooms | Join by room code with authoritative server state |
-| Synchronization | Vercel room refresh every 1.5 seconds; Socket.IO updates on standalone servers |
-| Accounts | Registration, login, session-cookie authentication, and profiles |
-| History | Archived sessions and personal statistics |
+- **A complete table flow:** seats, starting stacks, blinds, fold, check, call, bet, raise, and all-in.
+- **Private rooms:** create a room, share its four-digit code, and start play as the host.
+- **Quick match:** choose 2–8 players and a Beginner, Advanced, or Expert tier; enter preparation, choose seats, and ready up before dealing.
+- **Server-side poker rules:** private hole cards, street progression, automatic hand evaluation, side pots, split pots, refunds, and odd-chip distribution.
+- **Shared continuation:** after an online hand, seated players with chips agree to the next hand; participants can also confirm ending the session.
+- **Session records:** hand breakdowns, final chip balances, net transfers, profile totals, and archived room history.
+- **Adaptive synchronization:** Socket.IO on a persistent server; visible-room HTTP polling on Vercel, targeting 250 ms during active hands and 750 ms in preparation or settlement.
+- **A responsive table:** desktop and mobile layouts, animated chip movement, sound controls, local snapshots, and language switching.
 
-## Architecture
+## Screenshots
 
-```mermaid
-flowchart LR
-  C["Next.js client"] -->|HTTP /api| E["Express API"]
-  C <-->|Socket.IO| R["Realtime server"]
-  E --> P["Prisma ORM"]
-  R --> P
-  P --> D[(PostgreSQL / Neon)]
-```
+<table>
+  <tr><th>Room preparation</th><th>Online table</th><th>Hand settlement</th></tr>
+  <tr>
+    <td><img src="docs/screenshots/房间准备.png" alt="Room seats and preparation controls" width="260" /></td>
+    <td><img src="docs/screenshots/在线牌桌.png" alt="Online poker table and betting controls" width="260" /></td>
+    <td><img src="docs/screenshots/牌力结算.png" alt="Hand rankings and settlement results" width="260" /></td>
+  </tr>
+</table>
 
-The server owns online-room state. Clients render the current state and submit actions but should not be trusted to settle balances or mutate another player's data.
+<details>
+<summary>More screens: room creation, joining, and profile</summary>
 
-## Quick start
+<table>
+  <tr><th>Create a room</th><th>Join a room</th><th>Profile</th></tr>
+  <tr>
+    <td><img src="docs/screenshots/创建房间.png" alt="Create a room" width="260" /></td>
+    <td><img src="docs/screenshots/加入房间.png" alt="Join with a room code" width="260" /></td>
+    <td><img src="docs/screenshots/个人资料.png" alt="Player profile and statistics" width="260" /></td>
+  </tr>
+</table>
+
+</details>
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- npm 10 or newer
-- PostgreSQL locally, or a Neon database
+- Node.js 20 or newer and npm 10 or newer.
+- PostgreSQL locally, or a Neon database, for accounts and online rooms.
 
-### Install
+### Install and run local scoring
 
 ```bash
 git clone https://github.com/YanYihann/poker-chip-tracker.git
 cd poker-chip-tracker
-npm install
-cd server
-npm install
-cd ..
+npm ci
+npm run dev
 ```
 
-Create the frontend and backend environment files:
+Open [http://localhost:3000/local](http://localhost:3000/local). This mode needs no account or database. The root npm workspace installs both frontend and server dependencies.
+
+### Enable online rooms
+
+From the repository root, copy the environment examples:
 
 ```bash
 cp .env.example .env.local
 cp server/.env.example server/.env
 ```
 
-Windows PowerShell users can replace `cp` with `Copy-Item`.
-
-Initialize Prisma:
+PowerShell also accepts these commands, or you can use `Copy-Item`. Set `DATABASE_URL` and `DATABASE_URL_DIRECT` in `server/.env` to your development database, then initialize it:
 
 ```bash
-cd server
-npm run prisma:generate
-npm run prisma:migrate:dev
+npm run prisma:generate --workspace server
+npm run prisma:migrate:deploy --workspace server
 ```
 
-Run the backend and frontend in separate terminals:
+Keep the frontend running and start the API in a second terminal:
 
 ```bash
-# terminal 1
-cd server
-npm run dev
+npm run dev --workspace server
 ```
 
-```bash
-# terminal 2, repository root
-npm run dev
-```
+The API defaults to [http://localhost:4001](http://localhost:4001). `GET /health` returns `{ "status": "ok", "database": "up" }` when the database is reachable. See the [local development guide](docs/local-dev.md) for details.
 
-The frontend defaults to `http://localhost:3000`; the API defaults to port `4001`.
+## Usage
+
+| Goal | Steps |
+| --- | --- |
+| Score a physical game on one device | Open **Local game**, set up players and seats, record actions, and select eligible winners at settlement. Resume saved progress in the same browser. |
+| Share scoring across devices | Sign in, create a **Synced scoring** room, share the code, and let the host start and confirm winners. |
+| Play with friends online | Create an **Online play** room, share the code, and start as host. Each player acts from their own device; the server deals and settles. |
+| Find a table | Choose **Quick match**, table size, and tier. Pick a seat and select **Ready**. Play begins when the table is full and everyone is ready. |
+| Review a session | End the room session and open its report from history to inspect hands, final balances, and transfers. |
+
+Quick-match tiers use virtual chips:
+
+| Tier | Starting stack | Small / big blind |
+| --- | ---: | ---: |
+| Beginner | 10,000 | 100 / 200 |
+| Advanced | 50,000 | 500 / 1,000 |
+| Expert | 100,000 | 1,000 / 2,000 |
 
 ## Configuration
 
-Frontend, `.env.local`:
+Frontend settings belong in `.env.local`; backend settings belong in `server/.env` for standalone development.
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | Complete backend URL | Current host plus API port |
-| `NEXT_PUBLIC_API_PORT` | Backend-port fallback | `4001` |
-
-Backend, `server/.env`:
-
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `DATABASE_URL` | Runtime database connection | Local PostgreSQL |
-| `DATABASE_URL_DIRECT` | Direct connection for Prisma migrations | Local PostgreSQL |
-| `PORT` | API port | `4001` |
-| `CLIENT_ORIGIN` | Allowed frontend origins | Local port 3000 origins |
-| `SESSION_COOKIE_NAME` | Authentication cookie name | `poker_chip_session` |
-| `SESSION_TTL_DAYS` | Session lifetime | `30` |
-
-See [`docs/local-dev.md`](docs/local-dev.md) for the complete development guide.
-
-## Main routes
-
-| Route | Purpose |
+| Variable | Purpose |
 | --- | --- |
-| `/` | Product entry page |
-| `/local` | Local scorekeeping mode |
-| `/online` | Online mode entry |
-| `/rooms/create` | Create a room |
-| `/rooms/join` | Join by room code |
-| `/profile` | Account profile |
-| `/history` | Archived sessions and statistics |
+| `NEXT_PUBLIC_API_BASE_URL` | Optional backend origin. Local development defaults to the current local hostname on the API port; deployed hosts use the same origin. |
+| `NEXT_PUBLIC_API_PORT` | Local API port fallback; defaults to `4001`. |
+| `NEXT_PUBLIC_API_TRANSPORT` | Set to `polling` for Vercel; leave unset for a standalone Socket.IO server. |
+| `DATABASE_URL` | PostgreSQL runtime connection; use a pooled URL for Neon. |
+| `DATABASE_URL_DIRECT` | Direct PostgreSQL connection for Prisma migrations. |
+| `PORT` | Standalone API port; defaults to `4001`. |
+| `CLIENT_ORIGIN` | Comma-separated allowed frontend origins. |
+| `SESSION_COOKIE_NAME` | Authentication cookie name; defaults to `poker_chip_session`. |
+| `SESSION_TTL_DAYS` | Session lifetime; defaults to `30` days. |
 
-Backend health check:
+On Vercel, the app also accepts the Neon integration variables `NEON_DATABASE_URL` and `NEON_DATABASE_URL_UNPOOLED`, which take precedence over the corresponding database settings. Keep actual credentials in local environment files or hosting settings.
 
-```http
-GET /health
+## Architecture
+
+```mermaid
+flowchart LR
+  UI["Next.js / React table"] --> Local["Local controller + Zustand"]
+  Local --> Storage["Browser storage"]
+  UI -->|HTTP actions and polling| API["Express API"]
+  UI <-->|Socket.IO on standalone servers| Realtime["Room broadcasts"]
+  API --> Domain["Room, poker, and matchmaking services"]
+  Domain --> Prisma["Prisma"]
+  Prisma --> DB[(PostgreSQL / Neon)]
+  Domain --> Realtime
 ```
 
-```json
-{ "status": "ok", "database": "up" }
-```
+Shared table components connect to mode-specific adapters. The browser owns standalone local state; the server validates online actions, protects private cards, and commits room state and settlement. Vercel serves Next.js and the Express API together through `/api/*`; a persistent Node.js deployment can also provide Socket.IO.
 
-## Screenshots
-
-| Profile | Create room |
+| Path | Contents |
 | --- | --- |
-| ![Profile](docs/screenshots/个人资料.png) | ![Create room](docs/screenshots/创建房间.png) |
+| `src/app/` | Pages, layouts, manifest, and app icons |
+| `src/components/` | Shared table, player, action, settlement, and language UI |
+| `src/features/` | Table adapters, room transport, authentication, and matchmaking |
+| `src/store/` | Local session, hand, betting, and archive state |
+| `server/src/` | Express routes, domain services, authentication, and Socket.IO |
+| `server/prisma/` | Database schema and versioned migrations |
+| `tests/` | Rule, synchronization, layout, and integration checks |
+| `public/` | Brand assets and install icons |
+| `docs/` | Guides, specifications, screenshots, demo, and portfolio notes |
+| `scripts/` | Icon generation, encoding maintenance, and deployment migrations |
 
-| Join room | Online table |
-| --- | --- |
-| ![Join room](docs/screenshots/加入房间.png) | ![Online table](docs/screenshots/在线牌桌.png) |
+## Development and deployment
 
-## Repository map
-
-```text
-poker-chip-tracker/
-├── src/               # Next.js frontend
-├── server/            # Express, Socket.IO, Prisma, and API code
-├── docs/              # Development, deployment, and media documentation
-├── scripts/           # Project maintenance scripts
-├── .env.example       # Frontend environment reference
-└── LICENSE            # MIT License
-```
-
-## Development checks
+Run these checks from the repository root:
 
 ```bash
-npm run typecheck
 npm run lint
+npm run typecheck
 npm test
-npm run build
-
-cd server
-npm run typecheck
-npm run lint
-npm run build
+npm run lint --workspace server
+npm run typecheck --workspace server
+npm run build --workspace server
 ```
 
-Deployment references:
+`npm test` runs the `*.test.ts` suite. Database integration suites are separate: they require an explicitly configured disposable local database ending in `_test` via `ROOM_TEST_DATABASE_URL`; without it, they skip. See the [integration instructions](docs/deployment-vercel.md#room-lifecycle-integration-checks).
 
-- [Vercel + Neon guide](docs/deployment-vercel.md) — current production deployment
-- [Railway + Neon guide](docs/deployment-railway-neon.md)
-- [Deployment checklist](docs/deployment-checklist.md)
+`npm run build` generates Prisma, compiles the server, and builds Next.js. **In a production Vercel environment, it also applies pending database migrations.** Local builds skip that migration step. Review the target database before a production build or push to a connected deployment branch.
 
-## Security and operational notes
+Deployment guides:
 
-- Use TLS, strong secrets, secure cookies, restricted CORS origins, and least-privilege database credentials in production.
-- Back up the database and define retention/deletion rules for account and game-history data.
-- Validate every action on the server and rate-limit authentication and room endpoints.
-- Review applicable local rules before using scorekeeping software in organized games.
+- [Vercel + Neon](docs/deployment-vercel.md): combined frontend/API with HTTP polling.
+- [Railway + Neon](docs/deployment-railway-neon.md): persistent backend with Socket.IO.
+- [Deployment checklist](docs/deployment-checklist.md).
 
 ## Contributing
 
-Fork the repository, create a focused feature branch, include tests or reproduction steps where appropriate, and open a pull request with the user-facing impact described clearly.
+Open an [issue](https://github.com/YanYihann/poker-chip-tracker/issues) to discuss a bug or feature, or fork the repository and submit a focused pull request. Describe the behavior change and relevant validation. Preserve local scoring when changing online flows, and keep the English and Chinese READMEs aligned.
 
 ## License
 
-Distributed under the [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE). Copyright © 2026 [YanYihann](https://github.com/YanYihann).
 
 ## Acknowledgments
 
-README structure is inspired by [Best-README-Template](https://github.com/othneildrew/Best-README-Template) and the examples curated in [awesome-readme](https://github.com/matiassingers/awesome-readme).
+README layout adapted from [Best-README-Template](https://github.com/othneildrew/Best-README-Template), with presentation ideas from [awesome-readme](https://github.com/matiassingers/awesome-readme): a clear introduction, useful badges, visual demos, and a practical quick start.
 
 <p align="right"><a href="#readme-top">Back to top</a></p>
-
-

@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cancelMatch, getMatchState, heartbeatMatch, joinMatchQueue, type MatchResponse, type MatchState } from "./api";
+import { DEFAULT_MATCH_OPTIONS, type MatchOptions } from "./settings";
 
 export function useMatchmaking() {
   const router = useRouter();
   const [match, setMatch] = useState<MatchState>({ status: "idle" });
   const [settings, setSettings] = useState<MatchResponse["settings"] | null>(null);
+  const [tiers, setTiers] = useState<MatchResponse["tiers"] | null>(null);
+  const [options, setOptions] = useState<MatchOptions>(DEFAULT_MATCH_OPTIONS);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -19,8 +22,9 @@ export function useMatchmaking() {
     latest.current = response.match;
     setMatch(response.match);
     setSettings(response.settings);
+    setTiers(response.tiers);
     setError(null);
-    if (response.match.status === "matched") router.replace(`/online?room=${encodeURIComponent(response.match.roomCode)}`);
+    if (response.match.status === "matched") router.replace(`/rooms/${encodeURIComponent(response.match.roomCode)}`);
   }, [router]);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export function useMatchmaking() {
     const requestVersion = ++version.current;
     setBusy(true); setError(null);
     try {
-      const response = await joinMatchQueue();
+      const response = await joinMatchQueue(options);
       if (alive.current && requestVersion === version.current) apply(response);
       else if (!alive.current && response.match.status === "waiting") void cancelMatch(response.match.ticketId, true).catch(() => {});
     } catch { if (alive.current && requestVersion === version.current) setError("unavailable"); }
@@ -96,5 +100,5 @@ export function useMatchmaking() {
     finally { if (alive.current && requestVersion === version.current) setBusy(false); }
   };
 
-  return { match, settings, busy, error, elapsed, start, cancel };
+  return { match, settings: tiers ? { maxPlayers: options.maxPlayers, ...tiers[options.tier] } : settings, options, setOptions, busy, error, elapsed, start, cancel };
 }

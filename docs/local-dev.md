@@ -6,8 +6,9 @@ From repo root:
 
 ```bash
 npm install
-cd server && npm install
 ```
+
+The root npm workspace installs frontend and server dependencies together. For a reproducible install from the committed lockfile, use `npm ci` instead.
 
 ## 2. Configure Environment Variables
 
@@ -35,8 +36,9 @@ cp .env.example .env.local
 
 Frontend variable:
 
-- `NEXT_PUBLIC_API_BASE_URL` (optional; if unset, frontend uses current host + `NEXT_PUBLIC_API_PORT`)
+- `NEXT_PUBLIC_API_BASE_URL` (optional; local hosts use `NEXT_PUBLIC_API_PORT`, deployed hosts use the same origin)
 - `NEXT_PUBLIC_API_PORT` (default `4001`)
+- `NEXT_PUBLIC_API_TRANSPORT` (set to `polling` for Vercel; leave unset for standalone Socket.IO)
 
 ## 3. Run Migrations
 

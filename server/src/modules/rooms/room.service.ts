@@ -94,6 +94,7 @@ type HandRecord = {
   deckShuffled: string[];
   boardCards: string[];
   holeCardsByUser: Prisma.JsonValue | null;
+  nextHandReadyUserIds?: string[];
   settledAt: Date | null;
   results: HandResultRecord[];
   actions?: HandActionRecord[];
@@ -104,6 +105,7 @@ type RoomRecord = {
   roomCode: string;
   hostUserId: string;
   gameMode: string;
+  matchmakingTier?: string | null;
   status: string;
   maxPlayers: number;
   allowJoinAfterStart: boolean;
@@ -179,6 +181,7 @@ type PublicActionType = PlayerActionType | "post-sb" | "post-bb";
 
 export type ApplyPlayerActionResult = {
   roomState: RoomState | null;
+  roomStatesByUserId?: Map<string, RoomState>;
   traceMeta: RoomActionTraceMeta | null;
 };
 
@@ -187,6 +190,7 @@ export type RoomState = {
     id: string;
     code: string;
     mode: RoomMode;
+    matchmakingTier: string | null;
     status: "waiting" | "active" | "finished" | "cancelled";
     hostUserId: string;
     maxPlayers: number;
@@ -239,6 +243,7 @@ export type RoomState = {
     minRaiseDelta: number;
     canSettle: boolean;
     canDecideNextHand: boolean;
+    nextHandReadyUserIds: string[];
     myHoleCards: string[];
     boardCards: string[];
     lastAction: {
@@ -617,6 +622,7 @@ async function fetchRoomByCode(roomCode: string): Promise<RoomRecord | null> {
             deckShuffled: true,
             boardCards: true,
             holeCardsByUser: true,
+            nextHandReadyUserIds: true,
             settledAt: true,
             actions: {
               orderBy: {
@@ -994,6 +1000,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
       id: room.id,
       code: room.roomCode,
       mode: roomMode,
+      matchmakingTier: room.matchmakingTier ?? null,
       status: roomStatus,
       hostUserId: room.hostUserId,
       maxPlayers: room.maxPlayers,
@@ -1015,7 +1022,7 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
         }
       : null,
     canStart:
-      !!mePlayer?.isHost && roomStatus === "waiting" && players.length >= 2 && allReady,
+      !room.matchmakingTier && !!mePlayer?.isHost && roomStatus === "waiting" && players.length >= 2 && allReady,
     game:
       roomStatus !== "active"
         ? null
@@ -1037,7 +1044,8 @@ function buildRoomState(room: RoomRecord, currentUserId: string | null): RoomSta
             minBet: Math.max(1, toNumber(room.bigBlind)),
             minRaiseDelta: round.minRaiseDelta,
             canSettle: !!mePlayer?.isHost && gameStatus === "showdown",
-            canDecideNextHand: !!mePlayer?.isHost && gameStatus === "settled",
+            canDecideNextHand: !!mePlayer && (roomMode === "online" || mePlayer.isHost) && gameStatus === "settled",
+            nextHandReadyUserIds: latestHand?.nextHandReadyUserIds ?? [],
             myHoleCards,
             boardCards,
             lastAction,
@@ -1936,6 +1944,7 @@ async function createWaitingRoom(client: Prisma.TransactionClient, input: {
   startingStack?: number;
   smallBlind?: number;
   bigBlind?: number;
+  matchmakingTier?: string;
 }) {
   createRoomSchema.parse(input);
   const roomCode = await generateUniqueRoomCode(client);
@@ -1951,6 +1960,7 @@ async function createWaitingRoom(client: Prisma.TransactionClient, input: {
       roomCode,
       hostUserId: input.hostUserId,
       gameMode,
+      matchmakingTier: input.matchmakingTier,
       status: "WAITING",
       maxPlayers,
       startingStack,
@@ -1964,7 +1974,7 @@ async function createWaitingRoom(client: Prisma.TransactionClient, input: {
           stack: startingStack,
           totalBuyIn: startingStack,
           isHost: true,
-          isReady: true,
+          isReady: !input.matchmakingTier,
           isConnected: true
         }
       }
@@ -1980,18 +1990,42 @@ export async function createRoom(input: Parameters<typeof createWaitingRoom>[1])
   return buildRoomState(room, input.hostUserId);
 }
 
-// The queue and the first dealt hand commit together, never as partial rooms.
-export async function createMatchedRoom(tx: Prisma.TransactionClient, userIds: readonly [string, string], settings: { startingStack: number; smallBlind: number; bigBlind: number }) {
-  const [hostUserId, guestUserId] = userIds;
-  const room = await createWaitingRoom(tx, { hostUserId, mode: "online", maxPlayers: 2, ...settings });
-  const displayName = await resolveDisplayName(guestUserId, undefined, tx);
-  await tx.roomPlayer.create({ data: {
-    roomId: room.id, userId: guestUserId, displayName, seatIndex: 1,
-    stack: room.startingStack, totalBuyIn: room.startingStack,
-    isHost: false, isReady: true, isConnected: true
-  }});
-  await startNextHand({ tx, roomId: room.id, dealerSeatCandidate: 0 });
+// Match entrants reserve a seat immediately; dealing waits for explicit readiness.
+export async function createMatchedRoom(tx: Prisma.TransactionClient, userId: string, settings: {
+  maxPlayers: number; startingStack: number; smallBlind: number; bigBlind: number; matchmakingTier: string;
+}) {
+  return createWaitingRoom(tx, { hostUserId: userId, mode: "online", ...settings });
+}
+
+export async function addMatchedPlayer(tx: Prisma.TransactionClient, roomCode: string, userId: string) {
+  const room = await lockRoom(tx, roomCode);
+  if (room.status !== "WAITING" || !room.matchmakingTier) throw new Error("ROOM_NOT_JOINABLE");
+  const players = room.roomPlayers.filter((p) => !p.leftAt);
+  const seatIndex = Array.from({ length: room.maxPlayers }, (_, i) => i).find((seat) => !players.some((p) => p.seatIndex === seat));
+  if (seatIndex === undefined) throw new Error("ROOM_FULL");
+  const displayName = await resolveDisplayName(userId, undefined, tx);
+  await tx.roomPlayer.upsert({ where: { roomId_userId: { roomId: room.id, userId } },
+    create: { roomId: room.id, userId, displayName, seatIndex, stack: room.startingStack, totalBuyIn: room.startingStack },
+    update: { seatIndex, leftAt: null, isReady: false, isConnected: true, isHost: false }
+  });
   return room;
+}
+
+export async function leaveMatchedRoom(tx: Prisma.TransactionClient, roomCode: string, userId: string): Promise<boolean> {
+  const room = await lockRoom(tx, roomCode);
+  // Starting and leaving serialize on the same row: once dealt, keep the game.
+  if (room.status !== "WAITING") return false;
+  const member = room.roomPlayers.find((p) => p.userId === userId && !p.leftAt);
+  if (!member) return true;
+  // Preparation entrants have not played; do not add them to a future archive.
+  await tx.roomPlayer.delete({ where: { id: member.id } });
+  const remaining = room.roomPlayers.filter((p) => !p.leftAt && p.userId !== userId);
+  if (!remaining.length) await tx.gameRoom.update({ where: { id: room.id }, data: { status: "CANCELLED" } });
+  else if (member.isHost) {
+    await tx.gameRoom.update({ where: { id: room.id }, data: { hostUserId: remaining[0].userId } });
+    await tx.roomPlayer.update({ where: { id: remaining[0].id }, data: { isHost: true } });
+  }
+  return true;
 }
 
 /** Serialize waiting-room mutations with start so seats cannot change during dealing. */
@@ -2018,11 +2052,12 @@ export async function joinRoomByCode(input: {
     if (member && !member.leftAt) {
       await tx.roomPlayer.update({ where: { id: member.id }, data: {
         isConnected: true,
-        ...(room.status === "WAITING" ? { isReady: member.seatIndex !== null, stack: room.startingStack, totalBuyIn: room.startingStack } : {})
+        ...(room.status === "WAITING" && !room.matchmakingTier ? { isReady: member.seatIndex !== null, stack: room.startingStack, totalBuyIn: room.startingStack } : {})
       }});
       return;
     }
     if (room.status !== "WAITING") throw new Error("ROOM_NOT_JOINABLE");
+    if (room.matchmakingTier) throw new Error("MATCHMAKING_ONLY");
     if (activePlayers.length >= room.maxPlayers) throw new Error("ROOM_FULL");
     const used = new Set(activePlayers.map((player) => player.seatIndex));
     const seatIndex = Array.from({ length: room.maxPlayers }, (_, index) => index).find((seat) => !used.has(seat));
@@ -2082,13 +2117,20 @@ export async function getRoomActionPatchByCode(roomCode: string): Promise<RoomAc
 export async function setPlayerReadyByRoomCode(input: {
   roomCode: string; userId: string; isReady: boolean;
 }): Promise<RoomState> {
-  // Compatibility for older clients: seated players are always automatically ready.
   await prisma.$transaction(async (tx) => {
     const room = await lockRoom(tx, input.roomCode);
     const member = room.roomPlayers.find((p) => p.userId === input.userId && !p.leftAt);
     if (!member) throw new Error("NOT_A_MEMBER");
     if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
-    await tx.roomPlayer.update({ where: { id: member.id }, data: { isReady: member.seatIndex !== null } });
+    if (input.isReady && member.seatIndex === null) throw new Error("SEAT_NOT_SELECTED");
+    await tx.roomPlayer.update({ where: { id: member.id }, data: { isReady: room.matchmakingTier ? input.isReady : member.seatIndex !== null } });
+    if (room.matchmakingTier) {
+      const members = room.roomPlayers.filter((p) => !p.leftAt).map((p) => p.id === member.id ? { ...p, isReady: input.isReady } : p);
+      if (members.length === room.maxPlayers && members.every((p) => p.seatIndex !== null && p.isReady)) {
+        const liveTickets = await tx.matchmakingTicket.count({ where: { roomId: room.id, expiresAt: { gt: new Date() } } });
+        if (liveTickets === members.length) await startNextHand({ tx, roomId: room.id, dealerSeatCandidate: members[Math.floor(Math.random() * members.length)].seatIndex! });
+      }
+    }
   });
   const next = await fetchRoomByCode(input.roomCode);
   if (!next) throw new Error("ROOM_NOT_FOUND");
@@ -2106,10 +2148,12 @@ export async function setPlayerSeatByRoomCode(input: {
     if (input.seatIndex === null || !Number.isInteger(input.seatIndex) || input.seatIndex < 0 || input.seatIndex >= room.maxPlayers) {
       throw new Error("INVALID_SEAT");
     }
-    if (room.roomPlayers.some((p) => !p.leftAt && p.id !== member.id && p.seatIndex === input.seatIndex)) {
-      throw new Error("SEAT_TAKEN");
-    }
-    await tx.roomPlayer.update({ where: { id: member.id }, data: { seatIndex: input.seatIndex, isReady: true } });
+    if (member.seatIndex === input.seatIndex) return;
+    const occupant = room.roomPlayers.find((p) => !p.leftAt && p.id !== member.id && p.seatIndex === input.seatIndex);
+    if (occupant && (!room.matchmakingTier || occupant.isReady)) throw new Error("SEAT_TAKEN");
+    if (occupant) await tx.roomPlayer.update({ where: { id: occupant.id }, data: { seatIndex: null, isReady: false } });
+    await tx.roomPlayer.update({ where: { id: member.id }, data: { seatIndex: input.seatIndex, isReady: !room.matchmakingTier } });
+    if (occupant) await tx.roomPlayer.update({ where: { id: occupant.id }, data: { seatIndex: member.seatIndex } });
   });
   const next = await fetchRoomByCode(input.roomCode);
   if (!next) throw new Error("ROOM_NOT_FOUND");
@@ -2126,7 +2170,7 @@ export async function setPlayerBuyInByRoomCode(input: {
     if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
     if (!Number.isSafeInteger(input.buyIn) || BigInt(input.buyIn) !== room.startingStack) throw new Error("UNIFORM_BUY_IN");
     await tx.roomPlayer.update({ where: { id: member.id }, data: {
-      stack: room.startingStack, totalBuyIn: room.startingStack, isReady: member.seatIndex !== null
+      stack: room.startingStack, totalBuyIn: room.startingStack, isReady: room.matchmakingTier ? member.isReady : member.seatIndex !== null
     }});
   });
   const next = await fetchRoomByCode(input.roomCode);
@@ -2144,6 +2188,7 @@ export async function updateRoomBlindsByCode(input: {
   await prisma.$transaction(async (tx) => {
     const room = await lockRoom(tx, roomCode);
     if (room.hostUserId !== input.userId) throw new Error("HOST_ONLY");
+    if (room.matchmakingTier) throw new Error("MATCH_SETTINGS_FIXED");
     if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
     if (!Number.isSafeInteger(input.smallBlind) || !Number.isSafeInteger(input.bigBlind) ||
         input.smallBlind <= 0 || input.bigBlind < input.smallBlind || BigInt(input.bigBlind) > room.startingStack) {
@@ -2165,6 +2210,7 @@ async function startFirstHand(roomCode: string, hostUserId: string): Promise<voi
   await prisma.$transaction(async (tx) => {
     const room = await lockRoom(tx, roomCode);
 
+    if (room.matchmakingTier) throw new Error("ROOM_NOT_READY");
     if (room.hostUserId !== hostUserId) {
       throw new Error("HOST_ONLY");
     }
@@ -2594,6 +2640,7 @@ export async function applyPlayerActionByRoomCode(input: {
 
     return {
       roomState: buildRoomState(next, input.userId),
+      roomStatesByUserId: new Map(next.roomPlayers.filter((p) => !p.leftAt).map((p) => [p.userId, buildRoomState(next, p.userId)])),
       traceMeta
     };
   } finally {
@@ -2680,10 +2727,12 @@ export async function decideNextHandByRoomCode(input: {
   roomCode: string;
   userId: string;
   continueSession: boolean;
+  handId?: string;
 }): Promise<RoomState> {
   const roomCode = normalizeRoomCode(input.roomCode);
 
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM game_rooms WHERE room_code = ${roomCode} FOR UPDATE`;
     const room = (await tx.gameRoom.findUnique({
       where: { roomCode },
       include: {
@@ -2704,6 +2753,7 @@ export async function decideNextHandByRoomCode(input: {
             activeSeat: true,
             potTotal: true,
             settledAt: true,
+            nextHandReadyUserIds: true,
             results: {
               select: {
                 id: true,
@@ -2722,17 +2772,36 @@ export async function decideNextHandByRoomCode(input: {
       throw new Error("ROOM_NOT_FOUND");
     }
 
+    const member = room.roomPlayers.find((p) => p.userId === input.userId && !p.leftAt);
+    if (!member) throw new Error("NOT_A_MEMBER");
+    if (room.status === "FINISHED") return;
     if (room.status !== "ACTIVE") {
       throw new Error("ROOM_NOT_ACTIVE");
     }
 
-    if (room.hostUserId !== input.userId) {
+    if (toPublicRoomMode(room.gameMode) === "local" && room.hostUserId !== input.userId) {
       throw new Error("HOST_ONLY");
     }
 
     const hand = room.hands[0];
     if (!hand) {
       throw new Error("HAND_NOT_FOUND");
+    }
+
+    // An end choice in flight wins over a just-dealt hand with no human action.
+    // Return the posted blinds before archiving; never discard an acted-on hand.
+    if (input.handId && input.handId !== hand.id) {
+      if (input.continueSession) return;
+      const preceding = await tx.hand.findFirst({ where: { id: input.handId, roomId: room.id, status: "SETTLED", handNumber: hand.handNumber - 1 } });
+      const playedActions = await tx.handAction.count({ where: { handId: hand.id, actionType: { notIn: ["POST_SB", "POST_BB"] } } });
+      if (!preceding || playedActions > 0 || normalizeHandStatus(hand.status) !== "ACTIVE") throw new Error("HAND_NOT_SETTLED");
+      for (const player of room.roomPlayers.filter((p) => !p.leftAt)) {
+        await tx.roomPlayer.update({ where: { id: player.id }, data: { stack: BigInt(player.stack) + BigInt(player.currentBet), currentBet: 0n, hasFolded: false, isAllIn: false } });
+      }
+      await tx.hand.delete({ where: { id: hand.id } });
+      await tx.gameRoom.update({ where: { id: room.id }, data: { currentHandNumber: preceding.handNumber, dealerSeat: preceding.dealerSeat } });
+      await finalizeRoomAndArchive({ tx, room });
+      return;
     }
 
     if (normalizeHandStatus(hand.status) !== "SETTLED") {
@@ -2750,6 +2819,13 @@ export async function decideNextHandByRoomCode(input: {
     const eligiblePlayers = getHandEligiblePlayers(room.roomPlayers);
     if (eligiblePlayers.length < 2) {
       throw new Error("NOT_ENOUGH_ACTIVE_PLAYERS");
+    }
+
+    if (toPublicRoomMode(room.gameMode) === "online") {
+      if (!eligiblePlayers.some((p) => p.userId === input.userId)) throw new Error("NOT_ENOUGH_ACTIVE_PLAYERS");
+      const votes = Array.from(new Set([...(hand.nextHandReadyUserIds ?? []), input.userId]));
+      await tx.hand.update({ where: { id: hand.id }, data: { nextHandReadyUserIds: votes } });
+      if (!eligiblePlayers.every((p) => votes.includes(p.userId))) return;
     }
 
     const currentDealerSeat = hand.dealerSeat ?? room.dealerSeat ?? eligiblePlayers[0].seatIndex ?? 0;

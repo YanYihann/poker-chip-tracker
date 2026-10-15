@@ -174,10 +174,19 @@ The following transitions must be unit-testable:
 - Autosave/restore/archive lifecycle
 
 ## Final session settlement
-- Ending a session is separate from settling a hand. The current hand must be fully settled and its pot empty before local users or the online host can end the session.
+- Ending a session is separate from settling a hand. The current hand must be fully settled and its pot empty before the offline operator, synced-local host, or any online participant can end the session.
 - After confirmation, results are locked; all online participants can open the final settlement. Finished room links continue to the table/report instead of the join screen.
 - Each player's session net is final chips minus starting chips. Transfers connect players with negative net to players with positive net until every net is covered. Invalid or unbalanced totals do not produce a transfer plan.
 - Hands won counts a hand once when a player collects any pot, including a split or a side pot. A pot winner can still have zero or negative net for that hand.
 - Each hand records gross pot payouts, every player's net change, and hand-end chips. Local main/side pots accumulate into one record only after the final pot is paid; undo/reopen restores the ledger with the chips.
 - Local snapshots include the running session ledger. Ending saves one final report in local archives and removes the active snapshot. Older snapshots without a ledger are explicitly marked as incomplete; missing history is never reconstructed as fact.
 - Online reports use archived server session stats and settled hand results. The room-code report endpoint enforces the existing session participant check; authentication alone does not grant access.
+
+## Online matching and next-hand consent
+
+- Quick match accepts 2–8 players and one stakes tier. Beginner issues 10,000 chips with 100/200 blinds; Advanced issues 50,000 with 500/1,000; Expert issues 100,000 with 1,000/2,000. Only entrants with the same tier and table size share a preparation room; its stakes are fixed.
+- Joining reserves a seat immediately in a waiting room without dealing. Match players start unready. Moving to an empty seat or swapping with an unready occupant resets readiness for the moved players; a ready occupant cannot be displaced. Ready/Unready is explicit.
+- The server starts the first hand only when every configured seat is occupied, every player is ready, and all preparation leases are live. Room locking serializes seats, readiness, leave and start; concurrent final-ready requests deal exactly once. Private and synced-local rooms retain automatic readiness on seating and host-controlled start.
+- Preparation leases last 30 seconds and renew every 8 seconds while waiting. Explicit leave removes the preparation membership; expired seats are reclaimed on matchmaking activity. The remaining players retain the room, with a replacement host if needed. A leave/start race preserves an already-started room.
+- After online settlement, each seated, chip-positive participant can consent to the next hand. At least two eligible players and unanimous consent are required; duplicate votes do not count twice. The next hand starts once in the server transaction. Offline and synced-local continuation remains operator/host-controlled.
+- Any online participant can confirm ending after settlement, even after consenting to continue. An end choice racing the final consent can undo the just-dealt hand only before any human action, refund its posted blinds, and archive once. Once a human action has occurred, that hand must settle before ending.

@@ -314,6 +314,7 @@ function applyRoomActionPatch(prev: RoomState | null, patch: RoomActionPatch): R
           minRaiseDelta: patch.game.minRaiseDelta,
           canSettle: previousGame?.canSettle ?? false,
           canDecideNextHand: previousGame?.canDecideNextHand ?? false,
+          nextHandReadyUserIds: previousGame?.nextHandReadyUserIds ?? [],
           myHoleCards: previousGame?.myHoleCards ?? [],
           boardCards: patch.game.boardCards,
           lastAction: patch.game.lastAction
@@ -363,9 +364,9 @@ export function useOnlineRoomTableModeAdapter(
   const [pendingAction, setPendingAction] = useState(false);
   const [actionAmountInput, setActionAmountInput] = useState("");
   const [settlementOpen, setSettlementOpen] = useState(false);
-  const settledSyncHandRef = useRef<string | null>(null);
   const [sessionReportOpen, setSessionReportOpen] = useState(false);
   const [endConfirmationOpen, setEndConfirmationOpen] = useState(false);
+  const endHandIdRef = useRef<string | undefined>(undefined);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [sessionSummaryLoading, setSessionSummaryLoading] = useState(false);
   const [sessionSummaryError, setSessionSummaryError] = useState<string | null>(null);
@@ -397,7 +398,10 @@ export function useOnlineRoomTableModeAdapter(
   const canSettle = Boolean(game?.status === "showdown" && isHost && !usesAutoEvaluator);
   const canOpenManualSettlement = canSettle;
   const roomFinished = roomState?.room.status === "finished";
-  const canStartNextHand = Boolean(game?.status === "settled" && isHost && roomState?.room.status === "active");
+  const canStartNextHand = Boolean(game?.status === "settled" && roomState?.me && (variant === "online" || isHost) && roomState?.room.status === "active");
+  const nextHandVotes = game?.nextHandReadyUserIds ?? [];
+  const waitingForNextHand = variant === "online" && !!roomState?.me && nextHandVotes.includes(roomState.me.userId);
+  const canContinue = variant !== "online" || Boolean(roomState && roomState.players.filter((p) => p.stack > 0 && p.seatIndex !== null).length >= 2 && roomState.players.some((p) => p.userId === roomState.me?.userId && p.stack > 0));
 
   const loadSessionSummary = useCallback(async () => {
     const request = ++summaryRequestRef.current;
@@ -423,7 +427,6 @@ export function useOnlineRoomTableModeAdapter(
       setLoading(false);
       setRoomState(null);
       setError(null);
-      settledSyncHandRef.current = null;
       return;
     }
 
@@ -480,21 +483,6 @@ export function useOnlineRoomTableModeAdapter(
       // Patches are public. Reload personalized legal actions from the authority.
       void getRoom(roomCode).then((next) => { if (active) setRoomState(next); }).catch(() => undefined);
 
-      if (patch.game?.status === "settled" && patch.game.handId) {
-        const settledHandKey = `${patch.roomCode}:${patch.game.handId}`;
-        if (settledSyncHandRef.current === settledHandKey) {
-          return;
-        }
-
-        settledSyncHandRef.current = settledHandKey;
-        void getRoom(roomCode)
-          .then((nextRoom) => {
-            if (active) {
-              setRoomState(nextRoom);
-            }
-          })
-          .catch(() => undefined);
-      }
     };
 
     void loadRoom();
@@ -782,7 +770,8 @@ export function useOnlineRoomTableModeAdapter(
       actions.push(
         {
           id: "next-hand",
-          label: isZh ? "开始下一手" : "Start Next Hand",
+          label: waitingForNextHand ? (isZh ? "已选择，等待其他玩家" : "Selected · Waiting for players") : (isZh ? "开始下一手" : "Start Next Hand"),
+          disabled: pendingAction || waitingForNextHand || !canContinue,
           onPress: async () => {
             if (!roomCode || pendingAction || !canStartNextHand) {
               return;
@@ -792,7 +781,7 @@ export function useOnlineRoomTableModeAdapter(
             setError(null);
 
             try {
-              const next = await decideNextHand(roomCode, true);
+              const next = await decideNextHand(roomCode, true, game?.handId ?? undefined);
               setRoomState(next);
             } catch (nextHandError) {
               setError(
@@ -810,7 +799,8 @@ export function useOnlineRoomTableModeAdapter(
         {
           id: "end-session",
           label: isZh ? "结束牌局" : "End session",
-          onPress: async () => { if (!pendingAction) setEndConfirmationOpen(true); }
+          disabled: pendingAction,
+          onPress: async () => { if (!pendingAction) { endHandIdRef.current = game?.handId ?? undefined; setEndConfirmationOpen(true); } }
         }
       );
     }
@@ -819,6 +809,9 @@ export function useOnlineRoomTableModeAdapter(
   }, [
     allPlayersSeated,
     canStartNextHand,
+    canContinue,
+    waitingForNextHand,
+    game?.handId,
     clearLocalSeat,
     isHost,
     isLocalSeatSelectionPhase,
@@ -972,9 +965,11 @@ export function useOnlineRoomTableModeAdapter(
               ? "系统正在自动进行牌力结算，请稍候..."
               : "Auto hand evaluation is in progress..."
           : canStartNextHand
-            ? isZh
-              ? "本手已结算，房主可开始下一手。"
-              : "Hand settled. Host can start the next hand."
+            ? variant === "online"
+              ? waitingForNextHand
+                ? (isZh ? "等待其他玩家选择；你仍可以结束牌局。" : "Waiting for other players. You can still end the session.")
+                : (isZh ? "所有有筹码的玩家选择下一手后继续；任一玩家结束则结束牌局。" : "Everyone with chips must choose the next hand. Any player can end the session.")
+              : (isZh ? "本手已结算，房主可开始下一手。" : "Hand settled. Host can start the next hand.")
             : variant === "online" && game?.status === "settled"
               ? isZh
                 ? "本手已结算，等待房主选择下一手或结束整局。"
@@ -1054,6 +1049,12 @@ export function useOnlineRoomTableModeAdapter(
           {isZh ? "正在同步牌桌..." : "Syncing table state..."}
         </p>
       </section>
+    ) : waitingForNextHand ? () => (
+      <section className="next-hand-waiting" role="status" aria-live="polite">
+        <h2>{isZh ? "等待玩家选择" : "Waiting for players"}</h2>
+        <p>{isZh ? `已有 ${nextHandVotes.length} / ${roomState?.players.filter((p) => p.stack > 0 && p.seatIndex !== null).length ?? 0} 人选择下一手` : `${nextHandVotes.length} / ${roomState?.players.filter((p) => p.stack > 0 && p.seatIndex !== null).length ?? 0} players chose the next hand`}</p>
+        <p>{isZh ? "所有玩家同意后自动继续。下方可以结束牌局。" : "The next hand starts when everyone agrees. You can end the session below."}</p>
+      </section>
     ) : isSettledOnlineView && game ? (compactViewport) => (
       <OnlineHandSettlementView
         compactViewport={compactViewport}
@@ -1066,9 +1067,9 @@ export function useOnlineRoomTableModeAdapter(
     ) : undefined,
     supplementaryContent: <><SessionEndConfirmation isOpen={endConfirmationOpen} onCancel={() => setEndConfirmationOpen(false)} onConfirm={() => {
       setEndConfirmationOpen(false);
-      if (!roomCode || pendingAction || !canStartNextHand) return;
+      if (!roomCode || pendingAction || roomFinished) return;
       setPendingAction(true); setError(null);
-      void decideNextHand(roomCode, false).then(setRoomState).catch((cause) => setError(cause instanceof Error ? cause.message : isZh ? "无法结束牌局。" : "Unable to end session.")).finally(() => setPendingAction(false));
+      void decideNextHand(roomCode, false, endHandIdRef.current).then(setRoomState).catch((cause) => setError(cause instanceof Error ? cause.message : isZh ? "无法结束牌局。" : "Unable to end session.")).finally(() => setPendingAction(false));
     }} />{variant === "online" && !isSettledOnlineView && !roomFinished ? (
         <OnlineMyHoleCards cards={game?.myHoleCards ?? []} />
       ) : null}</>,

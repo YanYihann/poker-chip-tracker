@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <title>PokerChip Ledger</title>
+  <rect width="512" height="512" fill="#153e35"/>
+  <circle cx="256" cy="256" r="178" fill="#f0cc75"/>
+  <g fill="#153e35">
+    <rect x="245" y="81" width="22" height="39" rx="5"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(45 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(90 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(135 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(180 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(225 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(270 256 256)"/>
+    <rect x="245" y="81" width="22" height="39" rx="5" transform="rotate(315 256 256)"/>
+  </g>
+  <circle cx="256" cy="256" r="139" fill="#153e35"/>
+  <circle cx="256" cy="256" r="125" fill="#fff5db"/>
+  <path fill="#153e35" d="M256 155c-25 32-79 62-79 99 0 32 29 48 55 36 10-5 18-13 24-23 6 10 14 18 24 23 26 12 55-4 55-36 0-37-54-67-79-99Zm-6 112c0 33-8 52-25 69h62c-17-17-25-36-25-69h-12Z"/>
+</svg>

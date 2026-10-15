@@ -56,6 +56,7 @@ Fields:
 - host_user_id UUID not null references users(id)
 - status text not null check (status in ('waiting','active','finished','cancelled'))
 - max_players integer not null
+- matchmaking_tier text null (`beginner`, `advanced`, or `expert` for matched rooms; null for private rooms)
 - starting_stack bigint not null
 - small_blind bigint not null
 - big_blind bigint not null
@@ -74,6 +75,7 @@ Fields:
 Indexes:
 - unique(room_code)
 - index(host_user_id, status)
+- index(matchmaking_tier, status, max_players)
 
 ### room_players
 Membership plus per-room player state.
@@ -118,6 +120,7 @@ Fields:
 - side_pot_total bigint not null default 0
 - started_at timestamptz not null default now()
 - settled_at timestamptz null
+- next_hand_ready_user_ids text[] not null default '{}'
 
 Constraints:
 - unique(room_id, hand_number)
@@ -196,6 +199,10 @@ Constraints:
 
 ### matchmaking_tickets
 
-One transient queue/result record per account. `user_id` is the primary key and cascades on account deletion; `id` is a unique UUID identifying this search generation. `joined_at` supplies the waiting timer and `expires_at` is a renewable 30-second waiting lease. `room_id` references game_rooms with ON DELETE SET NULL; `matched_at` retains the completed-claim marker so deleting archived rooms cannot return a ticket to the queue. Index `(room_id, expires_at)` supports eligible-player lookup.
+One transient preparation/result record per account. `user_id` is the primary key and cascades on account deletion; `id` is a unique UUID identifying this match generation. `joined_at` supplies the waiting timer and `expires_at` is a renewable 30-second preparation lease. `room_id` references game_rooms with ON DELETE SET NULL; a missing, finished or deleted room cannot silently requeue a ticket. The existing nullable `matched_at` column remains. Index `(room_id, expires_at)` supports live-lease lookup.
 
-Queue claims/cancellation use one transaction-scoped PostgreSQL advisory lock across server instances. Opponent and host selection use Node crypto randomness. Creating the room, joining both seats, dealing the first hand and assigning both tickets to the room happen in one transaction. No process-local queue or persistent WebSocket service is required.
+Match reservation/cancellation uses one transaction-scoped PostgreSQL advisory lock across server instances. Available waiting rooms are selected among those with the same tier and capacity, using Node crypto randomness. Reserving a seat and assigning its ticket happen in one transaction; dealing waits for explicit readiness. Room row locks serialize seat swaps, Ready/Unready, preparation leave and first-hand start. Leaving removes the unused membership; host departure transfers ownership, and an empty preparation room becomes cancelled. No process-local queue or persistent WebSocket service is required.
+
+`hands.next_hand_ready_user_ids` persists distinct online continuation votes on the settled hand. The server checks seated, chip-positive eligibility and starts once all eligible participants consent; a new hand starts with an empty array. Ending and final consent serialize with archival to prevent duplicate hands or reports. Synced-local hand decisions remain host-only.
+
+Migration `20261004200000_match_preparation_and_hand_consent` adds `game_rooms.matchmaking_tier`, its lookup index, and `hands.next_hand_ready_user_ids`. It passed disposable local validation and was successfully applied by the production Vercel build on 2026-10-04.

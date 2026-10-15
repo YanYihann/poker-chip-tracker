@@ -3,6 +3,7 @@ import { z, ZodError } from "zod";
 import { requireAuth } from "../auth/session.middleware.js";
 import { getMatchState, joinMatchQueue, MATCH_SETTINGS, updateMatchQueue } from "./matchmaking.service.js";
 import { scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
+import { MATCH_TIERS, matchOptionsSchema } from "./matchmaking.settings.js";
 
 const ticketSchema = z.object({ ticketId: z.string().uuid() });
 
@@ -13,7 +14,7 @@ export function createMatchmakingRouter() {
 
   router.get("/", async (req, res) => {
     try {
-      res.json({ match: await getMatchState(req.authSession!.userId), settings: MATCH_SETTINGS });
+      res.json({ match: await getMatchState(req.authSession!.userId), settings: MATCH_SETTINGS, tiers: MATCH_TIERS });
     } catch (error) {
       console.error("[matchmaking] status unavailable", error);
       res.status(503).json({ message: "Matching is unavailable. Please try again." });
@@ -24,13 +25,15 @@ export function createMatchmakingRouter() {
     router.post(`/${operation}`, async (req, res) => {
       try {
         const userId = req.authSession!.userId;
+        const previous = operation === "cancel" ? await getMatchState(userId) : null;
         const match = operation === "join"
-          ? await joinMatchQueue(userId)
+          ? await joinMatchQueue(userId, matchOptionsSchema.parse(req.body))
           : await updateMatchQueue(userId, ticketSchema.parse(req.body).ticketId, operation === "cancel");
-        res.json({ match, settings: MATCH_SETTINGS });
+        res.json({ match, settings: MATCH_SETTINGS, tiers: MATCH_TIERS });
         if (operation === "join" && match.status === "matched") scheduleBroadcastRoomState(match.roomCode);
+        if (previous?.status === "matched") scheduleBroadcastRoomState(previous.roomCode);
       } catch (error) {
-        if (error instanceof ZodError) { res.status(400).json({ message: "Invalid match ticket." }); return; }
+        if (error instanceof ZodError) { res.status(400).json({ message: "Invalid match settings or ticket." }); return; }
         console.error(`[matchmaking] ${operation} failed`, error);
         res.status(503).json({ message: "Matching is unavailable. Please try again." });
       }

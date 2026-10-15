@@ -29,7 +29,7 @@ import {
   startRoomByHost,
   updateRoomBlindsByCode
 } from "./room.service.js";
-import { emitRoomActionPatch, scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
+import { emitRoomActionPatch, emitRoomStates, scheduleBroadcastRoomState } from "../../realtime/room-broadcast.js";
 import { buildRoomActionPatch } from "../../realtime/room-patch.js";
 
 function sendValidationError(error: ZodError, res: Response): void {
@@ -73,6 +73,10 @@ function sendRoomError(error: unknown, res: Response): void {
       return;
     case "ROOM_FULL":
       res.status(409).json({ message: "Room is full." });
+      return;
+    case "MATCHMAKING_ONLY":
+    case "MATCH_SETTINGS_FIXED":
+      res.status(409).json({ message: "Use quick match to enter a table with fixed settings." });
       return;
     case "NOT_A_MEMBER":
       res.status(403).json({ message: "You are not a room member." });
@@ -362,12 +366,11 @@ export function createRoomRouter() {
         }
       });
 
-      const actionPatch =
-        result.roomState
-          ? buildRoomActionPatch(result.roomState)
-          : await getRoomActionPatchByCode(roomCode);
-      if (actionPatch) {
-        emitRoomActionPatch(roomCode, actionPatch, result.traceMeta);
+      if (result.roomStatesByUserId) {
+        emitRoomStates(roomCode, result.roomStatesByUserId);
+      } else {
+        const actionPatch = result.roomState ? buildRoomActionPatch(result.roomState) : await getRoomActionPatchByCode(roomCode);
+        if (actionPatch) emitRoomActionPatch(roomCode, actionPatch, result.traceMeta);
       }
 
       if (responseMode === "ack") {
@@ -417,7 +420,8 @@ export function createRoomRouter() {
       const roomState = await decideNextHandByRoomCode({
         roomCode,
         userId: req.authSession!.userId,
-        continueSession: payload.continueSession
+        continueSession: payload.continueSession,
+        handId: payload.handId
       });
 
       res.status(200).json({ room: roomState });

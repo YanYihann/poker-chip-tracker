@@ -30,21 +30,25 @@ class PollingRoomTransport implements RoomTransport {
     const room = { count: 1, stopped: false, timer: undefined as ReturnType<typeof setTimeout> | undefined, previous: "" };
     this.rooms.set(roomCode, room);
     const refresh = async () => {
-      let retryMs = 1500;
+      // Do not add 1.5s after every network round trip. Keep one request in flight.
+      const startedAt = Date.now();
+      let retryMs = 750;
+      let failed = false;
       try {
         if (document.visibilityState === "visible") {
           const epoch = getRoomSyncEpoch();
           if (epoch === null) return;
           const state = await getRoom(roomCode);
           if (room.stopped || getRoomSyncEpoch() !== epoch) return;
+          retryMs = state.room.status === "active" && state.game?.status === "in-progress" ? 250 : state.room.status === "finished" || state.room.status === "cancelled" ? 5000 : 750;
           const serialized = JSON.stringify(state);
           if (room.previous !== serialized) {
             room.previous = serialized;
             this.listeners.get("room:state")?.forEach((listener) => listener(state as never));
           }
         }
-      } catch { retryMs = 5000; }
-      finally { if (!room.stopped) room.timer = setTimeout(refresh, retryMs); }
+      } catch { retryMs = 5000; failed = true; }
+      finally { if (!room.stopped) room.timer = setTimeout(refresh, failed ? retryMs : Math.max(50, retryMs - (Date.now() - startedAt))); }
     };
     void refresh();
   }

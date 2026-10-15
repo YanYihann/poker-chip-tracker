@@ -3,6 +3,7 @@ import type { Server as SocketServer } from "socket.io";
 
 import { recordPerfSample } from "../lib/perf-metrics.js";
 import { getRoomStatesByCodeForUsers } from "../modules/rooms/room.service.js";
+import type { RoomState } from "../modules/rooms/room.service.js";
 import type { RoomActionPatch, RoomActionTraceMeta } from "./room-patch.js";
 
 let ioRef: SocketServer | null = null;
@@ -15,6 +16,18 @@ export function roomChannel(roomCode: string): string {
 
 export function setRealtimeServer(io: SocketServer): void {
   ioRef = io;
+}
+
+/** Personalized legality and private cards travel with the committed turn. */
+export function emitRoomStates(roomCode: string, states: Map<string, RoomState>): void {
+  if (!ioRef) return;
+  const sockets = ioRef.sockets.adapter.rooms.get(roomChannel(roomCode));
+  for (const socketId of sockets ?? []) {
+    const socket = ioRef.sockets.sockets.get(socketId);
+    const userId = (socket?.data.auth as { userId?: string } | undefined)?.userId;
+    const state = userId ? states.get(userId) : null;
+    if (socket && state) socket.emit("room:state", state);
+  }
 }
 
 export async function broadcastRoomState(roomCode: string): Promise<void> {

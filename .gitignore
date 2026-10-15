@@ -44,3 +44,5 @@ pnpm-debug.log*
 .impeccable/review/
 .vercel
 .env*
+!.env.example
+!**/.env.example

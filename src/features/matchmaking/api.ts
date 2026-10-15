@@ -1,4 +1,5 @@
 import { getApiUrl, toNetworkError } from "@/lib/api-base-url";
+import type { MatchOptions, MatchTier } from "./settings";
 
 export type MatchState =
   | { status: "idle" }
@@ -7,16 +8,17 @@ export type MatchState =
 export type MatchResponse = {
   match: MatchState;
   settings: { maxPlayers: number; startingStack: number; smallBlind: number; bigBlind: number };
+  tiers: Record<MatchTier, { startingStack: number; smallBlind: number; bigBlind: number }>;
 };
 
-async function request(operation?: "join" | "heartbeat" | "cancel", ticketId?: string, keepalive = false): Promise<MatchResponse> {
+async function request(operation?: "join" | "heartbeat" | "cancel", ticketId?: string, keepalive = false, options?: MatchOptions): Promise<MatchResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch(getApiUrl(`/api/matchmaking${operation ? `/${operation}` : ""}`), {
       method: operation ? "POST" : "GET", credentials: "include", cache: "no-store", keepalive,
       headers: { "Content-Type": "application/json" },
-      body: operation ? JSON.stringify(ticketId ? { ticketId } : {}) : undefined,
+      body: operation ? JSON.stringify(ticketId ? { ticketId } : options ?? {}) : undefined,
       signal: controller.signal
     });
     const payload = await response.json();
@@ -27,6 +29,6 @@ async function request(operation?: "join" | "heartbeat" | "cancel", ticketId?: s
 }
 
 export const getMatchState = () => request();
-export const joinMatchQueue = () => request("join");
+export const joinMatchQueue = (options?: MatchOptions) => request("join", undefined, false, options);
 export const heartbeatMatch = (ticketId: string) => request("heartbeat", ticketId);
 export const cancelMatch = (ticketId: string, keepalive = false) => request("cancel", ticketId, keepalive);

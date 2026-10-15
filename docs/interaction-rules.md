@@ -28,7 +28,7 @@
 - End session opens an application confirmation with Keep playing and End & save. The default focus is Keep playing; Escape cancels.
 - Final reports list chip transfers, player totals, and hand history. Hand details use native disclosures and are collapsed on every report opening.
 - Report dialogs trap focus via the native modal dialog, close with Close/Escape, and restore focus to the trigger. Long reports scroll within the panel with a persistent close control.
-- Local final reports can be reopened from Previous settlement and /history/local without signing in. Online reports are available to every participant after the host ends the session and from the existing session history detail page.
+- Local final reports can be reopened from Previous settlement and /history/local without signing in. Online reports are available to every participant after the session ends and from the existing session history detail page.
 
 ## Profile and mode-specific history
 
@@ -48,8 +48,14 @@
 
 ## Online matchmaking
 
-- Lobby Quick match opens /online/match behind the existing sign-in gate. Find opponent explicitly joins a random heads-up queue; visiting the page alone does not start a new search.
-- Matched tables have two automatically ready seats, 10,000 system-issued chips per player, and blinds 100/200. The server deals the first hand atomically with both queue claims; both browsers go directly to /online?room=CODE. The randomly assigned host retains the existing next-hand/end-session controls.
-- Waiting shows real elapsed time and Cancel search. Leaving/pagehide cancels the current search; a 30-second lease removes disconnected candidates even if unload delivery fails. Heartbeats renew every 1.5 seconds after a response.
-- Cancel and pairing serialize: cancellation first removes the player; pairing first preserves the active room and redirects there. A stale ticket cannot cancel a newer search. Repeated requests and tabs cannot self-match or create duplicate matched rooms.
-- Revisiting Quick match resumes an active matched room. Finished/deleted rooms allow a new explicit search; history removal never silently requeues a player. Connection errors retry during an existing search; expiry requires Find opponent again.
+- Lobby Quick match opens /online/match behind the existing sign-in gate. Labeled native Players and Stakes selects offer 2–8 players and Beginner/Advanced/Expert, with starting chips and blinds shown before joining. Find opponent explicitly reserves a seat; visiting alone does not start a match.
+- Entrants open /rooms/CODE immediately while the remaining players join the same tier and size. The preparation table uses the existing felt, seat cards and settings panel. Desktop keeps settings beside the table; mobile setup scrolls with settings below. Existing typography and felt-green/charcoal/gold tokens remain in use.
+- My seat is a labeled native select. Empty seats are also clickable; occupied options permit swaps only with unready players. Seat changes reset readiness. Ready/Unready and joined/ready counts explain that the full table starts automatically when everyone is ready. Leave match vacates the seat and returns to /online/match.
+- Preparation renews its 30-second lease every 8 seconds. Connection errors show retry feedback; abandoned seats can be reclaimed, and expired entrants return to Quick match. Leave and start serialize: leave first vacates the seat; start first preserves the active room. A stale ticket cannot cancel a newer match; repeated joins and tabs reserve one membership.
+- Revisiting Quick match resumes a live preparation or active room. Finished/deleted rooms permit a new explicit match; history removal never silently requeues a player. Private rooms retain their existing automatic readiness and host start.
+
+## Online hand decisions and synchronization
+
+- After settlement, every eligible seated player with chips can choose Start next hand; at least two eligible players are needed. Choosing it replaces the settlement view with Waiting for players and a consent count, disables duplicate continuation, and keeps End session available. The server continues when all eligible players consent. Any online participant may end through the existing Keep playing / End & save confirmation. Offline and synced-local tables keep operator/host decisions.
+- Active and settled phone tables retain their fixed viewport and bottom actions; the consent waiting view keeps the same Back and action placement. Setup screens continue to scroll normally.
+- Persistent Socket.IO deployments push each participant's private cards and legal actions with the committed turn. Serverless polling refreshes visible subscribed rooms at a target 250 ms during a hand, 750 ms in preparation or settlement, and 5 seconds after closure or on errors. Each room has at most one polling request in flight; request time is included in the cadence. API action responses update the acting client immediately.

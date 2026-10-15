@@ -113,6 +113,7 @@ model GameRoom {
   roomCode            String              @unique @map("room_code")
   hostUserId          String              @map("host_user_id") @db.Uuid
   gameMode            String              @default("online") @map("game_mode")
+  matchmakingTier     String?             @map("matchmaking_tier")
   status              RoomStatus
   maxPlayers          Int                 @map("max_players")
   startingStack       BigInt              @map("starting_stack")
@@ -139,6 +140,7 @@ model GameRoom {
   matchmakingTickets MatchmakingTicket[]
 
   @@index([hostUserId, status])
+  @@index([matchmakingTier, status, maxPlayers])
   @@map("game_rooms")
 }
 
@@ -198,6 +200,7 @@ model Hand {
   deckShuffled String[]         @default([]) @map("deck_shuffled")
   boardCards   String[]         @default([]) @map("board_cards")
   holeCardsByUser Json?         @map("hole_cards_by_user")
+  nextHandReadyUserIds String[] @default([]) @map("next_hand_ready_user_ids")
   startedAt    DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
   settledAt    DateTime?        @map("settled_at") @db.Timestamptz(6)
   room         GameRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)

@@ -42,6 +42,7 @@ export type RoomState = {
     id: string;
     code: string;
     mode: "local" | "online";
+    matchmakingTier?: "beginner" | "advanced" | "expert" | null;
     status: "waiting" | "active" | "finished" | "cancelled";
     hostUserId: string;
     maxPlayers: number;
@@ -80,6 +81,7 @@ export type RoomState = {
     minRaiseDelta: number;
     canSettle: boolean;
     canDecideNextHand: boolean;
+    nextHandReadyUserIds?: string[];
     myHoleCards: string[];
     boardCards: string[];
     lastAction: {
@@ -333,11 +335,12 @@ export async function settleHand(
 
 export async function decideNextHand(
   roomCode: string,
-  continueSession: boolean
+  continueSession: boolean,
+  handId?: string
 ): Promise<RoomState> {
   const payload = await request<{ room: RoomState }>(`/api/rooms/${roomCode.toUpperCase()}/next-hand`, {
     method: "POST",
-    body: JSON.stringify({ continueSession })
+    body: JSON.stringify({ continueSession, handId })
   });
   return payload.room;
 }

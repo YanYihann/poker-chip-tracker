@@ -51,7 +51,8 @@ export const settleHandSchema = z.object({
 });
 
 export const nextHandDecisionSchema = z.object({
-  continueSession: z.boolean()
+  continueSession: z.boolean(),
+  handId: z.string().uuid().optional()
 });
 
 export const roomCodeParamSchema = z.object({

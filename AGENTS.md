@@ -58,7 +58,7 @@ Evolve this app into **dual-mode poker scoring**:
 - Local mode still works end-to-end.
 - Online mode behavior for touched flows still works end-to-end.
 - No unnecessary visual redesign/regression.
-- Lint and typecheck pass (or blocker is explicitly documented).
+- Applicable lint and typecheck pass for changed code (or a blocker is explicitly documented); prose-only edits do not require both.
 - Changed files and residual tasks are summarized.
 
 ## Commands
@@ -67,7 +67,7 @@ Evolve this app into **dual-mode poker scoring**:
 - dev: `npm run dev`
 - lint: `npm run lint`
 - typecheck: `npm run typecheck`
-- build: `npm run build`
+- build: `npm run build` — also invokes `scripts/migrate-vercel.mjs` and may apply database migrations using configured database URLs; treat it as a deployment/database operation, not a pure local check.
 
 ### Backend
 - install: `cd server && npm install`
@@ -78,9 +78,9 @@ Evolve this app into **dual-mode poker scoring**:
 
 ## Prompt Discipline for Codex
 Before coding:
-1. Read `AGENTS.md` and `docs/*`.
-2. Confirm local mode preservation constraints.
+1. Read task-relevant docs only: `docs/game-rules.md` and `docs/interaction-rules.md` for game behavior, `docs/database-schema.md` for schema changes, `docs/DESIGN.md` for UI changes, `docs/local-dev.md` for local setup, and the matching `docs/deployment-*.md` for deployment. Do not load all of `docs/*` for every edit.
+2. Preserve the local-mode constraints above; ask only if the requested change would alter them and the user has not already authorized that change.
 3. Audit reuse opportunities before adding new files.
 4. Implement only requested phase scope.
-5. Run lint and typecheck (front + server when relevant).
+5. Run lint and typecheck for affected frontend/server code; prose-only changes do not require the full checks. Fix failures caused by the requested change and rerun affected checks without asking at each step.
 6. Summarize architecture impact, changed files, and next incremental step.

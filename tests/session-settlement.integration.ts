@@ -38,15 +38,18 @@ test("both server-backed modes archive two hands once and expose settlement to e
         }
         if (mode === "local") state = await rooms.settleHandByRoomCode({ roomCode, userId: host.id, winnerUserIds: state.game!.eligibleWinnerUserIds });
         assert.equal(state.game?.status, "settled");
-        if (hand === 1) await rooms.decideNextHandByRoomCode({ roomCode, userId: host.id, continueSession: true });
+        if (hand === 1) {
+          const participants = mode === "online" ? [host, guest, third] : [host];
+          for (const player of participants) await rooms.decideNextHandByRoomCode({ roomCode, userId: player.id, continueSession: true, handId: state.game!.handId! });
+        }
       }
-      await assert.rejects(rooms.decideNextHandByRoomCode({ roomCode, userId: guest.id, continueSession: false }), /HOST_ONLY/);
+      if (mode === "local") await assert.rejects(rooms.decideNextHandByRoomCode({ roomCode, userId: guest.id, continueSession: false }), /HOST_ONLY/);
       const ends = await Promise.allSettled([1, 2].map(() => rooms.decideNextHandByRoomCode({ roomCode, userId: host.id, continueSession: false })));
       assert.ok(ends.some((r) => r.status === "fulfilled"));
       assert.equal(await prisma.gameSession.count({ where: { roomId: created.room.id } }), 1);
       const profiles = await prisma.profile.findMany({ where: { userId: { in: [host.id, guest.id, third.id] } } });
       assert.ok(profiles.every((p) => p.totalSessions === (mode === "online" ? 1 : 2)), "concurrent end requests do not count a session twice");
-      await assert.rejects(rooms.decideNextHandByRoomCode({ roomCode, userId: host.id, continueSession: true }), /ROOM_NOT_ACTIVE/);
+      assert.equal((await rooms.decideNextHandByRoomCode({ roomCode, userId: host.id, continueSession: true })).room.status, "finished");
       for (const user of [host, guest, third]) {
         assert.equal((await rooms.getRoomStateByCode(roomCode, user.id))?.room.status, "finished");
         const report = summarizeOnlineSession(await getSessionDetailByRoomCode({ userId: user.id, roomCode }));
