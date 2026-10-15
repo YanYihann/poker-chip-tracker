@@ -70,28 +70,25 @@ The app tracks virtual chips and game results; it does not process payments or r
 
 ## Screenshots
 
-<table>
-  <tr><th>Room preparation</th><th>Online table</th><th>Hand settlement</th></tr>
-  <tr>
-    <td><img src="docs/screenshots/房间准备.png" alt="Room seats and preparation controls" width="260" /></td>
-    <td><img src="docs/screenshots/在线牌桌.png" alt="Online poker table and betting controls" width="260" /></td>
-    <td><img src="docs/screenshots/牌力结算.png" alt="Hand rankings and settlement results" width="260" /></td>
-  </tr>
-</table>
-
-<details>
-<summary>More screens: room creation, joining, and profile</summary>
+Current English interface, captured from the app. Click an image to view it at full size.
 
 <table>
-  <tr><th>Create a room</th><th>Join a room</th><th>Profile</th></tr>
+  <tr><th>Room preparation</th><th>Online table</th></tr>
   <tr>
-    <td><img src="docs/screenshots/创建房间.png" alt="Create a room" width="260" /></td>
-    <td><img src="docs/screenshots/加入房间.png" alt="Join with a room code" width="260" /></td>
-    <td><img src="docs/screenshots/个人资料.png" alt="Player profile and statistics" width="260" /></td>
+    <td><a href="docs/screenshots/room-preparation.png"><img src="docs/screenshots/room-preparation.png" alt="Three-player preparation table with seat selection and readiness" width="440" /></a></td>
+    <td><a href="docs/screenshots/online-table.png"><img src="docs/screenshots/online-table.png" alt="Active flop with private cards and betting controls" width="440" /></a></td>
+  </tr>
+  <tr><th>Create a room</th><th>Join a room</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/create-room.png"><img src="docs/screenshots/create-room.png" alt="Room creation with game mode, starting chips, and blinds" width="440" /></a></td>
+    <td><a href="docs/screenshots/join-room.png"><img src="docs/screenshots/join-room.png" alt="Join a room using its four-digit code" width="440" /></a></td>
+  </tr>
+  <tr><th>Hand settlement</th><th>Profile</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/hand-settlement.png"><img src="docs/screenshots/hand-settlement.png" alt="Completed hand with revealed cards, rankings, and player net results" width="440" /></a></td>
+    <td><a href="docs/screenshots/profile.png"><img src="docs/screenshots/profile.png" alt="Profile with actual demo session totals and online/local statistics" width="440" /></a></td>
   </tr>
 </table>
-
-</details>
 
 ## Getting started
 

@@ -70,28 +70,25 @@ PokerChip Ledger 将座位、下注行动、底池、单手结果和整场报告
 
 ## 界面预览
 
-<table>
-  <tr><th>房间准备</th><th>线上牌桌</th><th>牌力结算</th></tr>
-  <tr>
-    <td><img src="docs/screenshots/房间准备.png" alt="房间座位与准备操作" width="260" /></td>
-    <td><img src="docs/screenshots/在线牌桌.png" alt="线上牌桌与下注操作" width="260" /></td>
-    <td><img src="docs/screenshots/牌力结算.png" alt="牌型与结算结果" width="260" /></td>
-  </tr>
-</table>
-
-<details>
-<summary>更多界面：创建房间、加入房间与个人资料</summary>
+以下为当前版本的英文界面实拍，点击图片可查看完整原图。
 
 <table>
-  <tr><th>创建房间</th><th>加入房间</th><th>个人资料</th></tr>
+  <tr><th>房间准备</th><th>线上牌桌</th></tr>
   <tr>
-    <td><img src="docs/screenshots/创建房间.png" alt="创建房间" width="260" /></td>
-    <td><img src="docs/screenshots/加入房间.png" alt="通过房间码加入" width="260" /></td>
-    <td><img src="docs/screenshots/个人资料.png" alt="玩家资料与统计" width="260" /></td>
+    <td><a href="docs/screenshots/room-preparation.png"><img src="docs/screenshots/room-preparation.png" alt="三人准备桌、选座与准备状态" width="440" /></a></td>
+    <td><a href="docs/screenshots/online-table.png"><img src="docs/screenshots/online-table.png" alt="翻牌阶段的底牌、公共牌与下注操作" width="440" /></a></td>
+  </tr>
+  <tr><th>创建房间</th><th>加入房间</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/create-room.png"><img src="docs/screenshots/create-room.png" alt="对局模式、起始筹码与盲注设置" width="440" /></a></td>
+    <td><a href="docs/screenshots/join-room.png"><img src="docs/screenshots/join-room.png" alt="通过四位房间码加入房间" width="440" /></a></td>
+  </tr>
+  <tr><th>牌力结算</th><th>个人资料</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/hand-settlement.png"><img src="docs/screenshots/hand-settlement.png" alt="完整摊牌、牌型与每位玩家的净变化" width="440" /></a></td>
+    <td><a href="docs/screenshots/profile.png"><img src="docs/screenshots/profile.png" alt="演示牌局的实际统计及线上、本地分类数据" width="440" /></a></td>
   </tr>
 </table>
-
-</details>
 
 ## 快速开始
 
